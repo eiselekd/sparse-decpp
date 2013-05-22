@@ -37,7 +37,7 @@ struct pseudo void_pseudo = {};
 
 static struct position current_pos;
 
-ALLOCATOR(pseudo_user, "pseudo_user");
+ALLOCATOR(pseudo_user, "pseudo_user", 0);
 
 static struct instruction *alloc_instruction(int opcode, int size)
 {
@@ -1711,8 +1711,8 @@ static pseudo_t linearize_range(struct entrypoint *ep, struct statement *stmt)
 	return VOID;
 }
 
-ALLOCATOR(asm_rules, "asm rules");
-ALLOCATOR(asm_constraint, "asm constraints");
+ALLOCATOR(asm_rules, "asm rules", 0);
+ALLOCATOR(asm_constraint, "asm constraints", 0);
 
 static void add_asm_input(struct entrypoint *ep, struct instruction *insn, struct expression *expr,
 	const char *constraint, const struct ident *ident)

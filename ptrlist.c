@@ -14,7 +14,7 @@
 #include "compat.h"
 
 __DECLARE_ALLOCATOR(struct ptr_list, ptrlist);
-__ALLOCATOR(struct ptr_list, "ptr list", ptrlist);
+__ALLOCATOR(struct ptr_list, "ptr list", ptrlist, 0);
 
 int ptr_list_size(struct ptr_list *head)
 {

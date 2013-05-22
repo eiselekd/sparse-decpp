@@ -15,8 +15,8 @@
 #include "linearize.h"
 #include "storage.h"
 
-ALLOCATOR(storage, "storages");
-ALLOCATOR(storage_hash, "storage hash");
+ALLOCATOR(storage, "storages", 0);
+ALLOCATOR(storage_hash, "storage hash", 0);
 
 #define MAX_STORAGE_HASH 64
 static struct storage_hash_list *storage_hash_table[MAX_STORAGE_HASH];

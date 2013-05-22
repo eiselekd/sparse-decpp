@@ -111,19 +111,19 @@ void show_allocations(struct allocator_struct *x)
 		(double) x->useful_bytes / x->allocations);
 }
 
-ALLOCATOR(ident, "identifiers");
-ALLOCATOR(token, "tokens");
-ALLOCATOR(context, "contexts");
-ALLOCATOR(symbol, "symbols");
-ALLOCATOR(expression, "expressions");
-ALLOCATOR(statement, "statements");
-ALLOCATOR(string, "strings");
-ALLOCATOR(scope, "scopes");
-__DO_ALLOCATOR(void, 0, 1, "bytes", bytes);
-ALLOCATOR(basic_block, "basic_block");
-ALLOCATOR(entrypoint, "entrypoint");
-ALLOCATOR(instruction, "instruction");
-ALLOCATOR(multijmp, "multijmp");
-ALLOCATOR(pseudo, "pseudo");
+ALLOCATOR(ident, "identifiers",0);
+ALLOCATOR(token, "tokens",1);
+ALLOCATOR(context, "contexts",0);
+ALLOCATOR(symbol, "symbols",0);
+ALLOCATOR(expression, "expressions",0);
+ALLOCATOR(statement, "statements",0);
+ALLOCATOR(string, "strings",0);
+ALLOCATOR(scope, "scopes",0);
+__DO_ALLOCATOR(void, 0, 1, "bytes", bytes,0);
+ALLOCATOR(basic_block, "basic_block",0);
+ALLOCATOR(entrypoint, "entrypoint",0);
+ALLOCATOR(instruction, "instruction",0);
+ALLOCATOR(multijmp, "multijmp",0);
+ALLOCATOR(pseudo, "pseudo",0);
 
 

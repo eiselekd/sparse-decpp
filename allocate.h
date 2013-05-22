@@ -15,6 +15,7 @@ struct allocator_struct {
 	void *freelist;
 	/* statistics */
 	unsigned int allocations, total_bytes, useful_bytes;
+	unsigned int nofree : 1;
 };
 
 extern void protect_allocations(struct allocator_struct *desc);
@@ -31,18 +32,21 @@ extern void show_allocations(struct allocator_struct *);
 	extern void protect_##x##_alloc(void);
 #define DECLARE_ALLOCATOR(x) __DECLARE_ALLOCATOR(struct x, x)
 
-#define __DO_ALLOCATOR(type, objsize, objalign, objname, x)	\
+#define __DO_ALLOCATOR(type, objsize, objalign, objname, x, norel)	\
 	static struct allocator_struct x##_allocator = {	\
 		.name = objname,				\
 		.alignment = objalign,				\
-		.chunking = CHUNK };				\
+		.chunking = CHUNK,				\
+		.nofree = norel					\
+	};							\
 	type *__alloc_##x(int extra)				\
 	{							\
 		return allocate(&x##_allocator, objsize+extra);	\
 	}							\
 	void __free_##x(type *entry)				\
 	{							\
-		free_one_entry(&x##_allocator, entry);		\
+		if ((!x##_allocator.nofree))			\
+			free_one_entry(&x##_allocator, entry);	\
 	}							\
 	void show_##x##_alloc(void)				\
 	{							\
@@ -50,17 +54,18 @@ extern void show_allocations(struct allocator_struct *);
 	}							\
 	void clear_##x##_alloc(void)				\
 	{							\
-		drop_all_allocations(&x##_allocator);		\
+		if ((!x##_allocator.nofree))			\
+			drop_all_allocations(&x##_allocator);	\
 	}							\
 	void protect_##x##_alloc(void)				\
 	{							\
 		protect_allocations(&x##_allocator);		\
 	}
 
-#define __ALLOCATOR(t, n, x) 					\
-	__DO_ALLOCATOR(t, sizeof(t), __alignof__(t), n, x)
+#define __ALLOCATOR(t, n, x, norel) 					\
+	__DO_ALLOCATOR(t, sizeof(t), __alignof__(t), n, x, norel)
 
-#define ALLOCATOR(x, n) __ALLOCATOR(struct x, n, x)
+#define ALLOCATOR(x, n, norel) __ALLOCATOR(struct x, n, x, norel)
 
 DECLARE_ALLOCATOR(ident);
 DECLARE_ALLOCATOR(token);

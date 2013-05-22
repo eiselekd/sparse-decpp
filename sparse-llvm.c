@@ -726,7 +726,7 @@ struct llfunc {
 
 DECLARE_ALLOCATOR(llfunc);
 DECLARE_PTR_LIST(llfunc_list, struct llfunc);
-ALLOCATOR(llfunc, "llfuncs");
+ALLOCATOR(llfunc, "llfuncs", 0);
 
 static struct local_module {
 	struct llfunc_list	*llfunc_list;
