@@ -866,7 +866,7 @@ static int expand_pos_expression(struct expression *expr)
 						 * with bitfields that are all at offset
 						 * zero..
 						 */
-						reuse = alloc_expression(entry->pos, EXPR_POS);
+						reuse = alloc_expression(entry->tok, EXPR_POS);
 					}
 					reuse->type = EXPR_POS;
 					reuse->ctype = entry->ctype;

@@ -148,7 +148,7 @@ static inline struct symbol *expr_symbol(struct expression *expr)
 		sym = lookup_symbol(expr->symbol_name, NS_SYMBOL);
 
 		if (!sym) {
-			sym = alloc_symbol(expr->pos, SYM_BAD);
+			sym = alloc_symbol(expr->tok, SYM_BAD);
 			bind_symbol(sym, expr->symbol_name, NS_SYMBOL);
 			sym->ctype.modifiers = MOD_EXTERN;
 		}
@@ -380,7 +380,7 @@ again:
 		break; case '&':
 			if ((expr = peek_preop(unop, '*')))
 				goto again;
-			ret = alloc_symbol(unop->pos, SYM_PTR);
+			ret = alloc_symbol(unop->tok, SYM_PTR);
 			ret->ctype.base_type =
 				do_expression(u_addr(mode), unop);
 

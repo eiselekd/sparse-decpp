@@ -1318,7 +1318,7 @@ static int do_handle_define(struct stream *stream, struct token **line, struct t
 	}
 
 	if (!sym || sym->scope != file_scope) {
-		sym = alloc_symbol(left->pos, SYM_NODE);
+		sym = alloc_symbol(left, SYM_NODE);
 		bind_symbol(sym, name, NS_MACRO);
 		ret = 0;
 	}
@@ -1371,7 +1371,7 @@ static int do_handle_undef(struct stream *stream, struct token **line, struct to
 		return 1;
 
 	if (!sym || sym->scope != file_scope) {
-		sym = alloc_symbol(left->pos, SYM_NODE);
+		sym = alloc_symbol(left, SYM_NODE);
 		bind_symbol(sym, left->ident, NS_MACRO);
 	}
 

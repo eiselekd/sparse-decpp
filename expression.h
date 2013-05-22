@@ -63,6 +63,7 @@ struct expression {
 	enum expression_type type:8;
 	unsigned flags:8;
 	int op;
+	struct token *tok;
 	struct position pos;
 	struct symbol *ctype;
 	union {
@@ -178,19 +179,21 @@ extern struct symbol *evaluate_expression(struct expression *);
 
 extern int expand_symbol(struct symbol *);
 
-static inline struct expression *alloc_expression(struct position pos, int type)
+static inline struct expression *alloc_expression(struct token *tok, int type)
 {
 	struct expression *expr = __alloc_expression(0);
 	expr->type = type;
-	expr->pos = pos;
+	expr->tok = tok;
+	expr->pos = tok->pos;
 	return expr;
 }
 
-static inline struct expression *alloc_const_expression(struct position pos, int value)
+static inline struct expression *alloc_const_expression(struct token *tok, int value)
 {
 	struct expression *expr = __alloc_expression(0);
 	expr->type = EXPR_VALUE;
-	expr->pos = pos;
+	expr->pos = tok->pos;
+	expr->tok = tok;
 	expr->value = value;
 	expr->ctype = &int_ctype;
 	return expr;
@@ -209,7 +212,7 @@ static inline int lookup_type(struct token *token)
 }
 
 /* Statement parsing */
-struct statement *alloc_statement(struct position pos, int type);
+struct statement *alloc_statement(struct token *tok, int type);
 struct token *initializer(struct expression **tree, struct token *token);
 struct token *compound_statement(struct token *, struct statement *);
 

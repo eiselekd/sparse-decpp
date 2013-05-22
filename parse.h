@@ -30,6 +30,7 @@ enum statement_type {
 
 struct statement {
 	enum statement_type type;
+	struct token *tok;
 	struct position pos;
 	union {
 		struct /* declaration */ {

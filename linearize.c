@@ -1395,7 +1395,7 @@ static pseudo_t linearize_logical(struct entrypoint *ep, struct expression *expr
 {
 	struct expression *shortcut;
 
-	shortcut = alloc_const_expression(expr->pos, expr->op == SPECIAL_LOGICAL_OR);
+	shortcut = alloc_const_expression(expr->tok, expr->op == SPECIAL_LOGICAL_OR);
 	shortcut->ctype = expr->ctype;
 	if (expr->op == SPECIAL_LOGICAL_OR)
 		return linearize_conditional(ep, expr, expr->left, shortcut, expr->right);

@@ -57,11 +57,12 @@ struct context *alloc_context(void)
 	return __alloc_context(0);
 }
 
-struct symbol *alloc_symbol(struct position pos, int type)
+struct symbol *alloc_symbol(struct token *tok, int type)
 {
 	struct symbol *sym = __alloc_symbol(0);
 	sym->type = type;
-	sym->pos = pos;
+	sym->pos = tok->pos;
+	sym->tok = tok;
 	sym->endpos.type = 0;
 	return sym;
 }
@@ -484,7 +485,7 @@ static struct symbol_list *restr, *fouled;
 void create_fouled(struct symbol *type)
 {
 	if (type->bit_size < bits_in_int) {
-		struct symbol *new = alloc_symbol(type->pos, type->type);
+		struct symbol *new = alloc_symbol(type->tok, type->type);
 		*new = *type;
 		new->bit_size = bits_in_int;
 		new->type = SYM_FOULED;
@@ -584,7 +585,7 @@ void bind_symbol(struct symbol *sym, struct ident *ident, enum namespace ns)
 struct symbol *create_symbol(int stream, const char *name, int type, int namespace)
 {
 	struct token *token = built_in_token(stream, name);
-	struct symbol *sym = alloc_symbol(token->pos, type);
+	struct symbol *sym = alloc_symbol(token, type);
 
 	bind_symbol(sym, token->ident, namespace);
 	return sym;

@@ -123,6 +123,7 @@ struct symbol {
 	enum type type:8;
 	enum namespace namespace:9;
 	unsigned char used:1, attr:2, enum_member:1, bound:1;
+	struct token *tok;
 	struct position pos;		/* Where this symbol was declared */
 	struct position endpos;		/* Where this symbol ends*/
 	struct ident *ident;		/* What identifier this symbol is associated with */
@@ -273,7 +274,7 @@ extern struct symbol *lookup_symbol(struct ident *, enum namespace);
 extern struct symbol *create_symbol(int stream, const char *name, int type, int namespace);
 extern void init_symbols(void);
 extern void init_ctype(void);
-extern struct symbol *alloc_symbol(struct position, int type);
+extern struct symbol *alloc_symbol(struct token *tok, int type);
 extern void show_type(struct symbol *);
 extern const char *modifier_string(unsigned long mod);
 extern void show_symbol(struct symbol *);

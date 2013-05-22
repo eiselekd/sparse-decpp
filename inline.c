@@ -19,14 +19,14 @@
 
 static struct expression * dup_expression(struct expression *expr)
 {
-	struct expression *dup = alloc_expression(expr->pos, expr->type);
+	struct expression *dup = alloc_expression(expr->tok, expr->type);
 	*dup = *expr;
 	return dup;
 }
 
 static struct statement * dup_statement(struct statement *stmt)
 {
-	struct statement *dup = alloc_statement(stmt->pos, stmt->type);
+	struct statement *dup = alloc_statement(stmt->tok, stmt->type);
 	*dup = *stmt;
 	return dup;
 }
@@ -141,7 +141,7 @@ static struct expression * copy_expression(struct expression *expr)
 			struct symbol *sym = expr->cast_type;
 			expr = dup_expression(expr);
 			expr->cast_expression = copy_expression(cast);
-			expr->cast_type = alloc_symbol(sym->pos, sym->type);
+			expr->cast_type = alloc_symbol(sym->tok, sym->type);
 			*expr->cast_type = *sym;
 			break;
 		}
@@ -175,7 +175,7 @@ static struct expression * copy_expression(struct expression *expr)
 
 	/* Statement expression */
 	case EXPR_STATEMENT: {
-		struct statement *stmt = alloc_statement(expr->pos, STMT_COMPOUND);
+		struct statement *stmt = alloc_statement(expr->tok, STMT_COMPOUND);
 		copy_statement(expr->statement, stmt);
 		expr = dup_expression(expr);
 		expr->statement = stmt;
@@ -346,7 +346,7 @@ static struct statement *copy_one_statement(struct statement *stmt)
 		break;
 	}
 	case STMT_COMPOUND: {
-		struct statement *new = alloc_statement(stmt->pos, STMT_COMPOUND);
+		struct statement *new = alloc_statement(stmt->tok, STMT_COMPOUND);
 		copy_statement(stmt, new);
 		stmt = new;
 		break;
@@ -468,7 +468,7 @@ static struct symbol *create_copy_symbol(struct symbol *orig)
 {
 	struct symbol *sym = orig;
 	if (orig) {
-		sym = alloc_symbol(orig->pos, orig->type);
+		sym = alloc_symbol(orig->tok, orig->type);
 		*sym = *orig;
 		sym->bb_target = NULL;
 		sym->pseudo = NULL;
@@ -495,7 +495,7 @@ int inline_function(struct expression *expr, struct symbol *sym)
 	struct symbol_list * fn_symbol_list;
 	struct symbol *fn = sym->ctype.base_type;
 	struct expression_list *arg_list = expr->args;
-	struct statement *stmt = alloc_statement(expr->pos, STMT_COMPOUND);
+	struct statement *stmt = alloc_statement(expr->tok, STMT_COMPOUND);
 	struct symbol_list *name_list, *arg_decl;
 	struct symbol *name;
 	struct expression *arg;
@@ -520,7 +520,7 @@ int inline_function(struct expression *expr, struct symbol *sym)
 	arg_decl = NULL;
 	PREPARE_PTR_LIST(name_list, name);
 	FOR_EACH_PTR(arg_list, arg) {
-		struct symbol *a = alloc_symbol(arg->pos, SYM_NODE);
+		struct symbol *a = alloc_symbol(arg->tok, SYM_NODE);
 
 		a->ctype.base_type = arg->ctype;
 		if (name) {
@@ -538,7 +538,7 @@ int inline_function(struct expression *expr, struct symbol *sym)
 	copy_statement(fn->inline_stmt, stmt);
 
 	if (arg_decl) {
-		struct statement *decl = alloc_statement(expr->pos, STMT_DECLARATION);
+		struct statement *decl = alloc_statement(expr->tok, STMT_DECLARATION);
 		decl->declaration = arg_decl;
 		stmt->args = decl;
 	}
@@ -562,7 +562,7 @@ void uninline(struct symbol *sym)
 	FOR_EACH_PTR(arg_list, p) {
 		p->replace = p;
 	} END_FOR_EACH_PTR(p);
-	fn->stmt = alloc_statement(fn->pos, STMT_COMPOUND);
+	fn->stmt = alloc_statement(fn->tok, STMT_COMPOUND);
 	copy_statement(fn->inline_stmt, fn->stmt);
 	unset_replace_list(sym->symbol_list);
 	unset_replace_list(arg_list);

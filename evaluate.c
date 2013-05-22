@@ -50,7 +50,7 @@ static struct symbol *evaluate_symbol_expression(struct expression *expr)
 		return NULL;
 	}
 
-	addr = alloc_expression(expr->pos, EXPR_SYMBOL);
+	addr = alloc_expression(expr->tok, EXPR_SYMBOL);
 	addr->symbol = sym;
 	addr->symbol_name = expr->symbol_name;
 	addr->ctype = &lazy_ptr_ctype;	/* Lazy evaluation: we need to do a proper job if somebody does &sym */
@@ -65,13 +65,13 @@ static struct symbol *evaluate_symbol_expression(struct expression *expr)
 
 static struct symbol *evaluate_string(struct expression *expr)
 {
-	struct symbol *sym = alloc_symbol(expr->pos, SYM_NODE);
-	struct symbol *array = alloc_symbol(expr->pos, SYM_ARRAY);
-	struct expression *addr = alloc_expression(expr->pos, EXPR_SYMBOL);
-	struct expression *initstr = alloc_expression(expr->pos, EXPR_STRING);
+	struct symbol *sym = alloc_symbol(expr->tok, SYM_NODE);
+	struct symbol *array = alloc_symbol(expr->tok, SYM_ARRAY);
+	struct expression *addr = alloc_expression(expr->tok, EXPR_SYMBOL);
+	struct expression *initstr = alloc_expression(expr->tok, EXPR_STRING);
 	unsigned int length = expr->string->length;
 
-	sym->array_size = alloc_const_expression(expr->pos, length);
+	sym->array_size = alloc_const_expression(expr->tok, length);
 	sym->bit_size = bytes_to_bits(length);
 	sym->ctype.alignment = 1;
 	sym->string = 1;
@@ -305,7 +305,7 @@ static struct expression * cast_to(struct expression *old, struct symbol *type)
 		/* nothing */;
 	}
 
-	expr = alloc_expression(old->pos, EXPR_IMPLIED_CAST);
+	expr = alloc_expression(old->tok, EXPR_IMPLIED_CAST);
 	expr->flags = old->flags;
 	expr->ctype = type;
 	expr->cast_type = type;
@@ -567,7 +567,7 @@ static struct symbol *evaluate_ptr_add(struct expression *expr, struct symbol *i
 		return ctype;
 
 	if (index->type == EXPR_VALUE) {
-		struct expression *val = alloc_expression(expr->pos, EXPR_VALUE);
+		struct expression *val = alloc_expression(expr->tok, EXPR_VALUE);
 		unsigned long long v = index->value, mask;
 		mask = 1ULL << (itype->bit_size - 1);
 		if (v & mask)
@@ -587,8 +587,8 @@ static struct symbol *evaluate_ptr_add(struct expression *expr, struct symbol *i
 		index = cast_to(index, ssize_t_ctype);
 
 	if (multiply > 1) {
-		struct expression *val = alloc_expression(expr->pos, EXPR_VALUE);
-		struct expression *mul = alloc_expression(expr->pos, EXPR_BINOP);
+		struct expression *val = alloc_expression(expr->tok, EXPR_VALUE);
+		struct expression *mul = alloc_expression(expr->tok, EXPR_BINOP);
 
 		val->ctype = ssize_t_ctype;
 		val->value = multiply;
@@ -806,9 +806,9 @@ static struct symbol *evaluate_ptr_sub(struct expression *expr)
 
 	expr->ctype = ssize_t_ctype;
 	if (lbase->bit_size > bits_in_char) {
-		struct expression *sub = alloc_expression(expr->pos, EXPR_BINOP);
+		struct expression *sub = alloc_expression(expr->tok, EXPR_BINOP);
 		struct expression *div = expr;
-		struct expression *val = alloc_expression(expr->pos, EXPR_VALUE);
+		struct expression *val = alloc_expression(expr->tok, EXPR_VALUE);
 		unsigned long value = bits_to_bytes(lbase->bit_size);
 
 		val->ctype = size_t_ctype;
@@ -1193,7 +1193,7 @@ out:
 
 Qual:
 	if (qual & ~ctype->ctype.modifiers) {
-		struct symbol *sym = alloc_symbol(ctype->pos, SYM_PTR);
+		struct symbol *sym = alloc_symbol(ctype->tok, SYM_PTR);
 		*sym = *ctype;
 		sym->ctype.modifiers |= qual;
 		ctype = sym;
@@ -1457,7 +1457,7 @@ static void examine_fn_arguments(struct symbol *fn)
 			switch(arg->type) {
 			case SYM_ARRAY:
 			case SYM_FN:
-				ptr = alloc_symbol(s->pos, SYM_PTR);
+				ptr = alloc_symbol(s->tok, SYM_PTR);
 				if (arg->type == SYM_ARRAY)
 					ptr->ctype = arg->ctype;
 				else
@@ -1485,7 +1485,7 @@ static struct symbol *convert_to_as_mod(struct symbol *sym, int as, int mod)
 	/* Take the modifiers of the pointer, and apply them to the member */
 	mod |= sym->ctype.modifiers;
 	if (sym->ctype.as != as || sym->ctype.modifiers != mod) {
-		struct symbol *newsym = alloc_symbol(sym->pos, SYM_NODE);
+		struct symbol *newsym = alloc_symbol(sym->tok, SYM_NODE);
 		*newsym = *sym;
 		newsym->ctype.as = as;
 		newsym->ctype.modifiers = mod;
@@ -1496,8 +1496,8 @@ static struct symbol *convert_to_as_mod(struct symbol *sym, int as, int mod)
 
 static struct symbol *create_pointer(struct expression *expr, struct symbol *sym, int degenerate)
 {
-	struct symbol *node = alloc_symbol(expr->pos, SYM_NODE);
-	struct symbol *ptr = alloc_symbol(expr->pos, SYM_PTR);
+	struct symbol *node = alloc_symbol(expr->tok, SYM_NODE);
+	struct symbol *ptr = alloc_symbol(expr->tok, SYM_PTR);
 
 	node->ctype.base_type = ptr;
 	ptr->bit_size = bits_in_pointer;
@@ -1549,40 +1549,40 @@ static struct symbol *degenerate(struct expression *expr)
 	switch (base->type) {
 	case SYM_ARRAY:
 		if (expr->type == EXPR_SLICE) {
-			struct symbol *a = alloc_symbol(expr->pos, SYM_NODE);
+			struct symbol *a = alloc_symbol(expr->tok, SYM_NODE);
 			struct expression *e0, *e1, *e2, *e3, *e4;
 
 			a->ctype.base_type = expr->base->ctype;
 			a->bit_size = expr->base->ctype->bit_size;
 			a->array_size = expr->base->ctype->array_size;
 
-			e0 = alloc_expression(expr->pos, EXPR_SYMBOL);
+			e0 = alloc_expression(expr->tok, EXPR_SYMBOL);
 			e0->symbol = a;
 			e0->ctype = &lazy_ptr_ctype;
 
-			e1 = alloc_expression(expr->pos, EXPR_PREOP);
+			e1 = alloc_expression(expr->tok, EXPR_PREOP);
 			e1->unop = e0;
 			e1->op = '*';
 			e1->ctype = expr->base->ctype;	/* XXX */
 
-			e2 = alloc_expression(expr->pos, EXPR_ASSIGNMENT);
+			e2 = alloc_expression(expr->tok, EXPR_ASSIGNMENT);
 			e2->left = e1;
 			e2->right = expr->base;
 			e2->op = '=';
 			e2->ctype = expr->base->ctype;
 
 			if (expr->r_bitpos) {
-				e3 = alloc_expression(expr->pos, EXPR_BINOP);
+				e3 = alloc_expression(expr->tok, EXPR_BINOP);
 				e3->op = '+';
 				e3->left = e0;
-				e3->right = alloc_const_expression(expr->pos,
+				e3->right = alloc_const_expression(expr->tok,
 							bits_to_bytes(expr->r_bitpos));
 				e3->ctype = &lazy_ptr_ctype;
 			} else {
 				e3 = e0;
 			}
 
-			e4 = alloc_expression(expr->pos, EXPR_COMMA);
+			e4 = alloc_expression(expr->tok, EXPR_COMMA);
 			e4->left = e2;
 			e4->right = e3;
 			e4->ctype = &lazy_ptr_ctype;
@@ -1652,7 +1652,7 @@ static struct symbol *evaluate_dereference(struct expression *expr)
 	if (ctype->type == SYM_NODE)
 		ctype = ctype->ctype.base_type;
 
-	node = alloc_symbol(expr->pos, SYM_NODE);
+	node = alloc_symbol(expr->tok, SYM_NODE);
 	target = ctype->ctype.base_type;
 
 	switch (ctype->type) {
@@ -1798,7 +1798,7 @@ static struct symbol *evaluate_preop(struct expression *expr)
 			expr->type = EXPR_BINOP;
 			expr->op = SPECIAL_EQUAL;
 			expr->left = arg;
-			expr->right = alloc_expression(expr->pos, EXPR_FVALUE);
+			expr->right = alloc_expression(expr->tok, EXPR_FVALUE);
 			expr->right->ctype = ctype;
 			expr->right->fvalue = 0;
 		} else if (is_fouled_type(ctype)) {
@@ -1862,10 +1862,10 @@ static struct expression *evaluate_offset(struct expression *expr, unsigned long
 	 * be just a cast, but the fact is, a node is a node,
 	 * so we might as well just do the "add zero" here.
 	 */
-	add = alloc_expression(expr->pos, EXPR_BINOP);
+	add = alloc_expression(expr->tok, EXPR_BINOP);
 	add->op = '+';
 	add->left = expr;
-	add->right = alloc_expression(expr->pos, EXPR_VALUE);
+	add->right = alloc_expression(expr->tok, EXPR_VALUE);
 	add->right->ctype = &int_ctype;
 	add->right->value = offset;
 
@@ -2215,7 +2215,7 @@ static struct expression *first_subobject(struct symbol *ctype, int class,
 	if (class & TYPE_PTR) { /* array */
 		if (!ctype->bit_size)
 			return NULL;
-		new = alloc_expression(e->pos, EXPR_INDEX);
+		new = alloc_expression(e->tok, EXPR_INDEX);
 		new->idx_expression = e;
 		new->ctype = ctype->ctype.base_type;
 	} else  {
@@ -2227,7 +2227,7 @@ static struct expression *first_subobject(struct symbol *ctype, int class,
 		FINISH_PTR_LIST(p);
 		if (!field)
 			return NULL;
-		new = alloc_expression(e->pos, EXPR_IDENTIFIER);
+		new = alloc_expression(e->tok, EXPR_IDENTIFIER);
 		new->ident_expression = e;
 		new->field = new->ctype = field;
 	}
@@ -2325,10 +2325,10 @@ static struct expression *next_designators(struct expression *old,
 				return NULL;
 			}
 			copy = e;
-			*v = new = alloc_expression(e->pos, EXPR_INDEX);
+			*v = new = alloc_expression(e->tok, EXPR_INDEX);
 		} else {
 			n = old->idx_to;
-			new = alloc_expression(e->pos, EXPR_INDEX);
+			new = alloc_expression(e->tok, EXPR_INDEX);
 		}
 
 		new->idx_from = new->idx_to = n;
@@ -2348,10 +2348,10 @@ static struct expression *next_designators(struct expression *old,
 				return NULL;
 			}
 			copy = e;
-			*v = new = alloc_expression(e->pos, EXPR_IDENTIFIER);
+			*v = new = alloc_expression(e->tok, EXPR_IDENTIFIER);
 		} else {
 			field = old->field;
-			new = alloc_expression(e->pos, EXPR_IDENTIFIER);
+			new = alloc_expression(e->tok, EXPR_IDENTIFIER);
 		}
 
 		new->field = field;
@@ -2589,7 +2589,7 @@ static int handle_simple_initializer(struct expression **ep, int nested,
 	return 0;
 
 String:
-	p = alloc_expression(e->pos, EXPR_STRING);
+	p = alloc_expression(e->tok, EXPR_STRING);
 	*p = *e;
 	type = evaluate_expression(p);
 	if (ctype->bit_size != -1) {
@@ -2636,7 +2636,7 @@ static struct symbol *evaluate_cast(struct expression *expr)
 	 */
 	if (target->type == EXPR_INITIALIZER) {
 		struct symbol *sym = expr->cast_type;
-		struct expression *addr = alloc_expression(expr->pos, EXPR_SYMBOL);
+		struct expression *addr = alloc_expression(expr->tok, EXPR_SYMBOL);
 
 		sym->initializer = target;
 		evaluate_symbol(sym);
@@ -2892,7 +2892,7 @@ static struct symbol *evaluate_offsetof(struct expression *expr)
 			}
 			unrestrict(idx, i_class, &i_type);
 			idx = cast_to(idx, size_t_ctype);
-			m = alloc_const_expression(expr->pos,
+			m = alloc_const_expression(expr->tok,
 						   bits_to_bytes(ctype->bit_size));
 			m->ctype = size_t_ctype;
 			m->flags = Int_const_expr;
