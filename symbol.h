@@ -72,14 +72,14 @@ enum keyword {
 	KW_EXACT	= 1 << 9,
 };
 
-struct context {
+struct sym_context {
 	struct expression *context;
 	unsigned int in, out;
 };
 
-extern struct context *alloc_context(void);
+extern struct sym_context *alloc_context(void);
 
-DECLARE_PTR_LIST(context_list, struct context);
+DECLARE_PTR_LIST(context_list, struct sym_context);
 
 struct ctype {
 	unsigned long modifiers;

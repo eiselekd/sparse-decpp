@@ -202,7 +202,7 @@ static void check_one_instruction(struct instruction *insn)
 		if (verbose)
 			check_cast_instruction(insn);
 		break;
-	case OP_RANGE:
+	case OP_RANGE_LIN:
 		check_range_instruction(insn);
 		break;
 	case OP_CALL:
@@ -234,7 +234,7 @@ static void check_instructions(struct entrypoint *ep)
 static void check_context(struct entrypoint *ep)
 {
 	struct symbol *sym = ep->name;
-	struct context *context;
+	struct sym_context *context;
 	unsigned int in_context = 0, out_context = 0;
 
 	if (Wuninitialized && verbose && ep->entry->bb->needs) {

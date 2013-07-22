@@ -382,7 +382,7 @@ static struct token *stringify(struct token *arg)
 	return token;
 }
 
-static void expand_arguments(int count, struct arg *args)
+static void expand_arguments_pp(int count, struct arg *args)
 {
 	int i;
 	for (i = 0; i < count; i++) {
@@ -696,7 +696,7 @@ static int expand(struct token **list, struct symbol *sym)
 			return 1;
 		if (!collect_arguments(token->next, sym->arglist, args, token))
 			return 1;
-		expand_arguments(nargs, args);
+		expand_arguments_pp(nargs, args);
 	}
 
 	expanding->tainted = 1;
@@ -1392,13 +1392,13 @@ static int handle_strong_undef(struct stream *stream, struct token **line, struc
 	return do_handle_undef(stream, line, token, SYM_ATTR_STRONG);
 }
 
-static int preprocessor_if(struct stream *stream, struct token *token, int true)
+static int preprocessor_if(struct stream *stream, struct token *token, int true_sim)
 {
 	token_type(token) = false_nesting ? TOKEN_SKIP_GROUPS : TOKEN_IF;
 	free_preprocessor_line(token->next);
 	token->next = stream->top_if;
 	stream->top_if = token;
-	if (false_nesting || true != 1)
+	if (false_nesting || true_sim != 1)
 		false_nesting++;
 	return 0;
 }
@@ -1922,6 +1922,7 @@ static void preprocessor_line(struct stream *stream, struct token **line)
 static void do_preprocess(struct token **list)
 {
 	struct token *next;
+	printf("dp_preoro\n");
 
 	while (!eof_token(next = scan_next(list))) {
 		struct stream *stream = input_streams + next->pos.stream;

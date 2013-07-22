@@ -18,7 +18,7 @@ void *blob_alloc(unsigned long size)
 	void *ptr;
 
 	if (size & ~CHUNK)
-		die("internal error: bad allocation size (%lu bytes)", size);
+		sparse_die("internal error: bad allocation size (%lu bytes)", size);
 	ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (ptr == MAP_FAILED)
 		ptr = NULL;
@@ -28,7 +28,7 @@ void *blob_alloc(unsigned long size)
 void blob_free(void *addr, unsigned long size)
 {
 	if (!size || (size & ~CHUNK) || ((unsigned long) addr & 512))
-		die("internal error: bad blob free (%lu bytes at %p)", size, addr);
+		sparse_die("internal error: bad blob free (%lu bytes at %p)", size, addr);
 #ifndef DEBUG
 	munmap(addr, size);
 #else

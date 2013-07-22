@@ -10,6 +10,7 @@
  *  Licensed under the Open Software License version 1.1
  */
 
+
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -27,6 +28,34 @@
 #include "scope.h"
 #include "expression.h"
 #include "target.h"
+
+#ifdef D_USE_ONE
+#include "tokenize.c"
+#include "pre-process.c"
+#include "symbol.c"
+#include "lib.c"
+#include "scope.c"
+#include "expression.c"
+#include "evaluate.c"
+#include "expand.c" 
+#include "inline.c"
+#include "linearize.c"
+#include "allocate.c"
+#include "ptrlist.c"
+#include "flow.c"
+#include "cse.c"
+#include "simplify.c"
+#include "memops.c"
+#include "liveness.c" 
+#include "storage.c" 
+#include "unssa.c" 
+#include "dissect.c"
+#include "target.c"
+#include "show-parse.c"
+#include "char.c" 
+#include "sort.c"
+#include "compat-linux.c" 
+#endif
 
 static struct symbol_list **function_symbol_list;
 struct symbol_list *function_computed_target_list;
@@ -1139,7 +1168,7 @@ static struct token *attribute_mode(struct token *token, struct symbol *attr, st
 
 static struct token *attribute_context(struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
-	struct context *context = alloc_context();
+	struct sym_context *context = alloc_context();
 	struct expression *args[3];
 	int argc = 0;
 

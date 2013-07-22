@@ -51,7 +51,7 @@ static void do_debug_symbol(struct symbol *sym, int indent)
 		[SYM_FOULED] = "foul",
 		[SYM_BAD] = "bad.",
 	};
-	struct context *context;
+	struct sym_context *context;
 	int i;
 
 	if (!sym)
@@ -1002,11 +1002,11 @@ static int show_label_expr(struct expression *expr)
 static int show_conditional_expr(struct expression *expr)
 {
 	int cond = show_expression(expr->conditional);
-	int true = show_expression(expr->cond_true);
-	int false = show_expression(expr->cond_false);
+	int true_sim = show_expression(expr->cond_true);
+	int false_sim = show_expression(expr->cond_false);
 	int new = new_pseudo();
 
-	printf("[v%d]\tcmov.%d\t\tv%d,v%d,v%d\n", cond, expr->ctype->bit_size, new, true, false);
+	printf("[v%d]\tcmov.%d\t\tv%d,v%d,v%d\n", cond, expr->ctype->bit_size, new, true_sim, false_sim);
 	return new;
 }
 

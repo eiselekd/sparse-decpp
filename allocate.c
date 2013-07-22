@@ -86,7 +86,7 @@ void *allocate(struct allocator_struct *desc, unsigned int size)
 		unsigned int offset, chunking = desc->chunking;
 		struct allocation_blob *newblob = blob_alloc(chunking);
 		if (!newblob)
-			die("out of memory");
+			sparse_die("out of memory");
 		desc->total_bytes += chunking;
 		newblob->next = blob;
 		blob = newblob;
@@ -113,7 +113,7 @@ void show_allocations(struct allocator_struct *x)
 
 ALLOCATOR(ident, "identifiers",0);
 ALLOCATOR(token, "tokens",1);
-ALLOCATOR(context, "contexts",0);
+ALLOCATOR(sym_context, "sym_contexts",0);
 ALLOCATOR(symbol, "symbols",0);
 ALLOCATOR(expression, "expressions",0);
 ALLOCATOR(statement, "statements",0);

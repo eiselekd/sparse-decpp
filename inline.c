@@ -162,14 +162,14 @@ static struct expression * copy_expression(struct expression *expr)
 	case EXPR_SELECT:
 	case EXPR_CONDITIONAL: {
 		struct expression *cond = copy_expression(expr->conditional);
-		struct expression *true = copy_expression(expr->cond_true);
-		struct expression *false = copy_expression(expr->cond_false);
-		if (cond == expr->conditional && true == expr->cond_true && false == expr->cond_false)
+		struct expression *true_sim = copy_expression(expr->cond_true);
+		struct expression *false_sim = copy_expression(expr->cond_false);
+		if (cond == expr->conditional && true_sim == expr->cond_true && false_sim == expr->cond_false)
 			break;
 		expr = dup_expression(expr);
 		expr->conditional = cond;
-		expr->cond_true = true;
-		expr->cond_false = false;
+		expr->cond_true = true_sim;
+		expr->cond_false = false_sim;
 		break;
 	}
 
@@ -353,20 +353,20 @@ static struct statement *copy_one_statement(struct statement *stmt)
 	}
 	case STMT_IF: {
 		struct expression *cond = stmt->if_conditional;
-		struct statement *true = stmt->if_true;
-		struct statement *false = stmt->if_false;
+		struct statement *true_sim = stmt->if_true;
+		struct statement *false_sim = stmt->if_false;
 
 		cond = copy_expression(cond);
-		true = copy_one_statement(true);
-		false = copy_one_statement(false);
+		true_sim = copy_one_statement(true_sim);
+		false_sim = copy_one_statement(false_sim);
 		if (stmt->if_conditional == cond &&
-		    stmt->if_true == true &&
-		    stmt->if_false == false)
+		    stmt->if_true == true_sim &&
+		    stmt->if_false == false_sim)
 			break;
 		stmt = dup_statement(stmt);
 		stmt->if_conditional = cond;
-		stmt->if_true = true;
-		stmt->if_false = false;
+		stmt->if_true = true_sim;
+		stmt->if_false = false_sim;
 		break;
 	}
 	case STMT_RETURN: {

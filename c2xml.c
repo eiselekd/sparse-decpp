@@ -252,7 +252,7 @@ static void examine_namespace(struct symbol *sym)
 	case NS_KEYWORD:
 		break;
 	default:
-		die("Unrecognised namespace type %d",sym->namespace);
+		sparse_die("Unrecognised namespace type %d",sym->namespace);
 	}
 
 }

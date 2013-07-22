@@ -22,7 +22,9 @@
 #ifdef PARANOIA
 #include <assert.h>
 #else
+#ifndef assert
 #define assert(x)
+#endif
 #endif
 
 #ifdef COVERAGE

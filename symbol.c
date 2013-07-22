@@ -52,9 +52,9 @@ struct symbol *lookup_symbol(struct ident *ident, enum namespace ns)
 	return NULL;
 }
 
-struct context *alloc_context(void)
+struct sym_context *alloc_context(void)
 {
-	return __alloc_context(0);
+	return __alloc_sym_context(0);
 }
 
 struct symbol *alloc_symbol(struct token *tok, int type)

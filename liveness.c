@@ -75,7 +75,7 @@ static void track_instruction_usage(struct basic_block *bb, struct instruction *
 		break;
 
 	/* Uni */
-	case OP_NOT: case OP_NEG:
+	case OP_NOT_LIN: case OP_NEG:
 		USES(src1); DEFINES(target);
 		break;
 
@@ -138,7 +138,7 @@ static void track_instruction_usage(struct basic_block *bb, struct instruction *
 		asm_liveness(bb, insn, def, use);
 		break;
 
-	case OP_RANGE:
+	case OP_RANGE_LIN:
 		USES(src1); USES(src2); USES(src3);
 		break;
 

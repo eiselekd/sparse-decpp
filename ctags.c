@@ -144,7 +144,7 @@ static void examine_symbol(struct symbol *sym)
 		break;
 
 	default:
-		die("unknown symbol %s namespace:%d type:%d\n", show_ident(sym->ident),
+		sparse_die("unknown symbol %s namespace:%d type:%d\n", show_ident(sym->ident),
 		    sym->namespace, sym->type);
 	}
 	if (!sym->kind)
@@ -177,7 +177,7 @@ static void examine_namespace(struct symbol *sym)
 		examine_symbol(sym);
 		break;
 	default:
-		die("unknown namespace %d symbol:%s type:%d\n", sym->namespace,
+		sparse_die("unknown namespace %d symbol:%s type:%d\n", sym->namespace,
 		    show_ident(sym->ident), sym->type);
 	}
 	add_tag(sym);

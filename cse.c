@@ -50,16 +50,16 @@ static void clean_up_one_instruction(struct basic_block *bb, struct instruction 
 		/* Fall through */	
 
 	/* Binary arithmetic */
-	case OP_ADD: case OP_SUB:
+	case OP_ADD_LIN: case OP_SUB:
 	case OP_MULU: case OP_MULS:
 	case OP_DIVU: case OP_DIVS:
 	case OP_MODU: case OP_MODS:
 	case OP_SHL:
 	case OP_LSR: case OP_ASR:
-	case OP_AND: case OP_OR:
+	case OP_AND_LIN: case OP_OR_LIN:
 
 	/* Binary logical */
-	case OP_XOR: case OP_AND_BOOL:
+	case OP_XOR_LIN: case OP_AND_BOOL:
 	case OP_OR_BOOL:
 
 	/* Binary comparison */
@@ -72,7 +72,7 @@ static void clean_up_one_instruction(struct basic_block *bb, struct instruction 
 		/* Fall through */
 	
 	/* Unary */
-	case OP_NOT: case OP_NEG:
+	case OP_NOT_LIN: case OP_NEG:
 		hash += hashval(insn->src1);
 		break;
 
@@ -180,16 +180,16 @@ static int insn_compare(const void *_i1, const void *_i2)
 		/* Fall-through to binops */
 
 	/* Binary arithmetic */
-	case OP_ADD: case OP_SUB:
+	case OP_ADD_LIN: case OP_SUB:
 	case OP_MULU: case OP_MULS:
 	case OP_DIVU: case OP_DIVS:
 	case OP_MODU: case OP_MODS:
 	case OP_SHL:
 	case OP_LSR: case OP_ASR:
-	case OP_AND: case OP_OR:
+	case OP_AND_LIN: case OP_OR_LIN:
 
 	/* Binary logical */
-	case OP_XOR: case OP_AND_BOOL:
+	case OP_XOR_LIN: case OP_AND_BOOL:
 	case OP_OR_BOOL:
 
 	/* Binary comparison */
@@ -203,7 +203,7 @@ static int insn_compare(const void *_i1, const void *_i2)
 		/* Fall through to unops */
 
 	/* Unary */
-	case OP_NOT: case OP_NEG:
+	case OP_NOT_LIN: case OP_NEG:
 		if (i1->src1 != i2->src1)
 			return i1->src1 < i2->src1 ? -1 : 1;
 		break;

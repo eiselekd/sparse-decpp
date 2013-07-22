@@ -100,7 +100,7 @@ static int try_to_simplify_bb(struct basic_block *bb, struct instruction *first,
 		struct basic_block *source, *target;
 		pseudo_t pseudo;
 		struct instruction *br;
-		int true;
+		int true_sim;
 
 		if (!def)
 			continue;
@@ -113,10 +113,10 @@ static int try_to_simplify_bb(struct basic_block *bb, struct instruction *first,
 			continue;
 		if (br->opcode != OP_BR)
 			continue;
-		true = pseudo_truth_value(pseudo);
-		if (true < 0)
+		true_sim = pseudo_truth_value(pseudo);
+		if (true_sim < 0)
 			continue;
-		target = true ? second->bb_true : second->bb_false;
+		target = true_sim ? second->bb_true : second->bb_false;
 		if (bb_depends_on(target, bb))
 			continue;
 		changed |= rewrite_branch(source, &br->bb_true, bb, target);
@@ -165,7 +165,7 @@ static int simplify_phi_branch(struct basic_block *bb, struct instruction *br)
 }
 
 static int simplify_branch_branch(struct basic_block *bb, struct instruction *br,
-	struct basic_block **target_p, int true)
+	struct basic_block **target_p, int true_sim)
 {
 	struct basic_block *target = *target_p, *final;
 	struct instruction *insn;
@@ -181,7 +181,7 @@ static int simplify_branch_branch(struct basic_block *bb, struct instruction *br
 	 * Now we just need to see if we can rewrite the branch..
 	 */
 	retval = 0;
-	final = true ? insn->bb_true : insn->bb_false;
+	final = true_sim ? insn->bb_true : insn->bb_false;
 	if (bb_has_side_effects(target))
 		goto try_to_rewrite_target;
 	if (bb_depends_on(final, target))
@@ -823,13 +823,13 @@ static struct basic_block * rewrite_branch_bb(struct basic_block *bb, struct ins
 {
 	struct basic_block *parent;
 	struct basic_block *target = br->bb_true;
-	struct basic_block *false = br->bb_false;
+	struct basic_block *false_sim = br->bb_false;
 
-	if (target && false) {
+	if (target && false_sim) {
 		pseudo_t cond = br->cond;
 		if (cond->type != PSEUDO_VAL)
 			return NULL;
-		target = cond->value ? target : false;
+		target = cond->value ? target : false_sim;
 	}
 
 	/*

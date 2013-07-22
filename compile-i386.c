@@ -408,7 +408,7 @@ static void stor_sym_init(struct symbol *sym)
 
 	priv = calloc(1, sizeof(*priv) + sizeof(*stor));
 	if (!priv)
-		die("OOM in stor_sym_init");
+		sparse_die("OOM in stor_sym_init");
 
 	stor = (struct storage *) (priv + 1);
 
@@ -456,7 +456,7 @@ static struct atom *new_atom(enum atom_type type)
 
 	atom = calloc(1, sizeof(*atom));	/* TODO: chunked alloc */
 	if (!atom)
-		die("nuclear OOM");
+		sparse_die("nuclear OOM");
 
 	atom->type = type;
 
@@ -496,7 +496,7 @@ static struct storage *new_storage(enum storage_type type)
 
 	stor = calloc(1, sizeof(*stor));
 	if (!stor)
-		die("OOM in new_storage");
+		sparse_die("OOM in new_storage");
 
 	stor->type = type;
 
@@ -565,7 +565,7 @@ static void textbuf_push(struct textbuf **buf_p, const char *text)
 
 	tmp = calloc(1, alloc_len);
 	if (!tmp)
-		die("OOM on textbuf alloc");
+		sparse_die("OOM on textbuf alloc");
 
 	tmp->text = ((void *) tmp) + sizeof(*tmp);
 	memcpy(tmp->text, text, text_len + 1);
@@ -801,7 +801,7 @@ static void emit_func_pre(struct symbol *sym)
 		(argc * sizeof(struct storage));
 	mem = calloc(1, alloc_len);
 	if (!mem)
-		die("OOM on func info");
+		sparse_die("OOM on func info");
 
 	f		=  (struct function *) mem;
 	mem		+= sizeof(*f);
@@ -991,7 +991,7 @@ static void sort_array(struct expression *expr)
 
 	list = malloc(sizeof(entry) * elem);
 	if (!list)
-		die("OOM in sort_array");
+		sparse_die("OOM in sort_array");
 
 	/* this code is no doubt evil and ignores EXPR_INDEX possibly
 	 * to its detriment and other nasty things.  improvements

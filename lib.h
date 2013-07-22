@@ -18,7 +18,7 @@
 #include "ptrlist.h"
 
 #define DO_STRINGIFY(x) #x
-#define STRINGIFY(x) DO_STRINGIFY(x)
+#define SPARSE_STRINGIFY(x) DO_STRINGIFY(x)
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
@@ -74,7 +74,7 @@ struct token *expect(struct token *, int, const char *);
 #define NORETURN_ATTR
 #define SENTINEL_ATTR
 #endif
-extern void die(const char *, ...) FORMAT_ATTR(1) NORETURN_ATTR;
+extern void sparse_die(const char *, ...) FORMAT_ATTR(1) NORETURN_ATTR;
 extern void info(struct position, const char *, ...) FORMAT_ATTR(2);
 extern void warning(struct position, const char *, ...) FORMAT_ATTR(2);
 extern void sparse_error(struct position, const char *, ...) FORMAT_ATTR(2);

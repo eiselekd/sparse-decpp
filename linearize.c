@@ -173,7 +173,7 @@ static const char *opcodes[] = {
 	[OP_UNWIND] = "unwind",
 	
 	/* Binary */
-	[OP_ADD] = "add",
+	[OP_ADD_LIN] = "add",
 	[OP_SUB] = "sub",
 	[OP_MULU] = "mulu",
 	[OP_MULS] = "muls",
@@ -186,9 +186,9 @@ static const char *opcodes[] = {
 	[OP_ASR] = "asr",
 	
 	/* Logical */
-	[OP_AND] = "and",
-	[OP_OR] = "or",
-	[OP_XOR] = "xor",
+	[OP_AND_LIN] = "and",
+	[OP_OR_LIN] = "or",
+	[OP_XOR_LIN] = "xor",
 	[OP_AND_BOOL] = "and-bool",
 	[OP_OR_BOOL] = "or-bool",
 
@@ -205,7 +205,7 @@ static const char *opcodes[] = {
 	[OP_SET_AE] = "setae",
 
 	/* Uni */
-	[OP_NOT] = "not",
+	[OP_NOT_LIN] = "not",
 	[OP_NEG] = "neg",
 
 	/* Special three-input */
@@ -241,7 +241,7 @@ static const char *opcodes[] = {
 
 	/* Sparse tagging (line numbers, context, whatever) */
 	[OP_CONTEXT] = "context",
-	[OP_RANGE] = "range-check",
+	[OP_RANGE_LIN] = "range-check",
 
 	[OP_COPY] = "copy",
 };
@@ -436,14 +436,14 @@ const char *show_instruction(struct instruction *insn)
 		buf += sprintf(buf, "%s <- %s, %d, %d", show_pseudo(insn->target), show_pseudo(insn->base), insn->from, insn->len);
 		break;
 
-	case OP_NOT: case OP_NEG:
+	case OP_NOT_LIN: case OP_NEG:
 		buf += sprintf(buf, "%s <- %s", show_pseudo(insn->target), show_pseudo(insn->src1));
 		break;
 
 	case OP_CONTEXT:
 		buf += sprintf(buf, "%s%d", insn->check ? "check: " : "", insn->increment);
 		break;
-	case OP_RANGE:
+	case OP_RANGE_LIN:
 		buf += sprintf(buf, "%s between %s..%s", show_pseudo(insn->src1), show_pseudo(insn->src2), show_pseudo(insn->src3));
 		break;
 	case OP_NOP:
@@ -463,7 +463,7 @@ const char *show_instruction(struct instruction *insn)
 	}
 
 	if (buf >= buffer + sizeof(buffer))
-		die("instruction buffer overflowed %td\n", buf - buffer);
+		sparse_die("instruction buffer overflowed %td\n", buf - buffer);
 	do { --buf; } while (*buf == ' ');
 	*++buf = 0;
 	return buffer;
@@ -867,7 +867,7 @@ static int linearize_simple_address(struct entrypoint *ep,
 	return 1;
 }
 
-static struct symbol *base_type(struct symbol *sym)
+static struct symbol *base_type_lin(struct symbol *sym)
 {
 	struct symbol *base = sym;
 
@@ -890,7 +890,7 @@ static int linearize_address_gen(struct entrypoint *ep,
 		return 0;
 	ad->pos = expr->pos;
 	ad->result_type = ctype;
-	ad->source_type = base_type(ctype);
+	ad->source_type = base_type_lin(ctype);
 	ad->bit_size = ctype->bit_size;
 	ad->alignment = ctype->ctype.alignment;
 	ad->bit_offset = ctype->bit_offset;
@@ -949,8 +949,8 @@ static pseudo_t linearize_store_gen(struct entrypoint *ep,
 			store = add_binary_op(ep, ad->source_type, OP_SHL, value, value_pseudo(shift));
 			mask <<= shift;
 		}
-		orig = add_binary_op(ep, ad->source_type, OP_AND, orig, value_pseudo(~mask));
-		store = add_binary_op(ep, ad->source_type, OP_OR, orig, store);
+		orig = add_binary_op(ep, ad->source_type, OP_AND_LIN, orig, value_pseudo(~mask));
+		store = add_binary_op(ep, ad->source_type, OP_OR_LIN, orig, store);
 	}
 	add_store(ep, ad, store);
 	return value;
@@ -1018,7 +1018,7 @@ static pseudo_t linearize_inc_dec(struct entrypoint *ep, struct expression *expr
 {
 	struct access_data ad = { NULL, };
 		pseudo_t old, new, one;
-	int op = expr->op == SPECIAL_INCREMENT ? OP_ADD : OP_SUB;
+	int op = expr->op == SPECIAL_INCREMENT ? OP_ADD_LIN : OP_SUB;
 
 	if (!linearize_address_gen(ep, expr->unop, &ad))
 		return VOID;
@@ -1067,7 +1067,7 @@ static pseudo_t linearize_regular_preop(struct entrypoint *ep, struct expression
 		return add_binary_op(ep, expr->unop->ctype, OP_SET_EQ, pre, zero);
 	}
 	case '~':
-		return add_uniop(ep, expr, OP_NOT, pre);
+		return add_uniop(ep, expr, OP_NOT_LIN, pre);
 	case '-':
 		return add_uniop(ep, expr, OP_NEG, pre);
 	}
@@ -1163,16 +1163,16 @@ static pseudo_t linearize_assignment(struct entrypoint *ep, struct expression *e
 		pseudo_t oldvalue = linearize_load_gen(ep, &ad);
 		pseudo_t dst;
 		static const int op_trans[] = {
-			[SPECIAL_ADD_ASSIGN - SPECIAL_BASE] = OP_ADD,
+			[SPECIAL_ADD_ASSIGN - SPECIAL_BASE] = OP_ADD_LIN,
 			[SPECIAL_SUB_ASSIGN - SPECIAL_BASE] = OP_SUB,
 			[SPECIAL_MUL_ASSIGN - SPECIAL_BASE] = OP_MULU,
 			[SPECIAL_DIV_ASSIGN - SPECIAL_BASE] = OP_DIVU,
 			[SPECIAL_MOD_ASSIGN - SPECIAL_BASE] = OP_MODU,
 			[SPECIAL_SHL_ASSIGN - SPECIAL_BASE] = OP_SHL,
 			[SPECIAL_SHR_ASSIGN - SPECIAL_BASE] = OP_LSR,
-			[SPECIAL_AND_ASSIGN - SPECIAL_BASE] = OP_AND,
-			[SPECIAL_OR_ASSIGN  - SPECIAL_BASE] = OP_OR,
-			[SPECIAL_XOR_ASSIGN - SPECIAL_BASE] = OP_XOR
+			[SPECIAL_AND_ASSIGN - SPECIAL_BASE] = OP_AND_LIN,
+			[SPECIAL_OR_ASSIGN  - SPECIAL_BASE] = OP_OR_LIN,
+			[SPECIAL_XOR_ASSIGN - SPECIAL_BASE] = OP_XOR_LIN
 		};
 		int opcode;
 
@@ -1196,7 +1196,7 @@ static pseudo_t linearize_call_expression(struct entrypoint *ep, struct expressi
 	pseudo_t retval, call;
 	struct ctype *ctype = NULL;
 	struct symbol *fntype;
-	struct context *context;
+	struct sym_context *context;
 
 	if (!expr->ctype) {
 		warning(expr->pos, "call with no type!");
@@ -1271,10 +1271,10 @@ static pseudo_t linearize_binop(struct entrypoint *ep, struct expression *expr)
 {
 	pseudo_t src1, src2, dst;
 	static const int opcode[] = {
-		['+'] = OP_ADD, ['-'] = OP_SUB,
+		['+'] = OP_ADD_LIN, ['-'] = OP_SUB,
 		['*'] = OP_MULU, ['/'] = OP_DIVU,
-		['%'] = OP_MODU, ['&'] = OP_AND,
-		['|'] = OP_OR,  ['^'] = OP_XOR,
+		['%'] = OP_MODU, ['&'] = OP_AND_LIN,
+		['|'] = OP_OR_LIN,  ['^'] = OP_XOR_LIN,
 		[SPECIAL_LEFTSHIFT] = OP_SHL,
 		[SPECIAL_RIGHTSHIFT] = OP_LSR,
 		[SPECIAL_LOGICAL_AND] = OP_AND_BOOL,
@@ -1295,19 +1295,19 @@ pseudo_t linearize_cond_branch(struct entrypoint *ep, struct expression *expr, s
 
 static pseudo_t linearize_select(struct entrypoint *ep, struct expression *expr)
 {
-	pseudo_t cond, true, false, res;
+	pseudo_t cond, true_sim, false_sim, res;
 	struct instruction *insn;
 
-	true = linearize_expression(ep, expr->cond_true);
-	false = linearize_expression(ep, expr->cond_false);
+	true_sim = linearize_expression(ep, expr->cond_true);
+	false_sim = linearize_expression(ep, expr->cond_false);
 	cond = linearize_expression(ep, expr->conditional);
 
 	insn = alloc_typed_instruction(OP_SEL, expr->ctype);
 	if (!expr->cond_true)
-		true = cond;
+		true_sim = cond;
 	use_pseudo(insn, cond, &insn->src1);
-	use_pseudo(insn, true, &insn->src2);
-	use_pseudo(insn, false, &insn->src3);
+	use_pseudo(insn, true_sim, &insn->src2);
+	use_pseudo(insn, false_sim, &insn->src3);
 
 	res = alloc_pseudo(insn);
 	insn->target = res;
@@ -1496,7 +1496,7 @@ static pseudo_t linearize_position(struct entrypoint *ep, struct expression *pos
 	struct expression *init_expr = pos->init_expr;
 
 	ad->offset = pos->init_offset;
-	ad->source_type = base_type(init_expr->ctype);
+	ad->source_type = base_type_lin(init_expr->ctype);
 	ad->result_type = init_expr->ctype;
 	return linearize_initializer(ep, init_expr, ad);
 }
@@ -1516,7 +1516,7 @@ static pseudo_t linearize_initializer(struct entrypoint *ep, struct expression *
 		break;
 	default: {
 		pseudo_t value = linearize_expression(ep, initializer);
-		ad->source_type = base_type(initializer->ctype);
+		ad->source_type = base_type_lin(initializer->ctype);
 		ad->result_type = initializer->ctype;
 		linearize_store_gen(ep, value, ad);
 		return value;
@@ -1702,7 +1702,7 @@ static pseudo_t linearize_context(struct entrypoint *ep, struct statement *stmt)
 
 static pseudo_t linearize_range(struct entrypoint *ep, struct statement *stmt)
 {
-	struct instruction *insn = alloc_instruction(OP_RANGE, 0);
+	struct instruction *insn = alloc_instruction(OP_RANGE_LIN, 0);
 
 	use_pseudo(insn, linearize_expression(ep, stmt->range_expression), &insn->src1);
 	use_pseudo(insn, linearize_expression(ep, stmt->range_low), &insn->src2);

@@ -16,7 +16,7 @@
 #include "linearize.h"
 #include "flow.h"
 
-static int find_dominating_parents(pseudo_t pseudo, struct instruction *insn,
+static int find_dominating_parents_mem(pseudo_t pseudo, struct instruction *insn,
 	struct basic_block *bb, unsigned long generation, struct pseudo_list **dominators,
 	int local, int loads)
 {
@@ -50,7 +50,7 @@ no_dominance:
 			continue;
 		parent->generation = generation;
 
-		if (!find_dominating_parents(pseudo, insn, parent, generation, dominators, local, loads))
+		if (!find_dominating_parents_mem(pseudo, insn, parent, generation, dominators, local, loads))
 			return 0;
 		continue;
 
@@ -121,7 +121,7 @@ static void simplify_loads(struct basic_block *bb)
 			generation = ++bb_generation;
 			bb->generation = generation;
 			dominators = NULL;
-			if (find_dominating_parents(pseudo, insn, bb, generation, &dominators, local, 1)) {
+			if (find_dominating_parents_mem(pseudo, insn, bb, generation, &dominators, local, 1)) {
 				/* This happens with initial assignments to structures etc.. */
 				if (!dominators) {
 					if (local) {
@@ -138,7 +138,7 @@ next_load:
 	} END_FOR_EACH_PTR_REVERSE(insn);
 }
 
-static void kill_store(struct instruction *insn)
+static void kill_store_mem(struct instruction *insn)
 {
 	if (insn) {
 		insn->bb = NULL;
@@ -147,7 +147,7 @@ static void kill_store(struct instruction *insn)
 	}
 }
 
-static void kill_dominated_stores(struct basic_block *bb)
+static void kill_dominated_stores_mem(struct basic_block *bb)
 {
 	struct instruction *insn;
 
@@ -171,7 +171,7 @@ static void kill_dominated_stores(struct basic_block *bb)
 					if (dom->opcode == OP_LOAD)
 						goto next_store;
 					/* Yeehaa! Found one! */
-					kill_store(dom);
+					kill_store_mem(dom);
 				}
 			} END_FOR_EACH_PTR_REVERSE(dom);
 
@@ -191,6 +191,6 @@ void simplify_memops(struct entrypoint *ep)
 	} END_FOR_EACH_PTR_REVERSE(bb);
 
 	FOR_EACH_PTR_REVERSE(ep->bbs, bb) {
-		kill_dominated_stores(bb);
+		kill_dominated_stores_mem(bb);
 	} END_FOR_EACH_PTR_REVERSE(bb);
 }

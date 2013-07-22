@@ -177,7 +177,7 @@ static LLVMTypeRef sym_basetype_type(struct symbol *sym)
 			ret = LLVMX86FP80Type();
 			break;
 		default:
-			die("invalid bit size %d for type %d", sym->bit_size, sym->type);
+			sparse_die("invalid bit size %d for type %d", sym->bit_size, sym->type);
 			break;
 		}
 	} else {
@@ -201,7 +201,7 @@ static LLVMTypeRef sym_basetype_type(struct symbol *sym)
 			ret = LLVMInt64Type();
 			break;
 		default:
-			die("invalid bit size %d for type %d", sym->bit_size, sym->type);
+			sparse_die("invalid bit size %d for type %d", sym->bit_size, sym->type);
 			break;
 		}
 	}
@@ -255,7 +255,7 @@ static LLVMTypeRef insn_symbol_type(LLVMModuleRef module, struct instruction *in
 		case 64:	return LLVMInt64Type();
 
 		default:
-			die("invalid bit size %d", insn->size);
+			sparse_die("invalid bit size %d", insn->size);
 			break;
 	}
 
@@ -477,7 +477,7 @@ static void output_op_binary(struct function *fn, struct instruction *insn)
 
 	switch (insn->opcode) {
 	/* Binary */
-	case OP_ADD:
+	case OP_ADD_LIN:
 		if (symbol_is_fp_type(insn->type))
 			target = LLVMBuildFAdd(fn->builder, lhs, rhs, target_name);
 		else
@@ -531,15 +531,15 @@ static void output_op_binary(struct function *fn, struct instruction *insn)
 		break;
 	
 	/* Logical */
-	case OP_AND:
+	case OP_AND_LIN:
 		assert(!symbol_is_fp_type(insn->type));
 		target = LLVMBuildAnd(fn->builder, lhs, rhs, target_name);
 		break;
-	case OP_OR:
+	case OP_OR_LIN:
 		assert(!symbol_is_fp_type(insn->type));
 		target = LLVMBuildOr(fn->builder, lhs, rhs, target_name);
 		break;
-	case OP_XOR:
+	case OP_XOR_LIN:
 		assert(!symbol_is_fp_type(insn->type));
 		target = LLVMBuildXor(fn->builder, lhs, rhs, target_name);
 		break;
@@ -1069,7 +1069,7 @@ static void output_insn(struct function *fn, struct instruction *insn)
 	case OP_SLICE:
 		assert(0);
 		break;
-	case OP_NOT: {
+	case OP_NOT_LIN: {
 		LLVMValueRef src, target;
 		char target_name[64];
 
@@ -1088,7 +1088,7 @@ static void output_insn(struct function *fn, struct instruction *insn)
 	case OP_CONTEXT:
 		assert(0);
 		break;
-	case OP_RANGE:
+	case OP_RANGE_LIN:
 		assert(0);
 		break;
 	case OP_NOP:

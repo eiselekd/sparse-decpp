@@ -41,7 +41,7 @@ static struct symbol *return_type;
 static void do_sym_list(struct symbol_list *list);
 
 static struct symbol
-	*base_type(struct symbol *sym),
+	*base_type_dis(struct symbol *sym),
 	*do_initializer(struct symbol *type, struct expression *expr),
 	*do_expression(usage_t mode, struct expression *expr),
 	*do_statement(usage_t mode, struct statement *stmt);
@@ -137,7 +137,7 @@ static void report_implicit(usage_t mode, struct position *pos, struct symbol *t
 		reporter->r_member(mode, pos, type, NULL);
 
 	DO_LIST(type->symbol_list, mem,
-		report_implicit(mode, pos, base_type(mem)));
+		report_implicit(mode, pos, base_type_dis(mem)));
 }
 
 static inline struct symbol *expr_symbol(struct expression *expr)
@@ -163,7 +163,7 @@ static inline struct symbol *expr_symbol(struct expression *expr)
 static struct symbol *report_symbol(usage_t mode, struct expression *expr)
 {
 	struct symbol *sym = expr_symbol(expr);
-	struct symbol *ret = base_type(sym);
+	struct symbol *ret = base_type_dis(sym);
 
 	if (0 && ret->type == SYM_ENUM)
 		return report_member(mode, &expr->pos, ret, expr->symbol);
@@ -227,7 +227,7 @@ static void examine_sym_node(struct symbol *node, struct ident *root)
 		}
 }
 
-static struct symbol *base_type(struct symbol *sym)
+static struct symbol *base_type_dis(struct symbol *sym)
 {
 	if (!sym)
 		return &bad_ctype;
@@ -318,7 +318,7 @@ again:
 		ret = do_expression(mode, expr->right);
 
 	break; case EXPR_CAST: case EXPR_FORCE_CAST: //case EXPR_IMPLIED_CAST:
-		ret = base_type(expr->cast_type);
+		ret = base_type_dis(expr->cast_type);
 		do_initializer(ret, expr->cast_expression);
 
 	break; case EXPR_COMPARE: case EXPR_LOGICAL:
@@ -338,8 +338,8 @@ again:
 		if (is_ptr(ret))
 			ret = ret->ctype.base_type;
 		DO_2_LIST(ret->arguments, expr->args, arg, val,
-			do_expression(u_lval(base_type(arg)), val));
-		ret = ret->type == SYM_FN ? base_type(ret)
+			do_expression(u_lval(base_type_dis(arg)), val));
+		ret = ret->type == SYM_FN ? base_type_dis(ret)
 			: &bad_ctype;
 
 	break; case EXPR_ASSIGNMENT:
@@ -395,7 +395,7 @@ again:
 			if (mode & (U_W_VAL << U_SHIFT))
 				mode |= U_W_AOF;
 			ret = do_expression(mode, unop);
-			ret = is_ptr(ret) ? base_type(ret)
+			ret = is_ptr(ret) ? base_type_dis(ret)
 				: &bad_ctype;
 		}
 	}
@@ -507,13 +507,13 @@ static struct symbol *do_initializer(struct symbol *type, struct expression *exp
 		do_expression(u_lval(type), expr);
 
 	break; case EXPR_INDEX:
-		do_initializer(base_type(type), expr->idx_expression);
+		do_initializer(base_type_dis(type), expr->idx_expression);
 
 	break; case EXPR_INITIALIZER:
 		m_addr = 0;
 		FOR_EACH_PTR(expr->expr_list, m_expr)
 			if (type->type == SYM_ARRAY) {
-				m_type = base_type(type);
+				m_type = base_type_dis(type);
 				if (m_expr->type == EXPR_INDEX)
 					m_expr = m_expr->idx_expression;
 			} else {
@@ -542,7 +542,7 @@ static inline struct symbol *do_symbol(struct symbol *sym)
 {
 	struct symbol *type;
 
-	type = base_type(sym);
+	type = base_type_dis(sym);
 
 	if (reporter->r_symdef)
 		reporter->r_symdef(sym);
@@ -557,7 +557,7 @@ static inline struct symbol *do_symbol(struct symbol *sym)
 
 	break; case SYM_FN:
 		do_sym_list(type->arguments);
-		return_type = base_type(type);
+		return_type = base_type_dis(type);
 		do_statement(U_VOID, sym->ctype.modifiers & MOD_INLINE
 					? type->inline_stmt
 					: type->stmt);

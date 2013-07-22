@@ -29,7 +29,7 @@ static const char *opcodes[] = {
 	[OP_UNWIND] = "unwind",
 	
 	/* Binary */
-	[OP_ADD] = "add",
+	[OP_ADD_LIN] = "add",
 	[OP_SUB] = "sub",
 	[OP_MULU] = "mulu",
 	[OP_MULS] = "muls",
@@ -42,9 +42,9 @@ static const char *opcodes[] = {
 	[OP_ASR] = "asr",
 	
 	/* Logical */
-	[OP_AND] = "and",
-	[OP_OR] = "or",
-	[OP_XOR] = "xor",
+	[OP_AND_LIN] = "and",
+	[OP_OR_LIN] = "or",
+	[OP_XOR_LIN] = "xor",
 	[OP_AND_BOOL] = "and-bool",
 	[OP_OR_BOOL] = "or-bool",
 
@@ -61,7 +61,7 @@ static const char *opcodes[] = {
 	[OP_SET_AE] = "setae",
 
 	/* Uni */
-	[OP_NOT] = "not",
+	[OP_NOT_LIN] = "not",
 	[OP_NEG] = "neg",
 
 	/* Special three-input */
@@ -1403,8 +1403,8 @@ static void generate_one_insn(struct instruction *insn, struct bb_state *state)
 		generate_copy(state, insn);
 		break;
 
-	case OP_ADD: case OP_MULU: case OP_MULS:
-	case OP_AND: case OP_OR: case OP_XOR:
+	case OP_ADD_LIN: case OP_MULU: case OP_MULS:
+	case OP_AND_LIN: case OP_OR_LIN: case OP_XOR_LIN:
 	case OP_AND_BOOL: case OP_OR_BOOL:
 		generate_commutative_binop(state, insn);
 		break;

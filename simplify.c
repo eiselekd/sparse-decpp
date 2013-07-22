@@ -195,7 +195,7 @@ void kill_instruction(struct instruction *insn)
 		repeat_phase |= REPEAT_CSE;
 		return;
 
-	case OP_NOT: case OP_NEG:
+	case OP_NOT_LIN: case OP_NEG:
 		insn->bb = NULL;
 		kill_use(&insn->src1);
 		repeat_phase |= REPEAT_CSE;
@@ -211,7 +211,7 @@ void kill_instruction(struct instruction *insn)
 		repeat_phase |= REPEAT_CSE | REPEAT_SYMBOL_CLEANUP;
 		return;
 
-	case OP_RANGE:
+	case OP_RANGE_LIN:
 		insn->bb = NULL;
 		repeat_phase |= REPEAT_CSE;
 		kill_use(&insn->src1);
@@ -317,13 +317,13 @@ static int simplify_constant_rightside(struct instruction *insn)
 	switch (insn->opcode) {
 	case OP_SUB:
 		if (value) {
-			insn->opcode = OP_ADD;
+			insn->opcode = OP_ADD_LIN;
 			insn->src2 = value_pseudo(-value);
 			return REPEAT_CSE;
 		}
 	/* Fall through */
-	case OP_ADD:
-	case OP_OR: case OP_XOR:
+	case OP_ADD_LIN:
+	case OP_OR_LIN: case OP_XOR_LIN:
 	case OP_OR_BOOL:
 	case OP_SHL:
 	case OP_LSR:
@@ -338,7 +338,7 @@ static int simplify_constant_rightside(struct instruction *insn)
 		if (value == 1)
 			return replace_with_pseudo(insn, insn->src1);
 	/* Fall through */
-	case OP_AND:
+	case OP_AND_LIN:
 		if (!value)
 			return replace_with_pseudo(insn, insn->src2);
 		return 0;
@@ -351,14 +351,14 @@ static int simplify_constant_leftside(struct instruction *insn)
 	long long value = insn->src1->value;
 
 	switch (insn->opcode) {
-	case OP_ADD: case OP_OR: case OP_XOR:
+	case OP_ADD_LIN: case OP_OR_LIN: case OP_XOR_LIN:
 		if (!value)
 			return replace_with_pseudo(insn, insn->src2);
 		return 0;
 
 	case OP_SHL:
 	case OP_LSR: case OP_ASR:
-	case OP_AND:
+	case OP_AND_LIN:
 	case OP_MULU: case OP_MULS:
 		if (!value)
 			return replace_with_pseudo(insn, insn->src1);
@@ -386,7 +386,7 @@ static int simplify_constant_binop(struct instruction *insn)
 	ur = right & bits;
 
 	switch (insn->opcode) {
-	case OP_ADD:
+	case OP_ADD_LIN:
 		res = left + right;
 		break;
 	case OP_SUB:
@@ -428,13 +428,13 @@ static int simplify_constant_binop(struct instruction *insn)
 		res = left >> right;
 		break;
        /* Logical */
-	case OP_AND:
+	case OP_AND_LIN:
 		res = left & right;
 		break;
-	case OP_OR:
+	case OP_OR_LIN:
 		res = left | right;
 		break;
-	case OP_XOR:
+	case OP_XOR_LIN:
 		res = left ^ right;
 		break;
 	case OP_AND_BOOL:
@@ -562,7 +562,7 @@ static int simplify_constant_unop(struct instruction *insn)
 	long long res, mask;
 
 	switch (insn->opcode) {
-	case OP_NOT:
+	case OP_NOT_LIN:
 		res = ~val;
 		break;
 	case OP_NEG:
@@ -599,7 +599,7 @@ static int simplify_one_memop(struct instruction *insn, pseudo_t orig)
 			use_pseudo(insn, def->src, &insn->src);
 			return REPEAT_CSE | REPEAT_SYMBOL_CLEANUP;
 		}
-		if (def->opcode == OP_ADD) {
+		if (def->opcode == OP_ADD_LIN) {
 			new = def->src1;
 			off = def->src2;
 			if (constant(off))
@@ -688,7 +688,7 @@ static int simplify_cast(struct instruction *insn)
 	/* A cast of a "and" might be a no-op.. */
 	if (src->type == PSEUDO_REG) {
 		struct instruction *def = src->def;
-		if (def->opcode == OP_AND && def->size >= size) {
+		if (def->opcode == OP_AND_LIN && def->size >= size) {
 			pseudo_t val = def->src2;
 			if (val->type == PSEUDO_VAL) {
 				unsigned long long value = val->value;
@@ -786,10 +786,10 @@ static int simplify_cond_branch(struct instruction *br, pseudo_t cond, struct in
 	use_pseudo(br, *pp, &br->cond);
 	remove_usage(cond, &br->cond);
 	if (def->opcode == OP_SET_EQ) {
-		struct basic_block *true = br->bb_true;
-		struct basic_block *false = br->bb_false;
-		br->bb_false = true;
-		br->bb_true = false;
+		struct basic_block *true_sim = br->bb_true;
+		struct basic_block *false_sim = br->bb_false;
+		br->bb_false = true_sim;
+		br->bb_true = false_sim;
 	}
 	return REPEAT_CSE;
 }
@@ -842,10 +842,10 @@ static int simplify_branch(struct instruction *insn)
 					return REPEAT_CSE;
 				}
 				if (val2) {
-					struct basic_block *true = insn->bb_true;
-					struct basic_block *false = insn->bb_false;
-					insn->bb_false = true;
-					insn->bb_true = false;
+					struct basic_block *true_sim = insn->bb_true;
+					struct basic_block *false_sim = insn->bb_false;
+					insn->bb_false = true_sim;
+					insn->bb_true = false_sim;
 				}
 				use_pseudo(insn, def->src1, &insn->cond);
 				remove_usage(cond, &insn->cond);
@@ -894,8 +894,8 @@ int simplify_instruction(struct instruction *insn)
 	if (!insn->bb)
 		return 0;
 	switch (insn->opcode) {
-	case OP_ADD: case OP_MULS:
-	case OP_AND: case OP_OR: case OP_XOR:
+	case OP_ADD_LIN: case OP_MULS:
+	case OP_AND_LIN: case OP_OR_LIN: case OP_XOR_LIN:
 	case OP_AND_BOOL: case OP_OR_BOOL:
 		if (simplify_binop(insn))
 			return REPEAT_CSE;
@@ -920,7 +920,7 @@ int simplify_instruction(struct instruction *insn)
 	case OP_SET_BE: case OP_SET_AE:
 		return simplify_binop(insn);
 
-	case OP_NOT: case OP_NEG:
+	case OP_NOT_LIN: case OP_NEG:
 		return simplify_unop(insn);
 	case OP_LOAD: case OP_STORE:
 		return simplify_memop(insn);
@@ -949,7 +949,7 @@ int simplify_instruction(struct instruction *insn)
 		return simplify_branch(insn);
 	case OP_SWITCH:
 		return simplify_switch(insn);
-	case OP_RANGE:
+	case OP_RANGE_LIN:
 		return simplify_range(insn);
 	}
 	return 0;

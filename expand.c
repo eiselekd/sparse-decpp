@@ -516,27 +516,27 @@ static int expand_compare(struct expression *expr)
 static int expand_conditional(struct expression *expr)
 {
 	struct expression *cond = expr->conditional;
-	struct expression *true = expr->cond_true;
-	struct expression *false = expr->cond_false;
+	struct expression *true_sim = expr->cond_true;
+	struct expression *false_sim = expr->cond_false;
 	int cost, cond_cost;
 
 	cond_cost = expand_expression(cond);
 	if (cond->type == EXPR_VALUE) {
 		unsigned flags = expr->flags;
 		if (!cond->value)
-			true = false;
-		if (!true)
-			true = cond;
-		cost = expand_expression(true);
-		*expr = *true;
+			true_sim = false_sim;
+		if (!true_sim)
+			true_sim = cond;
+		cost = expand_expression(true_sim);
+		*expr = *true_sim;
 		expr->flags = flags;
 		if (expr->type == EXPR_VALUE)
 			expr->taint |= cond->taint;
 		return cost;
 	}
 
-	cost = expand_expression(true);
-	cost += expand_expression(false);
+	cost = expand_expression(true_sim);
+	cost += expand_expression(false_sim);
 
 	if (cost < SELECT_COST) {
 		expr->type = EXPR_SELECT;

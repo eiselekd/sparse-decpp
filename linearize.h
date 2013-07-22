@@ -130,7 +130,7 @@ struct instruction {
 	};
 };
 
-enum opcode {
+enum lin_opcode {
 	OP_BADOP,
 
 	/* Entry */
@@ -148,7 +148,7 @@ enum opcode {
 	
 	/* Binary */
 	OP_BINARY,
-	OP_ADD = OP_BINARY,
+	OP_ADD_LIN = OP_BINARY,
 	OP_SUB,
 	OP_MULU, OP_MULS,
 	OP_DIVU, OP_DIVS,
@@ -157,9 +157,9 @@ enum opcode {
 	OP_LSR, OP_ASR,
 	
 	/* Logical */
-	OP_AND,
-	OP_OR,
-	OP_XOR,
+	OP_AND_LIN,
+	OP_OR_LIN,
+	OP_XOR_LIN,
 	OP_AND_BOOL,
 	OP_OR_BOOL,
 	OP_BINARY_END = OP_OR_BOOL,
@@ -179,7 +179,7 @@ enum opcode {
 	OP_BINCMP_END = OP_SET_AE,
 
 	/* Uni */
-	OP_NOT,
+	OP_NOT_LIN,
 	OP_NEG,
 
 	/* Select - three input values */
@@ -215,7 +215,7 @@ enum opcode {
 
 	/* Sparse tagging (line numbers, context, whatever) */
 	OP_CONTEXT,
-	OP_RANGE,
+	OP_RANGE_LIN,
 
 	/* Needed to translate SSA back to normal form */
 	OP_COPY,

@@ -289,7 +289,7 @@ int init_stream(const char *name, int fd, const char **next_path)
 		int newalloc = stream * 4 / 3 + 10;
 		input_streams = realloc(input_streams, newalloc * sizeof(struct stream));
 		if (!input_streams)
-			die("Unable to allocate more streams space");
+			sparse_die("Unable to allocate more streams space");
 		input_streams_allocated = newalloc;
 	}
 	current = input_streams + stream;
@@ -306,7 +306,7 @@ int init_stream(const char *name, int fd, const char **next_path)
 	return stream;
 }
 
-static struct token * alloc_token(stream_t *stream)
+static struct token * alloc_token_stream(stream_t *stream)
 {
 	struct token *token = __alloc_token(0);
 	token->pos = stream_pos(stream);
@@ -427,7 +427,7 @@ static struct token *mark_eof(stream_t *stream)
 {
 	struct token *end;
 
-	end = alloc_token(stream);
+	end = alloc_token_stream(stream);
 	token_type(end) = TOKEN_STREAMEND;
 	end->pos.newline = 1;
 
@@ -974,7 +974,7 @@ static struct token *setup_stream(stream_t *stream, int idx, int fd,
 	stream->size = buf_size;
 	stream->buffer = buf;
 
-	begin = alloc_token(stream);
+	begin = alloc_token_stream(stream);
 	token_type(begin) = TOKEN_STREAMBEGIN;
 	stream->tokenlist = &begin->next;
 	return begin;
@@ -985,7 +985,7 @@ static struct token *tokenize_stream(stream_t *stream)
 	int c = nextchar(stream);
 	while (c != EOF) {
 		if (!isspace(c)) {
-			struct token *token = alloc_token(stream);
+			struct token *token = alloc_token_stream(stream);
 			stream->token = token;
 			stream->newline = 0;
 			stream->whitespace = 0;

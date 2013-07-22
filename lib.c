@@ -175,7 +175,7 @@ void error_die(struct position pos, const char * fmt, ...)
 	exit(1);
 }
 
-void die(const char *fmt, ...)
+void sparse_die(const char *fmt, ...)
 {
 	va_list args;
 	static char buffer[512];
@@ -265,7 +265,7 @@ static char **handle_switch_D(char *arg, char **next)
 	const char *value = "1";
 
 	if (!*name || isspace(*name))
-		die("argument to `-D' is missing");
+		sparse_die("argument to `-D' is missing");
 
 	for (;;) {
 		char c;
@@ -301,7 +301,7 @@ static char **handle_switch_I(char *arg, char **next)
 	case '\0':	/* Plain "-I" */
 		path = *++next;
 		if (!path)
-			die("missing argument for -I option");
+			sparse_die("missing argument for -I option");
 		/* Fall through */
 	default:
 		add_pre_buffer("#add_include \"%s/\"\n", path);
@@ -312,7 +312,7 @@ static char **handle_switch_I(char *arg, char **next)
 static void add_cmdline_include(char *filename)
 {
 	if (cmdline_include_nr >= CMDLINE_INCLUDE)
-		die("too many include files for %s\n", filename);
+		sparse_die("too many include files for %s\n", filename);
 	cmdline_include[cmdline_include_nr++] = filename;
 }
 
@@ -325,12 +325,12 @@ static char **handle_switch_i(char *arg, char **next)
 	else if (*next && !strcmp(arg, "isystem")) {
 		char *path = *++next;
 		if (!path)
-			die("missing argument for -isystem option");
+			sparse_die("missing argument for -isystem option");
 		add_pre_buffer("#add_isystem \"%s/\"\n", path);
 	} else if (*next && !strcmp(arg, "idirafter")) {
 		char *path = *++next;
 		if (!path)
-			die("missing argument for -idirafter option");
+			sparse_die("missing argument for -idirafter option");
 		add_pre_buffer("#add_dirafter \"%s/\"\n", path);
 	}
 	return next;
@@ -340,7 +340,7 @@ static char **handle_switch_M(char *arg, char **next)
 {
 	if (!strcmp(arg, "MF") || !strcmp(arg,"MQ") || !strcmp(arg,"MT")) {
 		if (!*next)
-			die("missing argument for -%s option", arg);
+			sparse_die("missing argument for -%s option", arg);
 		return next + 1;
 	}
 	return next;
@@ -392,7 +392,7 @@ static char **handle_switch_o(char *arg, char **next)
 {
 	if (!strcmp (arg, "o")) {       // "-o foo"
 		if (!*++next)
-			die("argument to '-o' is missing");
+			sparse_die("argument to '-o' is missing");
 	}
 	// else "-ofoo"
 
@@ -563,7 +563,7 @@ static char **handle_switch_ftabstop(char *arg, char **next)
 	unsigned long val;
 
 	if (*arg == '\0')
-		die("error: missing argument to \"-ftabstop=\"");
+		sparse_die("error: missing argument to \"-ftabstop=\"");
 
 	/* we silently ignore silly values */
 	val = strtoul(arg, &end, 10);
@@ -631,13 +631,13 @@ static char **handle_switch_s(char *arg, char **next)
 			standard = STANDARD_GNU99;
 
 		else
-			die ("Unsupported C dialect");
+			sparse_die ("Unsupported C dialect");
 	}
 
 	return next;
 }
 
-static char **handle_nostdinc(char *arg, char **next)
+static char **handle_nostdinc_lib(char *arg, char **next)
 {
 	add_pre_buffer("#nostdinc\n");
 	return next;
@@ -647,7 +647,7 @@ static char **handle_base_dir(char *arg, char **next)
 {
 	gcc_base_dir = *++next;
 	if (!gcc_base_dir)
-		die("missing argument for -gcc-base-dir option");
+		sparse_die("missing argument for -gcc-base-dir option");
 	return next;
 }
 
@@ -682,7 +682,7 @@ static char **handle_long_options(char *arg, char **next)
 static char **handle_switch(char *arg, char **next)
 {
 	static struct switches cmd[] = {
-		{ "nostdinc", handle_nostdinc },
+		{ "nostdinc", handle_nostdinc_lib },
 		{ "gcc-base-dir", handle_base_dir},
 		{ NULL, NULL }
 	};
@@ -886,13 +886,13 @@ void create_builtin_stream(void)
 		add_pre_buffer("#define __OPTIMIZE_SIZE__ 1\n");
 
 	/* GCC defines these for limits.h */
-	add_pre_buffer("#weak_define __SHRT_MAX__ " STRINGIFY(__SHRT_MAX__) "\n");
-	add_pre_buffer("#weak_define __SCHAR_MAX__ " STRINGIFY(__SCHAR_MAX__) "\n");
-	add_pre_buffer("#weak_define __INT_MAX__ " STRINGIFY(__INT_MAX__) "\n");
-	add_pre_buffer("#weak_define __LONG_MAX__ " STRINGIFY(__LONG_MAX__) "\n");
-	add_pre_buffer("#weak_define __LONG_LONG_MAX__ " STRINGIFY(__LONG_LONG_MAX__) "\n");
-	add_pre_buffer("#weak_define __WCHAR_MAX__ " STRINGIFY(__WCHAR_MAX__) "\n");
-	add_pre_buffer("#weak_define __SIZEOF_POINTER__ " STRINGIFY(__SIZEOF_POINTER__) "\n");
+	add_pre_buffer("#weak_define __SHRT_MAX__ " SPARSE_STRINGIFY(__SHRT_MAX__) "\n");
+	add_pre_buffer("#weak_define __SCHAR_MAX__ " SPARSE_STRINGIFY(__SCHAR_MAX__) "\n");
+	add_pre_buffer("#weak_define __INT_MAX__ " SPARSE_STRINGIFY(__INT_MAX__) "\n");
+	add_pre_buffer("#weak_define __LONG_MAX__ " SPARSE_STRINGIFY(__LONG_MAX__) "\n");
+	add_pre_buffer("#weak_define __LONG_LONG_MAX__ " SPARSE_STRINGIFY(__LONG_LONG_MAX__) "\n");
+	add_pre_buffer("#weak_define __WCHAR_MAX__ " SPARSE_STRINGIFY(__WCHAR_MAX__) "\n");
+	add_pre_buffer("#weak_define __SIZEOF_POINTER__ " SPARSE_STRINGIFY(__SIZEOF_POINTER__) "\n");
 }
 
 static struct symbol_list *sparse_tokenstream(struct token *token)
@@ -937,7 +937,7 @@ static struct symbol_list *sparse_file(const char *filename)
 	} else {
 		fd = open(filename, O_RDONLY);
 		if (fd < 0)
-			die("No such file: %s", filename);
+			sparse_die("No such file: %s", filename);
 	}
 
 	// Tokenize the input stream
