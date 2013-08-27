@@ -323,6 +323,13 @@ out:
 	return 0;
 }
 
+static struct token *dup_one(struct token *tok)
+{
+	struct token *newtok = __alloc_token(0);
+	*newtok = *tok;
+	return newtok;
+}
+
 static struct token *dup_list(struct token *list)
 {
 	struct token *res = NULL;
@@ -1009,9 +1016,10 @@ static inline void set_arg_count(struct token *token)
 	token->count.str = token->count.vararg = 0;
 }
 
-static struct token *parse_arguments(struct token *list)
+static struct token *parse_arguments(struct token **arglist)
 {
-	struct token *arg = list->next, *next = list;
+	struct token *list = *arglist = dup_one(*arglist);
+	struct token *arg = list->next = dup_one(list->next), *next = list;
 	struct argcount *count = &list->count;
 
 	set_arg_count(list);
@@ -1027,11 +1035,11 @@ static struct token *parse_arguments(struct token *list)
 			goto Eva_args;
 		if (!++count->normal)
 			goto Eargs;
-		next = arg->next;
+		next = arg->next = dup_one(arg->next);
 
 		if (match_op(next, ',')) {
 			set_arg_count(next);
-			arg = next->next;
+			arg = next->next = dup_one(next->next);
 			continue;
 		}
 
@@ -1066,7 +1074,7 @@ static struct token *parse_arguments(struct token *list)
 	}
 
 	if (match_op(arg, SPECIAL_ELLIPSIS)) {
-		next = arg->next;
+		next = arg->next = dup_one(arg->next);
 		token_type(arg) = TOKEN_IDENT;
 		arg->ident = &__VA_ARGS___ident;
 		if (!match_op(next, ')'))
@@ -1281,7 +1289,7 @@ static int do_handle_define(struct stream *stream, struct token **line, struct t
 	if (!expansion->pos.whitespace) {
 		if (match_op(expansion, '(')) {
 			arglist = expansion;
-			expansion = parse_arguments(expansion);
+			expansion = parse_arguments(&arglist);
 			if (!expansion)
 				return 1;
 		} else if (!eof_token(expansion)) {
