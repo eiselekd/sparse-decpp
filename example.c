@@ -1768,7 +1768,7 @@ static void output_bb(struct basic_block *bb, unsigned long generation)
 	/* Make sure all parents have been generated first */
 	generate_list(bb->parents, generation);
 
-	state.pos = bb->pos;
+	state.pos = bb->pos->pos;
 	state.inputs = gather_storage(bb, STOR_IN);
 	state.outputs = gather_storage(bb, STOR_OUT);
 	state.internal = NULL;

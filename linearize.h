@@ -225,7 +225,7 @@ struct basic_block_list;
 struct instruction_list;
 
 struct basic_block {
-	struct position pos;
+	struct token *pos;
 	unsigned long generation;
 	int context;
 	struct entrypoint *ep;

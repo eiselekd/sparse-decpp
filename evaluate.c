@@ -229,7 +229,7 @@ static int is_same_type(struct expression *expr, struct symbol *new)
 			tofrom = "from";
 		if (!(oldmod & MOD_NOCAST))
 			tofrom = "to";
-		warning(expr->pos, "implicit cast %s nocast type", tofrom);
+		warning(expr->pos->pos, "implicit cast %s nocast type", tofrom);
 	}
 	return 0;
 }
@@ -267,7 +267,7 @@ static struct expression * cast_to(struct expression *old, struct symbol *type)
 {
 	struct expression *expr;
 
-	warn_for_different_enum_types (old->pos, old->ctype, type);
+	warn_for_different_enum_types (old->pos->pos, old->ctype, type);
 
 	if (old->ctype != &null_ctype && is_same_type(old, type))
 		return old;
@@ -287,7 +287,7 @@ static struct expression * cast_to(struct expression *old, struct symbol *type)
 		break;
 
 	case EXPR_IMPLIED_CAST:
-		warn_for_different_enum_types(old->pos, old->ctype, type);
+		warn_for_different_enum_types(old->pos->pos, old->ctype, type);
 
 		if (old->ctype->bit_size >= type->bit_size) {
 			struct expression *orig = old->cast_expression;
@@ -368,16 +368,16 @@ static inline int is_string_type(struct symbol *type)
 
 static struct symbol *bad_expr_type(struct expression *expr)
 {
-	sparse_error(expr->pos, "incompatible types for operation (%s)", show_special(expr->op));
+	sparse_error(expr->pos->pos, "incompatible types for operation (%s)", show_special(expr->op));
 	switch (expr->type) {
 	case EXPR_BINOP:
 	case EXPR_COMPARE:
-		info(expr->pos, "   left side has type %s", show_typename(expr->left->ctype));
-		info(expr->pos, "   right side has type %s", show_typename(expr->right->ctype));
+		info(expr->pos->pos, "   left side has type %s", show_typename(expr->left->ctype));
+		info(expr->pos->pos, "   right side has type %s", show_typename(expr->right->ctype));
 		break;
 	case EXPR_PREOP:
 	case EXPR_POSTOP:
-		info(expr->pos, "   argument has type %s", show_typename(expr->unop->ctype));
+		info(expr->pos->pos, "   argument has type %s", show_typename(expr->unop->ctype));
 		break;
 	default:
 		break;
@@ -485,7 +485,7 @@ static inline void unrestrict(struct expression *expr,
 	if (class & TYPE_RESTRICT) {
 		if (class & TYPE_FOULED)
 			*ctype = unfoul(*ctype);
-		warning(expr->pos, "%s degrades to integer",
+		warning(expr->pos->pos, "%s degrades to integer",
 			show_typename(*ctype));
 		*ctype = (*ctype)->ctype.base_type; /* get to arithmetic type */
 	}
@@ -500,7 +500,7 @@ static struct symbol *usual_conversions(int op,
 {
 	struct symbol *ctype;
 
-	warn_for_different_enum_types(right->pos, left->ctype, right->ctype);
+	warn_for_different_enum_types(right->pos->pos, left->ctype, right->ctype);
 
 	if ((lclass | rclass) & TYPE_RESTRICT)
 		goto Restr;
@@ -670,7 +670,7 @@ const char *type_difference(struct ctype *c1, struct ctype *c2,
 
 		switch (type) {
 		default:
-			sparse_error(t1->pos,
+			sparse_error(t1->pos->pos,
 				     "internal error: bad type in derived(%d)",
 				     type);
 			return "bad types";
@@ -769,7 +769,7 @@ const char *type_difference(struct ctype *c1, struct ctype *c2,
 static void bad_null(struct expression *expr)
 {
 	if (Wnon_pointer_null)
-		warning(expr->pos, "Using plain integer as NULL pointer");
+		warning(expr->pos->pos, "Using plain integer as NULL pointer");
 }
 
 static unsigned long target_qualifiers(struct symbol *type)
@@ -816,7 +816,7 @@ static struct symbol *evaluate_ptr_sub(struct expression *expr)
 
 		if (value & (value-1)) {
 			if (Wptr_subtraction_blows)
-				warning(expr->pos, "potentially expensive pointer subtraction");
+				warning(expr->pos->pos, "potentially expensive pointer subtraction");
 		}
 
 		sub->op = '-';
@@ -842,12 +842,12 @@ static struct symbol *evaluate_conditional(struct expression *expr, int iterator
 		return NULL;
 
 	if (!iterator && expr->type == EXPR_ASSIGNMENT && expr->op == '=')
-		warning(expr->pos, "assignment expression in conditional");
+		warning(expr->pos->pos, "assignment expression in conditional");
 
 	ctype = evaluate_expression(expr);
 	if (ctype) {
 		if (is_safe_type(ctype))
-			warning(expr->pos, "testing a 'safe expression'");
+			warning(expr->pos->pos, "testing a 'safe expression'");
 	}
 
 	return ctype;
@@ -904,7 +904,7 @@ static struct symbol *evaluate_binop(struct expression *expr)
 			const unsigned right_not = expr->right->type == EXPR_PREOP
 			                           && expr->right->op == '!';
 			if ((op == '&' || op == '|') && (left_not || right_not))
-				warning(expr->pos, "dubious: %sx %c %sy",
+				warning(expr->pos->pos, "dubious: %sx %c %sy",
 				        left_not ? "!" : "",
 					op,
 					right_not ? "!" : "");
@@ -992,7 +992,7 @@ static struct symbol *evaluate_compare(struct expression *expr)
 		goto OK;
 
 	if (is_safe_type(left->ctype) || is_safe_type(right->ctype))
-		warning(expr->pos, "testing a 'safe expression'");
+		warning(expr->pos->pos, "testing a 'safe expression'");
 
 	/* number on number */
 	if (lclass & rclass & TYPE_NUM) {
@@ -1228,7 +1228,7 @@ static int evaluate_assign_op(struct expression *expr)
 		}
 		if (tclass & TYPE_RESTRICT) {
 			if (!restricted_binop(op, t)) {
-				warning(expr->pos, "bad assignment (%s) to %s",
+				warning(expr->pos->pos, "bad assignment (%s) to %s",
 					show_special(op), show_typename(t));
 				expr->right = cast_to(expr->right, target);
 				return 0;
@@ -1243,9 +1243,9 @@ static int evaluate_assign_op(struct expression *expr)
 		/* source and target would better be identical restricted */
 		if (t == s)
 			return 1;
-		warning(expr->pos, "invalid assignment: %s", show_special(op));
-		info(expr->pos, "   left side has type %s", show_typename(t));
-		info(expr->pos, "   right side has type %s", show_typename(s));
+		warning(expr->pos->pos, "invalid assignment: %s", show_special(op));
+		info(expr->pos->pos, "   left side has type %s", show_typename(t));
+		info(expr->pos->pos, "   right side has type %s", show_typename(s));
 		expr->right = cast_to(expr->right, target);
 		return 0;
 	}
@@ -1366,9 +1366,9 @@ static int compatible_assignment_types(struct expression *expr, struct symbol *t
 	typediff = "invalid types";
 
 Err:
-	warning(expr->pos, "incorrect type in %s (%s)", where, typediff);
-	info(expr->pos, "   expected %s", show_typename(target));
-	info(expr->pos, "   got %s", show_typename(source));
+	warning(expr->pos->pos, "incorrect type in %s (%s)", where, typediff);
+	info(expr->pos->pos, "   expected %s", show_typename(target));
+	info(expr->pos->pos, "   got %s", show_typename(source));
 	*rp = cast_to(*rp, target);
 	return 0;
 Cast:
@@ -1508,7 +1508,7 @@ static struct symbol *create_pointer(struct expression *expr, struct symbol *sym
 
 	access_symbol(sym);
 	if (sym->ctype.modifiers & MOD_REGISTER) {
-		warning(expr->pos, "taking address of 'register' variable '%s'", show_ident(sym->ident));
+		warning(expr->pos->pos, "taking address of 'register' variable '%s'", show_ident(sym->ident));
 		sym->ctype.modifiers &= ~MOD_REGISTER;
 	}
 	if (sym->type == SYM_NODE) {
@@ -1792,7 +1792,7 @@ static struct symbol *evaluate_preop(struct expression *expr)
 		if (expr->flags && !(expr->unop->flags & Int_const_expr))
 			expr->flags = 0;
 		if (is_safe_type(ctype))
-			warning(expr->pos, "testing a 'safe expression'");
+			warning(expr->pos->pos, "testing a 'safe expression'");
 		if (is_float_type(ctype)) {
 			struct expression *arg = expr->unop;
 			expr->type = EXPR_BINOP;
@@ -1802,7 +1802,7 @@ static struct symbol *evaluate_preop(struct expression *expr)
 			expr->right->ctype = ctype;
 			expr->right->fvalue = 0;
 		} else if (is_fouled_type(ctype)) {
-			warning(expr->pos, "%s degrades to integer",
+			warning(expr->pos->pos, "%s degrades to integer",
 				show_typename(ctype->ctype.base_type));
 		}
 		ctype = &bool_ctype;
@@ -2032,17 +2032,17 @@ static struct symbol *evaluate_sizeof(struct expression *expr)
 	size = type->bit_size;
 
 	if (size < 0 && is_void_type(type)) {
-		warning(expr->pos, "expression using sizeof(void)");
+		warning(expr->pos->pos, "expression using sizeof(void)");
 		size = bits_in_char;
 	}
 
 	if (size == 1 && is_bool_type(type)) {
-		warning(expr->pos, "expression using sizeof bool");
+		warning(expr->pos->pos, "expression using sizeof bool");
 		size = bits_in_char;
 	}
 
 	if (is_function(type->ctype.base_type)) {
-		warning(expr->pos, "expression using sizeof on a function");
+		warning(expr->pos->pos, "expression using sizeof on a function");
 		size = bits_in_char;
 	}
 
@@ -2198,7 +2198,7 @@ static void convert_designators(struct expression *e)
 
 static void excess(struct expression *e, const char *s)
 {
-	warning(e->pos, "excessive elements in %s initializer", s);
+	warning(e->pos->pos, "excessive elements in %s initializer", s);
 }
 
 /*
@@ -2396,7 +2396,7 @@ static void handle_list_initializer(struct expression *expr,
 			}
 			struct_sym = ctype->type == SYM_NODE ? ctype->ctype.base_type : ctype;
 			if (Wdesignated_init && struct_sym->designated_init)
-				warning(e->pos, "%s%.*s%spositional init of field in %s %s, declared with attribute designated_init",
+				warning(e->pos->pos, "%s%.*s%spositional init of field in %s %s, declared with attribute designated_init",
 					ctype->ident ? "in initializer for " : "",
 					ctype->ident ? ctype->ident->len : 0,
 					ctype->ident ? ctype->ident->name : "",
@@ -2404,7 +2404,7 @@ static void handle_list_initializer(struct expression *expr,
 					get_type_name(struct_sym->type),
 					show_ident(struct_sym->ident));
 			if (jumped) {
-				warning(e->pos, "advancing past deep designator");
+				warning(e->pos->pos, "advancing past deep designator");
 				jumped = 0;
 			}
 			REPLACE_CURRENT_PTR(e, last);
@@ -2432,14 +2432,14 @@ found:
 			continue;
 
 		if (!(lclass & TYPE_COMPOUND)) {
-			warning(e->pos, "bogus scalar initializer");
+			warning(e->pos->pos, "bogus scalar initializer");
 			DELETE_CURRENT_PTR(e);
 			continue;
 		}
 
 		next = first_subobject(type, lclass, v);
 		if (next) {
-			warning(e->pos, "missing braces around initializer");
+			warning(e->pos->pos, "missing braces around initializer");
 			top = next;
 			goto found;
 		}
@@ -2461,7 +2461,7 @@ static int is_string_literal(struct expression **v)
 	if (!e || e->type != EXPR_STRING)
 		return 0;
 	if (e != *v && Wparen_string)
-		warning(e->pos,
+		warning(e->pos->pos,
 			"array initialized from parenthesized string constant");
 	*v = e;
 	return 1;
@@ -2498,7 +2498,7 @@ static struct expression *handle_scalar(struct expression *e, int nested)
 		break;
 	}
 	if (nested)
-		warning(e->pos, "braces around scalar initializer");
+		warning(e->pos->pos, "braces around scalar initializer");
 	return v;
 }
 
@@ -2594,10 +2594,10 @@ String:
 	type = evaluate_expression(p);
 	if (ctype->bit_size != -1) {
 		if (ctype->bit_size + bits_in_char < type->bit_size)
-			warning(e->pos,
+			warning(e->pos->pos,
 				"too long initializer-string for array of char");
 		else if (Winit_cstring && ctype->bit_size + bits_in_char == type->bit_size) {
-			warning(e->pos,
+			warning(e->pos->pos,
 				"too long initializer-string for array of char(no space for nul char)");
 		}
 	}
@@ -2678,7 +2678,7 @@ static struct symbol *evaluate_cast(struct expression *expr)
 		goto out;
 
 	if (class1 & (TYPE_COMPOUND | TYPE_FN))
-		warning(expr->pos, "cast to non-scalar");
+		warning(expr->pos->pos, "cast to non-scalar");
 
 	t2 = target->ctype;
 	if (!t2) {
@@ -2688,7 +2688,7 @@ static struct symbol *evaluate_cast(struct expression *expr)
 	class2 = classify_type(t2, &t2);
 
 	if (class2 & TYPE_COMPOUND)
-		warning(expr->pos, "cast from non-scalar");
+		warning(expr->pos->pos, "cast from non-scalar");
 
 	if (expr->type == EXPR_FORCE_CAST)
 		goto out;
@@ -2699,10 +2699,10 @@ static struct symbol *evaluate_cast(struct expression *expr)
 
 	if (t1 != t2) {
 		if (class1 & TYPE_RESTRICT)
-			warning(expr->pos, "cast to %s",
+			warning(expr->pos->pos, "cast to %s",
 				show_typename(t1));
 		if (class2 & TYPE_RESTRICT)
-			warning(expr->pos, "cast from %s",
+			warning(expr->pos->pos, "cast from %s",
 				show_typename(t2));
 	}
 
@@ -2721,12 +2721,12 @@ static struct symbol *evaluate_cast(struct expression *expr)
 	}
 
 	if (!as1 && as2 > 0)
-		warning(expr->pos, "cast removes address space of expression");
+		warning(expr->pos->pos, "cast removes address space of expression");
 	if (as1 > 0 && as2 > 0 && as1 != as2)
-		warning(expr->pos, "cast between address spaces (<asn:%d>-><asn:%d>)", as2, as1);
+		warning(expr->pos->pos, "cast between address spaces (<asn:%d>-><asn:%d>)", as2, as1);
 	if (as1 > 0 && !as2 &&
 	    !is_null_pointer_constant(target) && Wcast_to_as)
-		warning(expr->pos,
+		warning(expr->pos->pos,
 			"cast adds address space to expression (<asn:%d>)", as1);
 
 	if (!(t1->ctype.modifiers & MOD_PTRINHERIT) && class1 == TYPE_PTR &&
@@ -3030,9 +3030,9 @@ static void check_duplicates(struct symbol *sym)
 		declared++;
 		typediff = type_difference(&sym->ctype, &next->ctype, 0, 0);
 		if (typediff) {
-			sparse_error(sym->pos, "symbol '%s' redeclared with different type (originally declared at %s:%d) - %s",
+			sparse_error(sym->pos->pos, "symbol '%s' redeclared with different type (originally declared at %s:%d) - %s",
 				show_ident(sym->ident),
-				stream_name(next->pos.stream), next->pos.line, typediff);
+				stream_name(next->pos->pos.stream), next->pos->pos.line, typediff);
 			return;
 		}
 	}
@@ -3046,7 +3046,7 @@ static void check_duplicates(struct symbol *sym)
 			return;
 		if (sym->ident == &main_ident)
 			return;
-		warning(sym->pos, "symbol '%s' was not declared. Should it be static?", show_ident(sym->ident));
+		warning(sym->pos->pos, "symbol '%s' was not declared. Should it be static?", show_ident(sym->ident));
 	}
 }
 
@@ -3111,12 +3111,12 @@ static struct symbol *evaluate_return_expression(struct statement *stmt)
 		if (expr && expr->ctype != &void_ctype)
 			expression_error(expr, "return expression in %s function", fntype?"void":"typeless");
 		if (expr && Wreturn_void)
-			warning(stmt->pos, "returning void-valued expression");
+			warning(stmt->pos->pos, "returning void-valued expression");
 		return NULL;
 	}
 
 	if (!expr) {
-		sparse_error(stmt->pos, "return with no return value");
+		sparse_error(stmt->pos->pos, "return with no return value");
 		return NULL;
 	}
 	if (!expr->ctype)
@@ -3173,7 +3173,7 @@ static void evaluate_asm_statement(struct statement *stmt)
 
 	expr = stmt->asm_string;
 	if (!expr || expr->type != EXPR_STRING) {
-		sparse_error(stmt->pos, "need constant string for inline asm");
+		sparse_error(stmt->pos->pos, "need constant string for inline asm");
 		return;
 	}
 
@@ -3187,7 +3187,7 @@ static void evaluate_asm_statement(struct statement *stmt)
 		case 1: /* Constraint */
 			state = 2;
 			if (!expr || expr->type != EXPR_STRING) {
-				sparse_error(expr ? expr->pos : stmt->pos, "asm output constraint is not a string");
+				sparse_error(expr ? expr->pos->pos : stmt->pos->pos, "asm output constraint is not a string");
 				*THIS_ADDRESS(expr) = NULL;
 				continue;
 			}
@@ -3199,7 +3199,7 @@ static void evaluate_asm_statement(struct statement *stmt)
 			if (!evaluate_expression(expr))
 				return;
 			if (!lvalue_expression(expr))
-				warning(expr->pos, "asm output is not an lvalue");
+				warning(expr->pos->pos, "asm output is not an lvalue");
 			evaluate_assign_to(expr, expr->ctype);
 			continue;
 		}
@@ -3215,7 +3215,7 @@ static void evaluate_asm_statement(struct statement *stmt)
 		case 1:	/* Constraint */
 			state = 2;
 			if (!expr || expr->type != EXPR_STRING) {
-				sparse_error(expr ? expr->pos : stmt->pos, "asm input constraint is not a string");
+				sparse_error(expr ? expr->pos->pos : stmt->pos->pos, "asm input constraint is not a string");
 				*THIS_ADDRESS(expr) = NULL;
 				continue;
 			}
@@ -3232,7 +3232,7 @@ static void evaluate_asm_statement(struct statement *stmt)
 
 	FOR_EACH_PTR(stmt->asm_clobbers, expr) {
 		if (!expr) {
-			sparse_error(stmt->pos, "bad asm clobbers");
+			sparse_error(stmt->pos->pos, "bad asm clobbers");
 			return;
 		}
 		if (expr->type == EXPR_STRING)
@@ -3242,7 +3242,7 @@ static void evaluate_asm_statement(struct statement *stmt)
 
 	FOR_EACH_PTR(stmt->asm_labels, sym) {
 		if (!sym || sym->type != SYM_LABEL) {
-			sparse_error(stmt->pos, "bad asm label");
+			sparse_error(stmt->pos->pos, "bad asm label");
 			return;
 		}
 	} END_FOR_EACH_PTR(sym);
@@ -3272,7 +3272,7 @@ static void check_case_type(struct expression *switch_expr,
 		goto Bad;
 	if (enumcase) {
 		if (*enumcase)
-			warn_for_different_enum_types(case_expr->pos, case_type, (*enumcase)->ctype);
+			warn_for_different_enum_types(case_expr->pos->pos, case_type, (*enumcase)->ctype);
 		else if (is_enum_type(case_type))
 			*enumcase = case_expr;
 	}
@@ -3329,7 +3329,7 @@ static void evaluate_goto_statement(struct statement *stmt)
 	struct symbol *label = stmt->goto_label;
 
 	if (label && !label->stmt && !lookup_keyword(label->ident, NS_KEYWORD))
-		sparse_error(stmt->pos, "label '%s' was not declared", show_ident(label->ident));
+		sparse_error(stmt->pos->pos, "label '%s' was not declared", show_ident(label->ident));
 
 	evaluate_expression(stmt->goto_expression);
 }

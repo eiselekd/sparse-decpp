@@ -166,10 +166,10 @@ static struct symbol *report_symbol(usage_t mode, struct expression *expr)
 	struct symbol *ret = base_type_dis(sym);
 
 	if (0 && ret->type == SYM_ENUM)
-		return report_member(mode, &expr->pos, ret, expr->symbol);
+		return report_member(mode, &expr->pos->pos, ret, expr->symbol);
 
 	if (reporter->r_symbol)
-		reporter->r_symbol(fix_mode(ret, mode), &expr->pos, sym);
+		reporter->r_symbol(fix_mode(ret, mode), &expr->pos->pos, sym);
 
 	return ret;
 }
@@ -295,7 +295,7 @@ static struct symbol *do_expression(usage_t mode, struct expression *expr)
 again:
 	if (expr) switch (expr->type) {
 	default:
-		warning(expr->pos, "bad expr->type: %d", expr->type);
+		warning(expr->pos->pos, "bad expr->type: %d", expr->type);
 
 	case EXPR_TYPE:		// [struct T]; Why ???
 	case EXPR_VALUE:
@@ -347,7 +347,7 @@ again:
 		if (expr->op == '=')
 			mode &= ~U_R_VAL;
 		ret = do_expression(mode, expr->left);
-		report_implicit(mode, &expr->pos, ret);
+		report_implicit(mode, &expr->pos->pos, ret);
 		mode = expr->op == '='
 			? u_lval(ret) : U_R_VAL;
 		do_expression(mode, expr->right);
@@ -409,7 +409,7 @@ again:
 			p_mode = U_R_VAL;
 		p_type = do_expression(p_mode, expr->deref);
 
-		ret = report_member(mode, &expr->pos, p_type,
+		ret = report_member(mode, &expr->pos->pos, p_type,
 			lookup_member(p_type, expr->member, NULL));
 	}
 
@@ -435,7 +435,7 @@ static struct symbol *do_statement(usage_t mode, struct statement *stmt)
 
 	if (stmt) switch (stmt->type) {
 	default:
-		warning(stmt->pos, "bad stmt->type: %d", stmt->type);
+		warning(stmt->pos->pos, "bad stmt->type: %d", stmt->type);
 
 	case STMT_NONE:
 	case STMT_RANGE:
@@ -517,7 +517,7 @@ static struct symbol *do_initializer(struct symbol *type, struct expression *exp
 				if (m_expr->type == EXPR_INDEX)
 					m_expr = m_expr->idx_expression;
 			} else {
-				struct position *pos = &m_expr->pos;
+				struct position *pos = &m_expr->pos->pos;
 				struct ident *m_name = NULL;
 
 				if (m_expr->type == EXPR_IDENTIFIER) {
@@ -552,7 +552,7 @@ static inline struct symbol *do_symbol(struct symbol *sym)
 		if (!sym->initializer)
 			break;
 		if (reporter->r_symbol)
-			reporter->r_symbol(U_W_VAL, &sym->pos, sym);
+			reporter->r_symbol(U_W_VAL, &sym->pos->pos, sym);
 		do_initializer(type, sym->initializer);
 
 	break; case SYM_FN:

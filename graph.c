@@ -33,7 +33,7 @@ static void graph_ep(struct entrypoint *ep)
 	const char *fname, *sname;
 
 	fname = show_ident(ep->name->ident);
-	sname = stream_name(ep->entry->bb->pos.stream);
+	sname = stream_name(ep->entry->bb->pos->pos.stream);
 
 	printf("subgraph cluster%p {\n"
 	       "    color=blue;\n"
@@ -53,7 +53,7 @@ static void graph_ep(struct entrypoint *ep)
 
 		/* Node for the bb */
 		printf("    bb%p [shape=ellipse,label=%d,line=%d,col=%d",
-		       bb, bb->pos.line, bb->pos.line, bb->pos.pos);
+		       bb, bb->pos->pos.line, bb->pos->pos.line, bb->pos->pos.pos);
 
 
 		/* List loads and stores */
@@ -88,7 +88,7 @@ static void graph_ep(struct entrypoint *ep)
 		/* Edges between bbs; lower weight for upward edges */
 		FOR_EACH_PTR(bb->children, child) {
 			printf("    bb%p -> bb%p [op=br, %s];\n", bb, child,
-			       (bb->pos.line > child->pos.line) ? "weight=5" : "weight=10");
+			       (bb->pos->pos.line > child->pos->pos.line) ? "weight=5" : "weight=10");
 		} END_FOR_EACH_PTR(child);
 	} END_FOR_EACH_PTR(bb);
 
@@ -105,7 +105,7 @@ static void graph_calls(struct entrypoint *ep, int internal)
 	struct instruction *insn;
 
 	show_ident(ep->name->ident);
-	stream_name(ep->entry->bb->pos.stream);
+	stream_name(ep->entry->bb->pos->pos.stream);
 
 	FOR_EACH_PTR(ep->bbs, bb) {
 		if (!bb)

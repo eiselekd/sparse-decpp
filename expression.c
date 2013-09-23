@@ -84,12 +84,12 @@ static struct symbol *handle_func(struct token *token)
 	array = alloc_symbol(token, SYM_ARRAY);
 	array->ctype.base_type = &char_ctype;
 	array->ctype.alignment = 1;
-	array->endpos = token->pos;
+	array->endpos = token;
 	decl = alloc_symbol(token, SYM_NODE);
 	decl->ctype.base_type = array;
 	decl->ctype.alignment = 1;
 	decl->ctype.modifiers = MOD_STATIC;
-	decl->endpos = token->pos;
+	decl->endpos = token;
 
 	/* function-scope, but in NS_SYMBOL */
 	bind_symbol(decl, ident, NS_LABEL);
@@ -303,18 +303,18 @@ static void get_number_value(struct expression *expr, struct token *token)
 	if (!(value & (1ULL << bits)))
 		goto got_it;
 	if (!try_unsigned)
-		warning(expr->pos, "decimal constant %s is too big for long long",
+		warning(expr->pos->pos, "decimal constant %s is too big for long long",
 			show_token(token));
 	want_unsigned = 1;
 got_it:
 	if (do_warn)
-		warning(expr->pos, "constant %s is so big it is%s%s%s",
+		warning(expr->pos->pos, "constant %s is so big it is%s%s%s",
 			show_token(token),
 			want_unsigned ? " unsigned":"",
 			size > 0 ? " long":"",
 			size > 1 ? " long":"");
 	if (do_warn & 2)
-		warning(expr->pos,
+		warning(expr->pos->pos,
 			"decimal constant %s is between LONG_MAX and ULONG_MAX."
 			" For C99 that means long long, C90 compilers are very "
 			"likely to produce unsigned long (and a warning) here",
@@ -325,7 +325,7 @@ got_it:
         expr->value = value;
 	return;
 Eoverflow:
-	error_die(expr->pos, "constant %s is too big even for unsigned long long",
+	error_die(expr->pos->pos, "constant %s is too big even for unsigned long long",
 			show_token(token));
 	return;
 Float:
@@ -350,7 +350,7 @@ Float:
 	return;
 
 Enoint:
-	error_die(expr->pos, "constant %s is not a valid number", show_token(token));
+	error_die(expr->pos->pos, "constant %s is not a valid number", show_token(token));
 }
 
 struct token *primary_expression(struct token *token, struct expression **tree)
@@ -400,7 +400,7 @@ struct token *primary_expression(struct token *token, struct expression **tree)
 			expr = alloc_expression(token, EXPR_VALUE);
 			*expr = *sym->initializer;
 			/* we want the right position reported, thus the copy */
-			expr->pos = token->pos;
+			expr->pos = token;
 			expr->flags = Int_const_expr;
 			token = next;
 			break;
@@ -692,7 +692,7 @@ static struct token *cast_expression(struct token *token, struct expression **tr
 			token = expect(token, ')', "at end of cast operator");
 			if (match_op(token, '{')) {
 				if (is_force)
-					warning(sym->pos,
+					warning(sym->pos->pos,
 						"[force] in compound literal");
 				token = initializer(&cast->cast_expression, token);
 				return postfix_expression(token, tree, cast);

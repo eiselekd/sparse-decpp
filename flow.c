@@ -439,7 +439,7 @@ static int find_dominating_stores(pseudo_t pseudo, struct instruction *insn,
 		partial = 0;
 	} END_FOR_EACH_PTR(one);
 	/* Whaa? */
-	warning(pseudo->sym->pos, "unable to find symbol read");
+	warning(pseudo->sym->pos->pos, "unable to find symbol read");
 	return 0;
 found:
 	if (partial)
@@ -563,7 +563,7 @@ static void kill_dominated_stores(pseudo_t pseudo, struct instruction *insn,
 	} END_FOR_EACH_PTR_REVERSE(one);
 
 	if (!found) {
-		warning(bb->pos, "Unable to find instruction");
+		warning(bb->pos->pos, "Unable to find instruction");
 		return;
 	}
 
@@ -640,7 +640,7 @@ static void simplify_one_symbol(struct entrypoint *ep, struct symbol *sym)
 		case OP_PHI:
 			continue;
 		default:
-			warning(sym->pos, "symbol '%s' pseudo used in unexpected way", show_ident(sym->ident));
+			warning(sym->pos->pos, "symbol '%s' pseudo used in unexpected way", show_ident(sym->ident));
 		}
 		complex |= insn->offset;
 	} END_FOR_EACH_PTR(pu);

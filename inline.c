@@ -50,7 +50,7 @@ static struct symbol_list *copy_symbol_list(struct symbol_list *src)
 	struct symbol *sym;
 
 	FOR_EACH_PTR(src, sym) {
-		struct symbol *newsym = copy_symbol(sym->pos, sym);
+		struct symbol *newsym = copy_symbol(sym->pos->pos, sym);
 		add_symbol(&dst, newsym);
 	} END_FOR_EACH_PTR(sym);
 	return dst;
@@ -67,7 +67,7 @@ static struct expression * copy_expression(struct expression *expr)
 	 * symbol to the new copy.
 	 */
 	case EXPR_SYMBOL: {
-		struct symbol *sym = copy_symbol(expr->pos, expr->symbol);
+		struct symbol *sym = copy_symbol(expr->pos->pos, expr->symbol);
 		if (sym == expr->symbol)
 			break;
 		expr = dup_expression(expr);
@@ -211,7 +211,7 @@ static struct expression * copy_expression(struct expression *expr)
 
 	/* Label in inline function - hmm. */
 	case EXPR_LABEL: {
-		struct symbol *label_symbol = copy_symbol(expr->pos, expr->label_symbol);
+		struct symbol *label_symbol = copy_symbol(expr->pos->pos, expr->label_symbol);
 		expr = dup_expression(expr);
 		expr->label_symbol = label_symbol;
 		break;
@@ -256,7 +256,7 @@ static struct expression * copy_expression(struct expression *expr)
 		break;
 	}
 	default:
-		warning(expr->pos, "trying to copy expression type %d", expr->type);
+		warning(expr->pos->pos, "trying to copy expression type %d", expr->type);
 	}
 	return expr;
 }
@@ -293,7 +293,7 @@ static void unset_replace(struct symbol *sym)
 {
 	struct symbol *r = sym->replace;
 	if (!r) {
-		warning(sym->pos, "symbol '%s' not replaced?", show_ident(sym->ident));
+		warning(sym->pos->pos, "symbol '%s' not replaced?", show_ident(sym->ident));
 		return;
 	}
 	r->replace = NULL;
@@ -320,7 +320,7 @@ static struct statement *copy_one_statement(struct statement *stmt)
 		struct statement *newstmt = dup_statement(stmt);
 		newstmt->declaration = NULL;
 		FOR_EACH_PTR(stmt->declaration, sym) {
-			struct symbol *newsym = copy_symbol(stmt->pos, sym);
+			struct symbol *newsym = copy_symbol(stmt->pos->pos, sym);
 			if (newsym != sym)
 				newsym->initializer = copy_expression(sym->initializer);
 			add_symbol(&newstmt->declaration, newsym);
@@ -371,7 +371,7 @@ static struct statement *copy_one_statement(struct statement *stmt)
 	}
 	case STMT_RETURN: {
 		struct expression *retval = copy_expression(stmt->ret_value);
-		struct symbol *sym = copy_symbol(stmt->pos, stmt->ret_target);
+		struct symbol *sym = copy_symbol(stmt->pos->pos, stmt->ret_target);
 
 		stmt = dup_statement(stmt);
 		stmt->ret_value = retval;
@@ -380,7 +380,7 @@ static struct statement *copy_one_statement(struct statement *stmt)
 	}
 	case STMT_CASE: {
 		stmt = dup_statement(stmt);
-		stmt->case_label = copy_symbol(stmt->pos, stmt->case_label);
+		stmt->case_label = copy_symbol(stmt->pos->pos, stmt->case_label);
 		stmt->case_label->stmt = stmt;
 		stmt->case_expression = copy_expression(stmt->case_expression);
 		stmt->case_to = copy_expression(stmt->case_to);
@@ -388,8 +388,8 @@ static struct statement *copy_one_statement(struct statement *stmt)
 		break;
 	}
 	case STMT_SWITCH: {
-		struct symbol *switch_break = copy_symbol(stmt->pos, stmt->switch_break);
-		struct symbol *switch_case = copy_symbol(stmt->pos, stmt->switch_case);
+		struct symbol *switch_break = copy_symbol(stmt->pos->pos, stmt->switch_break);
+		struct symbol *switch_case = copy_symbol(stmt->pos->pos, stmt->switch_case);
 		struct expression *expr = copy_expression(stmt->switch_expression);
 		struct statement *switch_stmt = copy_one_statement(stmt->switch_statement);
 
@@ -403,8 +403,8 @@ static struct statement *copy_one_statement(struct statement *stmt)
 	}
 	case STMT_ITERATOR: {
 		stmt = dup_statement(stmt);
-		stmt->iterator_break = copy_symbol(stmt->pos, stmt->iterator_break);
-		stmt->iterator_continue = copy_symbol(stmt->pos, stmt->iterator_continue);
+		stmt->iterator_break = copy_symbol(stmt->pos->pos, stmt->iterator_break);
+		stmt->iterator_continue = copy_symbol(stmt->pos->pos, stmt->iterator_continue);
 		stmt->iterator_syms = copy_symbol_list(stmt->iterator_syms);
 
 		stmt->iterator_pre_statement = copy_one_statement(stmt->iterator_pre_statement);
@@ -418,13 +418,13 @@ static struct statement *copy_one_statement(struct statement *stmt)
 	}
 	case STMT_LABEL: {
 		stmt = dup_statement(stmt);
-		stmt->label_identifier = copy_symbol(stmt->pos, stmt->label_identifier);
+		stmt->label_identifier = copy_symbol(stmt->pos->pos, stmt->label_identifier);
 		stmt->label_statement = copy_one_statement(stmt->label_statement);
 		break;
 	}
 	case STMT_GOTO: {
 		stmt = dup_statement(stmt);
-		stmt->goto_label = copy_symbol(stmt->pos, stmt->goto_label);
+		stmt->goto_label = copy_symbol(stmt->pos->pos, stmt->goto_label);
 		stmt->goto_expression = copy_expression(stmt->goto_expression);
 		stmt->target_list = copy_symbol_list(stmt->target_list);
 		break;
@@ -437,7 +437,7 @@ static struct statement *copy_one_statement(struct statement *stmt)
 		break;
 	}
 	default:
-		warning(stmt->pos, "trying to copy statement type %d", stmt->type);
+		warning(stmt->pos->pos, "trying to copy statement type %d", stmt->type);
 		break;
 	}
 	return stmt;
@@ -460,7 +460,7 @@ void copy_statement(struct statement *src, struct statement *dst)
 		add_statement(&dst->stmts, copy_one_statement(stmt));
 	} END_FOR_EACH_PTR(stmt);
 	dst->args = copy_one_statement(src->args);
-	dst->ret = copy_symbol(src->pos, src->ret);
+	dst->ret = copy_symbol(src->pos->pos, src->ret);
 	dst->inline_fn = src->inline_fn;
 }
 
@@ -501,7 +501,7 @@ int inline_function(struct expression *expr, struct symbol *sym)
 	struct expression *arg;
 
 	if (!fn->inline_stmt) {
-		sparse_error(fn->pos, "marked inline, but without a definition");
+		sparse_error(fn->pos->pos, "marked inline, but without a definition");
 		return 0;
 	}
 	if (fn->expanding)

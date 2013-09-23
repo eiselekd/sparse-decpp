@@ -1319,7 +1319,7 @@ static int do_handle_define(struct stream *stream, struct token **line, struct t
 					|| sym->used_in == file_scope) {
 				warning(left->pos, "preprocessor token %.*s redefined",
 						name->len, name->name);
-				info(sym->pos, "this was the original definition");
+				info(sym->pos->pos, "this was the original definition");
 			}
 		} else if (clean)
 			goto out;
@@ -1930,7 +1930,6 @@ static void preprocessor_line(struct stream *stream, struct token **line)
 static void do_preprocess(struct token **list)
 {
 	struct token *next;
-	printf("dp_preoro\n");
 
 	while (!eof_token(next = scan_next(list))) {
 		struct stream *stream = input_streams + next->pos.stream;

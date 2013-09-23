@@ -53,7 +53,7 @@ static int imbalance(struct entrypoint *ep, struct basic_block *bb, int entry, i
 {
 	if (Wcontext) {
 		struct symbol *sym = ep->name;
-		warning(bb->pos, "context imbalance in '%s' - %s", show_ident(sym->ident), why);
+		warning(bb->pos->pos, "context imbalance in '%s' - %s", show_ident(sym->ident), why);
 	}
 	return -1;
 }
@@ -241,7 +241,7 @@ static void check_context(struct entrypoint *ep)
 		pseudo_t pseudo;
 		FOR_EACH_PTR(ep->entry->bb->needs, pseudo) {
 			if (pseudo->type != PSEUDO_ARG)
-				warning(sym->pos, "%s: possible uninitialized variable (%s)",
+				warning(sym->pos->pos, "%s: possible uninitialized variable (%s)",
 					show_ident(sym->ident), show_pseudo(pseudo));
 		} END_FOR_EACH_PTR(pseudo);
 	}

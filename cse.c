@@ -341,7 +341,7 @@ static struct instruction * try_to_cse(struct entrypoint *ep, struct instruction
 			if (insn == i2)
 				return cse_one_instruction(i1, i2);
 		} END_FOR_EACH_PTR(insn);
-		warning(b1->pos, "Whaa? unable to find CSE instructions");
+		warning(b1->pos->pos, "Whaa? unable to find CSE instructions");
 		return i1;
 	}
 	if (bb_dominates(ep, b1, b2, ++bb_generation))

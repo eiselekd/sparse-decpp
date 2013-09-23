@@ -28,8 +28,8 @@ static int cmp_sym(const void *m, const void *n)
 	const struct ident *b = ((const struct symbol *)n)->ident;
 	int ret = strncmp(a->name, b->name, MAX(a->len, b->len));
 	if (!ret) {
-		const struct position a_pos = ((const struct symbol *)m)->pos;
-		const struct position b_pos = ((const struct symbol *)n)->pos;
+		const struct position a_pos = ((const struct symbol *)m)->pos->pos;
+		const struct position b_pos = ((const struct symbol *)n)->pos->pos;
 
 		ret = strcmp(stream_name(a_pos.stream),
 		             stream_name(b_pos.stream));
@@ -52,7 +52,7 @@ static void show_tag_header(FILE *fp)
 static inline void show_symbol_tag(FILE *fp, struct symbol *sym)
 {
 	fprintf(fp, "%s\t%s\t%d;\"\t%c\tfile:\n", show_ident(sym->ident),
-	       stream_name(sym->pos.stream), sym->pos.line, (int)sym->kind);
+	       stream_name(sym->pos->pos.stream), sym->pos->pos.line, (int)sym->kind);
 }
 
 static void show_tags(struct symbol_list *list)
@@ -73,14 +73,14 @@ static void show_tags(struct symbol_list *list)
 	}
 	show_tag_header(fp);
 	FOR_EACH_PTR(list, sym) {
-		if (ident == sym->ident && pos.line == sym->pos.line &&
-		    !strcmp(filename, stream_name(sym->pos.stream)))
+		if (ident == sym->ident && pos.line == sym->pos->pos.line &&
+		    !strcmp(filename, stream_name(sym->pos->pos.stream)))
 			continue;
 
 		show_symbol_tag(fp, sym);
 		ident = sym->ident;
-		pos = sym->pos;
-		filename = stream_name(sym->pos.stream);
+		pos = sym->pos->pos;
+		filename = stream_name(sym->pos->pos.stream);
 	} END_FOR_EACH_PTR(sym);
 	fclose(fp);
 }

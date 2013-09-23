@@ -64,7 +64,7 @@ struct expression {
 	unsigned flags:8;
 	int op;
 	struct token *tok;
-	struct position pos;
+	struct token *pos;
 	struct symbol *ctype;
 	union {
 		// EXPR_VALUE
@@ -184,7 +184,7 @@ static inline struct expression *alloc_expression(struct token *tok, int type)
 	struct expression *expr = __alloc_expression(0);
 	expr->type = type;
 	expr->tok = tok;
-	expr->pos = tok->pos;
+	expr->pos = tok;
 	return expr;
 }
 
@@ -192,7 +192,7 @@ static inline struct expression *alloc_const_expression(struct token *tok, int v
 {
 	struct expression *expr = __alloc_expression(0);
 	expr->type = EXPR_VALUE;
-	expr->pos = tok->pos;
+	expr->pos = tok;
 	expr->tok = tok;
 	expr->value = value;
 	expr->ctype = &int_ctype;

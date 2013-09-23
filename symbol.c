@@ -61,9 +61,9 @@ struct symbol *alloc_symbol(struct token *tok, int type)
 {
 	struct symbol *sym = __alloc_symbol(0);
 	sym->type = type;
-	sym->pos = tok->pos;
+	sym->pos = tok;
 	sym->tok = tok;
-	sym->endpos.type = 0;
+	sym->endpos = 0;
 	return sym;
 }
 
@@ -222,7 +222,7 @@ static struct symbol * examine_array_type(struct symbol *sym)
 		bit_size = base_type->bit_size * get_expression_value_silent(array_size);
 		if (array_size->type != EXPR_VALUE) {
 			if (Wvla)
-				warning(array_size->pos, "Variable length array is used.");
+				warning(array_size->pos->pos, "Variable length array is used.");
 			bit_size = -1;
 		}
 	}
@@ -242,7 +242,7 @@ static struct symbol *examine_bitfield_type(struct symbol *sym)
 		return sym;
 	bit_size = base_type->bit_size;
 	if (sym->bit_size > bit_size)
-		warning(sym->pos, "impossible field-width, %d, for this type",  sym->bit_size);
+		warning(sym->pos->pos, "impossible field-width, %d, for this type",  sym->bit_size);
 
 	alignment = base_type->ctype.alignment;
 	if (!sym->ctype.alignment)
@@ -417,7 +417,7 @@ struct symbol *examine_symbol_type(struct symbol * sym)
 		struct symbol *base = evaluate_expression(sym->initializer);
 		if (base) {
 			if (is_bitfield_type(base))
-				warning(base->pos, "typeof applied to bitfield type");
+				warning(base->pos->pos, "typeof applied to bitfield type");
 			if (base->type == SYM_NODE)
 				base = base->ctype.base_type;
 			sym->type = SYM_NODE;
@@ -428,10 +428,10 @@ struct symbol *examine_symbol_type(struct symbol * sym)
 		break;
 	}
 	case SYM_PREPROCESSOR:
-		sparse_error(sym->pos, "ctype on preprocessor command? (%s)", show_ident(sym->ident));
+		sparse_error(sym->pos->pos, "ctype on preprocessor command? (%s)", show_ident(sym->ident));
 		return NULL;
 	case SYM_UNINITIALIZED:
-		sparse_error(sym->pos, "ctype on uninitialized symbol %p", sym);
+		sparse_error(sym->pos->pos, "ctype on uninitialized symbol %p", sym);
 		return NULL;
 	case SYM_RESTRICT:
 		examine_base_type(sym);
@@ -440,7 +440,7 @@ struct symbol *examine_symbol_type(struct symbol * sym)
 		examine_base_type(sym);
 		return sym;
 	default:
-		sparse_error(sym->pos, "Examining unknown symbol type %d", sym->type);
+		sparse_error(sym->pos->pos, "Examining unknown symbol type %d", sym->type);
 		break;
 	}
 	return sym;
@@ -539,8 +539,8 @@ void check_declaration(struct symbol *sym)
 		if (get_sym_type(next) == SYM_FN)
 			continue;
 		warned = 1;
-		warning(sym->pos, "symbol '%s' shadows an earlier one", show_ident(sym->ident));
-		info(next->pos, "originally declared here");
+		warning(sym->pos->pos, "symbol '%s' shadows an earlier one", show_ident(sym->ident));
+		info(next->pos->pos, "originally declared here");
 	}
 }
 
@@ -548,18 +548,18 @@ void bind_symbol(struct symbol *sym, struct ident *ident, enum namespace ns)
 {
 	struct scope *scope;
 	if (sym->bound) {
-		sparse_error(sym->pos, "internal error: symbol type already bound");
+		sparse_error(sym->pos->pos, "internal error: symbol type already bound");
 		return;
 	}
 	if (ident->reserved && (ns & (NS_TYPEDEF | NS_STRUCT | NS_LABEL | NS_SYMBOL))) {
-		sparse_error(sym->pos, "Trying to use reserved word '%s' as identifier", show_ident(ident));
+		sparse_error(sym->pos->pos, "Trying to use reserved word '%s' as identifier", show_ident(ident));
 		return;
 	}
 	sym->namespace = ns;
 	sym->next_id = ident->symbols;
 	ident->symbols = sym;
 	if (sym->ident && sym->ident != ident)
-		warning(sym->pos, "Symbol '%s' already bound", show_ident(sym->ident));
+		warning(sym->pos->pos, "Symbol '%s' already bound", show_ident(sym->ident));
 	sym->ident = ident;
 	sym->bound = 1;
 
@@ -616,11 +616,11 @@ static int arguments_choose(struct expression *expr)
 		i++;
 	} END_FOR_EACH_PTR(arg);
 	if (i < 3) {
-		sparse_error(expr->pos,
+		sparse_error(expr->pos->pos,
 			     "not enough arguments for __builtin_choose_expr");
 		return 0;
 	} if (i > 3) {
-		sparse_error(expr->pos,
+		sparse_error(expr->pos->pos,
 			     "too many arguments for __builtin_choose_expr");
 		return 0;
 	}
@@ -675,7 +675,7 @@ static int expand_warning(struct expression *expr, int cost)
 			struct symbol *sym = arg->symbol;
 			if (sym->initializer && sym->initializer->type == EXPR_STRING) {
 				struct string *string = sym->initializer->string;
-				warning(expr->pos, "%*s", string->length-1, string->data);
+				warning(expr->pos->pos, "%*s", string->length-1, string->data);
 			}
 			continue;
 		}

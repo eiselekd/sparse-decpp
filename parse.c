@@ -669,7 +669,7 @@ struct statement *alloc_statement(struct token *tok, int type)
 {
 	struct statement *stmt = __alloc_statement(0);
 	stmt->type = type;
-	stmt->pos = tok->pos;
+	stmt->pos = tok;
 	stmt->tok = tok;
 	return stmt;
 }
@@ -723,7 +723,7 @@ static struct token *struct_union_enum_specifier(enum type type,
 	struct token *(*parse)(struct token *, struct symbol *))
 {
 	struct symbol *sym;
-	struct position *repos;
+	struct token *repos;
 
 	token = handle_attributes(token, ctx, KW_ATTRIBUTE);
 	if (token_type(token) == TOKEN_IDENT) {
@@ -739,7 +739,7 @@ static struct token *struct_union_enum_specifier(enum type type,
 		if (sym->type != type)
 			error_die(token->pos, "invalid tag applied to %s", show_typename (sym));
 		ctx->ctype.base_type = sym;
-		repos = &token->pos;
+		repos = token;
 		token = token->next;
 		if (match_op(token, '{')) {
 			// The following test is actually wrong for empty
@@ -747,13 +747,13 @@ static struct token *struct_union_enum_specifier(enum type type,
 			// the same thing, and (3) it's easier.
 			if (sym->symbol_list)
 				error_die(token->pos, "redefinition of %s", show_typename (sym));
-			sym->pos = *repos;
+			sym->pos = repos;
 			token = parse(token->next, sym);
 			token = expect(token, '}', "at end of struct-union-enum-specifier");
 
 			// Mark the structure as needing re-examination
 			sym->examined = 0;
-			sym->endpos = token->pos;
+			sym->endpos = token;
 		}
 		return token;
 	}
@@ -769,7 +769,7 @@ static struct token *struct_union_enum_specifier(enum type type,
 	token = parse(token->next, sym);
 	ctx->ctype.base_type = sym;
 	token =  expect(token, '}', "at end of specifier");
-	sym->endpos = token->pos;
+	sym->endpos = token;
 
 	return token;
 }
@@ -963,7 +963,7 @@ static struct token *parse_enum_declaration(struct token *token, struct symbol *
 		}
 		token = next;
 
-		sym->endpos = token->pos;
+		sym->endpos = token;
 
 		if (!match_op(token, ','))
 			break;
@@ -1029,7 +1029,7 @@ static struct token *typeof_specifier(struct token *token, struct decl_state *ct
 		struct symbol *typeof_sym = alloc_symbol(token, SYM_TYPEOF);
 		token = parse_expression(token->next, &typeof_sym->initializer);
 
-		typeof_sym->endpos = token->pos;
+		typeof_sym->endpos = token;
 		if (!typeof_sym->initializer) {
 			sparse_error(token->pos, "expected expression after the '(' token");
 			typeof_sym = &bad_ctype;
@@ -1724,7 +1724,7 @@ static struct token *direct_declarator(struct token *token, struct decl_state *c
 		else if (kind == Proto)
 			token = parameter_type_list(token, fn);
 		token = expect(token, ')', "in function declarator");
-		fn->endpos = token->pos;
+		fn->endpos = token;
 		return token;
 	}
 
@@ -1733,7 +1733,7 @@ static struct token *direct_declarator(struct token *token, struct decl_state *c
 		array = alloc_indirect_symbol(token, ctype, SYM_ARRAY);
 		token = abstract_array_declarator(token->next, array);
 		token = expect(token, ']', "in abstract_array_declarator");
-		array->endpos = token->pos;
+		array->endpos = token;
 		ctype = &array->ctype;
 	}
 	return token;
@@ -1754,7 +1754,7 @@ static struct token *pointer(struct token *token, struct decl_state *ctx)
 		ctx->ctype.alignment = 0;
 
 		token = handle_qualifiers(token->next, ctx);
-		ctx->ctype.base_type->endpos = token->pos;
+		ctx->ctype.base_type->endpos = token;
 	}
 	return token;
 }
@@ -1809,7 +1809,7 @@ static struct token *handle_bitfield(struct token *token, struct decl_state *ctx
 		}
 	}
 	bitfield->bit_size = width;
-	bitfield->endpos = token->pos;
+	bitfield->endpos = token;
 	return token;
 }
 
@@ -1835,7 +1835,7 @@ static struct token *declaration_list(struct token *token, struct symbol_list **
 
 		decl->ctype = ctx.ctype;
 		decl->ctype.modifiers |= mod;
-		decl->endpos = token->pos;
+		decl->endpos = token;
 		add_symbol(list, decl);
 		if (!match_op(token, ','))
 			break;
@@ -1870,7 +1870,7 @@ static struct token *parameter_declaration(struct token *token, struct symbol *s
 	apply_modifiers(token->pos, &ctx);
 	sym->ctype = ctx.ctype;
 	sym->ctype.modifiers |= storage_modifiers(&ctx);
-	sym->endpos = token->pos;
+	sym->endpos = token;
 	sym->forced_arg = ctx.storage_class == SForced;
 	return token;
 }
@@ -1885,7 +1885,7 @@ struct token *typename(struct token *token, struct symbol **p, int *forced)
 	token = declarator(token, &ctx);
 	apply_modifiers(token->pos, &ctx);
 	sym->ctype = ctx.ctype;
-	sym->endpos = token->pos;
+	sym->endpos = token;
 	class = ctx.storage_class;
 	if (forced) {
 		*forced = 0;
@@ -1895,7 +1895,7 @@ struct token *typename(struct token *token, struct symbol **p, int *forced)
 		}
 	}
 	if (class)
-		warning(sym->pos, "storage class in typename (%s %s)",
+		warning(sym->pos->pos, "storage class in typename (%s %s)",
 			storage_class[class], show_typename(sym));
 	return token;
 }
@@ -2100,7 +2100,7 @@ static void start_switch(struct statement *stmt)
 static void end_switch(struct statement *stmt)
 {
 	if (!stmt->switch_case->symbol_list)
-		warning(stmt->pos, "switch with no cases");
+		warning(stmt->pos->pos, "switch with no cases");
 	end_symbol_scope();
 }
 
@@ -2110,7 +2110,7 @@ static void add_case_statement(struct statement *stmt)
 	struct symbol *sym;
 
 	if (!target) {
-		sparse_error(stmt->pos, "not in switch scope");
+		sparse_error(stmt->pos->pos, "not in switch scope");
 		stmt->type = STMT_NONE;
 		return;
 	}
@@ -2202,7 +2202,7 @@ static struct token *parse_do_statement(struct token *token, struct statement *s
 	end_iterator(stmt);
 
 	if (iterator && iterator->type != STMT_COMPOUND && Wdo_while)
-		warning(iterator->pos, "do-while statement is not a compound statement");
+		warning(iterator->pos->pos, "do-while statement is not a compound statement");
 
 	return expect(token, ';', "after statement");
 }
@@ -2246,7 +2246,7 @@ static struct token *parse_loop_iterator(struct token *token, struct statement *
 	stmt->type = STMT_GOTO;
 	stmt->goto_label = target;
 	if (!target)
-		sparse_error(stmt->pos, "break/continue not in iterator scope");
+		sparse_error(stmt->pos->pos, "break/continue not in iterator scope");
 	return expect(token->next, ';', "at end of statement");
 }
 
@@ -2317,7 +2317,7 @@ static struct token *statement(struct token *token, struct statement **tree)
 			stmt->type = STMT_LABEL;
 			stmt->label_identifier = s;
 			if (s->stmt)
-				sparse_error(stmt->pos, "label '%s' redefined", show_ident(token->ident));
+				sparse_error(stmt->pos->pos, "label '%s' redefined", show_ident(token->ident));
 			s->stmt = stmt;
 			token = skip_attributes(token->next->next);
 			return statement(token, &stmt->label_statement);
@@ -2389,7 +2389,7 @@ static struct token *identifier_list(struct token *token, struct symbol *fn)
 		struct symbol *sym = alloc_symbol(token, SYM_NODE);
 		sym->ident = token->ident;
 		token = token->next;
-		sym->endpos = token->pos;
+		sym->endpos = token;
 		sym->ctype.base_type = &incomplete_ctype;
 		add_symbol(list, sym);
 		if (!match_op(token, ',') ||
@@ -2453,7 +2453,7 @@ static struct expression *index_expression(struct expression *from, struct expre
 	if (to) {
 		idx_to = const_expression_value(to);
 		if (idx_to < idx_from || idx_from < 0)
-			warning(from->pos, "nonsense array initializer index range");
+			warning(from->pos->pos, "nonsense array initializer index range");
 	}
 	expr->idx_from = idx_from;
 	expr->idx_to = idx_to;
@@ -2550,7 +2550,7 @@ struct token *initializer(struct expression **tree, struct token *token)
 static void declare_argument(struct symbol *sym, struct symbol *fn)
 {
 	if (!sym->ident) {
-		sparse_error(sym->pos, "no identifier for function argument");
+		sparse_error(sym->pos->pos, "no identifier for function argument");
 		return;
 	}
 	bind_symbol(sym, sym->ident, NS_SYMBOL);
@@ -2578,7 +2578,7 @@ static struct token *parse_function_body(struct token *token, struct symbol *dec
 
 	if (decl->ctype.modifiers & MOD_EXTERN) {
 		if (!(decl->ctype.modifiers & MOD_INLINE))
-			warning(decl->pos, "function '%s' with external linkage has definition", show_ident(decl->ident));
+			warning(decl->pos->pos, "function '%s' with external linkage has definition", show_ident(decl->ident));
 	}
 	if (!(decl->ctype.modifiers & MOD_STATIC))
 		decl->ctype.modifiers |= MOD_EXTERN;
@@ -2599,9 +2599,9 @@ static struct token *parse_function_body(struct token *token, struct symbol *dec
 	decl->definition = decl;
 	prev = decl->same_symbol;
 	if (prev && prev->definition) {
-		warning(decl->pos, "multiple definitions for function '%s'",
+		warning(decl->pos->pos, "multiple definitions for function '%s'",
 			show_ident(decl->ident));
-		info(prev->definition->pos, " the previous one is here");
+		info(prev->definition->pos->pos, " the previous one is here");
 	} else {
 		while (prev) {
 			prev->definition = decl;
@@ -2611,7 +2611,7 @@ static struct token *parse_function_body(struct token *token, struct symbol *dec
 	function_symbol_list = old_symbol_list;
 	if (function_computed_goto_list) {
 		if (!function_computed_target_list)
-			warning(decl->pos, "function '%s' has computed goto but no targets?", show_ident(decl->ident));
+			warning(decl->pos->pos, "function '%s' has computed goto but no targets?", show_ident(decl->ident));
 		else {
 			FOR_EACH_PTR(function_computed_goto_list, stmt) {
 				stmt->target_list = function_computed_target_list;
@@ -2642,7 +2642,7 @@ static void apply_k_r_types(struct symbol_list *argtypes, struct symbol *fn)
 			if (type->ident == arg->ident)
 				goto match;
 		} END_FOR_EACH_PTR(type);
-		sparse_error(arg->pos, "missing type declaration for parameter '%s'", show_ident(arg->ident));
+		sparse_error(arg->pos->pos, "missing type declaration for parameter '%s'", show_ident(arg->ident));
 		continue;
 match:
 		type->used = 1;
@@ -2654,7 +2654,7 @@ match:
 
 	FOR_EACH_PTR(argtypes, arg) {
 		if (!arg->used)
-			warning(arg->pos, "nonsensical parameter declaration '%s'", show_ident(arg->ident));
+			warning(arg->pos->pos, "nonsensical parameter declaration '%s'", show_ident(arg->ident));
 	} END_FOR_EACH_PTR(arg);
 
 }
@@ -2733,7 +2733,7 @@ struct token *external_declaration(struct token *token, struct symbol_list **lis
 
 	decl->ctype = ctx.ctype;
 	decl->ctype.modifiers |= mod;
-	decl->endpos = token->pos;
+	decl->endpos = token;
 
 	/* Just a type declaration? */
 	if (!ident) {
@@ -2778,7 +2778,7 @@ struct token *external_declaration(struct token *token, struct symbol_list **lis
 	for (;;) {
 		if (!is_typedef && match_op(token, '=')) {
 			if (decl->ctype.modifiers & MOD_EXTERN) {
-				warning(decl->pos, "symbol with external linkage has initializer");
+				warning(decl->pos->pos, "symbol with external linkage has initializer");
 				decl->ctype.modifiers &= ~MOD_EXTERN;
 			}
 			token = initializer(&decl->initializer, token->next);
@@ -2806,7 +2806,7 @@ struct token *external_declaration(struct token *token, struct symbol_list **lis
 		apply_modifiers(token->pos, &ctx);
 		decl->ctype = ctx.ctype;
 		decl->ctype.modifiers |= mod;
-		decl->endpos = token->pos;
+		decl->endpos = token;
 		if (!ident) {
 			sparse_error(token->pos, "expected identifier name in type definition");
 			return token;

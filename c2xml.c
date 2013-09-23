@@ -63,16 +63,16 @@ static xmlNodePtr new_sym_node(struct symbol *sym, const char *name, xmlNodePtr 
 
 	if (sym->ident && ident)
 		newProp(node, "ident", ident);
-	newProp(node, "file", stream_name(sym->pos.stream));
+	newProp(node, "file", stream_name(sym->pos->pos.stream));
 
-	newNumProp(node, "start-line", sym->pos.line);
-	newNumProp(node, "start-col", sym->pos.pos);
+	newNumProp(node, "start-line", sym->pos->pos.line);
+	newNumProp(node, "start-col", sym->pos->pos.pos);
 
-	if (sym->endpos.type) {
-		newNumProp(node, "end-line", sym->endpos.line);
-		newNumProp(node, "end-col", sym->endpos.pos);
-		if (sym->pos.stream != sym->endpos.stream)
-			newProp(node, "end-file", stream_name(sym->endpos.stream));
+	if (sym->endpos) {
+		newNumProp(node, "end-line", sym->endpos->pos.line);
+		newNumProp(node, "end-col", sym->endpos->pos.pos);
+		if (sym->pos->pos.stream != sym->endpos->pos.stream)
+			newProp(node, "end-file", stream_name(sym->endpos->pos.stream));
         }
 	sym->aux = node;
 
@@ -202,7 +202,7 @@ static void examine_symbol(struct symbol *sym, xmlNodePtr node)
 	return;
 }
 
-static struct position *get_expansion_end (struct token *token)
+static struct token *get_expansion_end (struct token *token)
 {
 	struct token *p1, *p2;
 
@@ -211,19 +211,19 @@ static struct position *get_expansion_end (struct token *token)
 	     p2 = p1, p1 = token, token = token->next);
 
 	if (p2)
-		return &(p2->pos);
+		return p2;
 	else
 		return NULL;
 }
 
 static void examine_macro(struct symbol *sym, xmlNodePtr node)
 {
-	struct position *pos;
+	struct token *pos;
 
 	/* this should probably go in the main codebase*/
 	pos = get_expansion_end(sym->expansion);
 	if (pos)
-		sym->endpos = *pos;
+		sym->endpos = pos;
 	else
 		sym->endpos = sym->pos;
 
@@ -275,7 +275,7 @@ static inline void examine_symbol_list(const char *file, struct symbol_list *lis
 	if (!list)
 		return;
 	FOR_EACH_PTR(list, sym) {
-		if (sym->pos.stream == stream_id)
+		if (sym->pos->pos.stream == stream_id)
 			examine_namespace(sym);
 	} END_FOR_EACH_PTR(sym);
 }

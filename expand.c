@@ -42,7 +42,7 @@ static int expand_symbol_expression(struct expression *expr)
 
 	if (sym == &zero_int) {
 		if (Wundef)
-			warning(expr->pos, "undefined preprocessor identifier '%s'", show_ident(expr->symbol_name));
+			warning(expr->pos->pos, "undefined preprocessor identifier '%s'", show_ident(expr->symbol_name));
 		expr->type = EXPR_VALUE;
 		expr->value = 0;
 		expr->taint = 0;
@@ -96,7 +96,7 @@ Int:
 	if (is_bool_type(newtype)) {
 		expr->value = !!value;
 		if (!conservative && value != 0 && value != 1)
-			warning(old->pos, "odd constant _Bool cast (%llx becomes 1)", value);
+			warning(old->pos->pos, "odd constant _Bool cast (%llx becomes 1)", value);
 		return;
 	}
 
@@ -117,7 +117,7 @@ Int:
 	// OK if the bits were (and still are) purely sign bits
 	if (value & dropped) {
 		if (!(value & oldsignmask) || !(value & signmask) || (value & dropped) != dropped)
-			warning(old->pos, "cast truncates bits from constant value (%llx becomes %llx)",
+			warning(old->pos->pos, "cast truncates bits from constant value (%llx becomes %llx)",
 				value & oldmask,
 				value & mask);
 	}
@@ -148,7 +148,7 @@ Float:
 
 static int check_shift_count(struct expression *expr, struct symbol *ctype, unsigned int count)
 {
-	warning(expr->pos, "shift too big (%u) for type %s", count, show_typename(ctype));
+	warning(expr->pos->pos, "shift too big (%u) for type %s", count, show_typename(ctype));
 	count &= ctype->bit_size-1;
 	return count;
 }
@@ -270,11 +270,11 @@ static int simplify_int_binop(struct expression *expr, struct symbol *ctype)
 	return 1;
 Div:
 	if (!conservative)
-		warning(expr->pos, "division by zero");
+		warning(expr->pos->pos, "division by zero");
 	return 0;
 Overflow:
 	if (!conservative)
-		warning(expr->pos, "constant integer operation overflow");
+		warning(expr->pos->pos, "constant integer operation overflow");
 	return 0;
 }
 
@@ -355,7 +355,7 @@ static int simplify_float_binop(struct expression *expr)
 	return 1;
 Div:
 	if (!conservative)
-		warning(expr->pos, "division by zero");
+		warning(expr->pos->pos, "division by zero");
 	return 0;
 }
 
@@ -609,7 +609,7 @@ static int expand_dereference(struct expression *expr)
 	 * test for me to get the type evaluation right..
 	 */
 	if (expr->ctype->ctype.modifiers & MOD_NODEREF)
-		warning(unop->pos, "dereference of noderef expression");
+		warning(unop->pos->pos, "dereference of noderef expression");
 
 	/*
 	 * Is it "symbol" or "symbol + offset"?
@@ -678,7 +678,7 @@ static int simplify_preop(struct expression *expr)
 
 Overflow:
 	if (!conservative)
-		warning(expr->pos, "constant integer operation overflow");
+		warning(expr->pos->pos, "constant integer operation overflow");
 	return 0;
 }
 
@@ -924,8 +924,8 @@ static void verify_nonoverlapping(struct expression_list **list)
 		if (!b->ctype || !b->ctype->bit_size)
 			continue;
 		if (a && bit_offset(a) == bit_offset(b)) {
-			warning(a->pos, "Initializer entry defined twice");
-			info(b->pos, "  also defined here");
+			warning(a->pos->pos, "Initializer entry defined twice");
+			info(b->pos->pos, "  also defined here");
 			return;
 		}
 		a = b;
@@ -977,7 +977,7 @@ static int expand_expression(struct expression *expr)
 		return expand_call(expr);
 
 	case EXPR_DEREF:
-		warning(expr->pos, "we should not have an EXPR_DEREF left at expansion time");
+		warning(expr->pos->pos, "we should not have an EXPR_DEREF left at expansion time");
 		return UNSAFE;
 
 	case EXPR_SELECT:

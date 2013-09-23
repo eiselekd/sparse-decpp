@@ -161,7 +161,7 @@ void expression_error(struct expression *expr, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	do_error(expr->pos, fmt, args);
+	do_error(expr->pos->pos, fmt, args);
 	va_end(args);
 	expr->ctype = &bad_ctype;
 }

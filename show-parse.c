@@ -60,7 +60,7 @@ static void do_debug_symbol(struct symbol *sym, int indent)
 		indent, indent_string, typestr[sym->type],
 		sym->bit_size, sym->ctype.alignment,
 		modifier_string(sym->ctype.modifiers), show_ident(sym->ident), sym->ctype.as,
-		sym, stream_name(sym->pos.stream), sym->pos.line, sym->pos.pos,
+		sym, stream_name(sym->pos->pos.stream), sym->pos->pos.line, sym->pos->pos.pos,
 		builtin_typename(sym) ?: "");
 	i = 0;
 	FOR_EACH_PTR(sym->ctype.contexts, context) {
@@ -697,7 +697,7 @@ static int show_call_expression(struct expression *expr)
 	int framesize;
 
 	if (!expr->ctype) {
-		warning(expr->pos, "\tcall with no type!");
+		warning(expr->pos->pos, "\tcall with no type!");
 		return 0;
 	}
 
@@ -1084,7 +1084,7 @@ int show_expression(struct expression *expr)
 		return 0;
 
 	if (!expr->ctype) {
-		struct position *pos = &expr->pos;
+		struct position *pos = &expr->pos->pos;
 		printf("\tno type at %s:%d:%d\n",
 			stream_name(pos->stream),
 			pos->line, pos->pos);
@@ -1115,7 +1115,7 @@ int show_expression(struct expression *expr)
 	case EXPR_PTRSIZEOF:
 	case EXPR_ALIGNOF:
 	case EXPR_OFFSETOF:
-		warning(expr->pos, "invalid expression after evaluation");
+		warning(expr->pos->pos, "invalid expression after evaluation");
 		return 0;
 	case EXPR_CAST:
 	case EXPR_FORCE_CAST:
@@ -1142,16 +1142,16 @@ int show_expression(struct expression *expr)
 	// None of these should exist as direct expressions: they are only
 	// valid as sub-expressions of initializers.
 	case EXPR_POS:
-		warning(expr->pos, "unable to show plain initializer position expression");
+		warning(expr->pos->pos, "unable to show plain initializer position expression");
 		return 0;
 	case EXPR_IDENTIFIER:
-		warning(expr->pos, "unable to show identifier expression");
+		warning(expr->pos->pos, "unable to show identifier expression");
 		return 0;
 	case EXPR_INDEX:
-		warning(expr->pos, "unable to show index expression");
+		warning(expr->pos->pos, "unable to show index expression");
 		return 0;
 	case EXPR_TYPE:
-		warning(expr->pos, "unable to show type expression");
+		warning(expr->pos->pos, "unable to show type expression");
 		return 0;
 	}
 	return 0;

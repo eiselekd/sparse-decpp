@@ -8,7 +8,7 @@ static inline char storage(struct symbol *sym)
 	unsigned m = sym->ctype.modifiers;
 
 	if (m & MOD_INLINE || t == SYM_STRUCT || t == SYM_UNION /*|| t == SYM_ENUM*/)
-		return sym->pos.stream == dotc_stream ? 's' : 'g';
+		return sym->pos->pos.stream == dotc_stream ? 's' : 'g';
 
 	return (m & MOD_STATIC) ? 's' : (m & MOD_NONLOCAL) ? 'g' : 'l';
 }
@@ -73,7 +73,7 @@ static void r_member(unsigned mode, struct position *pos, struct symbol *sym, st
 
 static void r_symdef(struct symbol *sym)
 {
-	r_symbol(-1, &sym->pos, sym);
+	r_symbol(-1, &sym->pos->pos, sym);
 }
 
 int main(int argc, char **argv)

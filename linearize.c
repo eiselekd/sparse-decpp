@@ -65,7 +65,7 @@ static struct entrypoint *alloc_entrypoint(void)
 	return __alloc_entrypoint(0);
 }
 
-static struct basic_block *alloc_basic_block(struct entrypoint *ep, struct position pos)
+static struct basic_block *alloc_basic_block(struct entrypoint *ep, struct token *pos)
 {
 	struct basic_block *bb = __alloc_basic_block(0);
 	bb->context = -1;
@@ -476,7 +476,7 @@ void show_bb(struct basic_block *bb)
 	printf(".L%p:\n", bb);
 	if (verbose) {
 		pseudo_t needs, defines;
-		printf("%s:%d\n", stream_name(bb->pos.stream), bb->pos.line);
+		printf("%s:%d\n", stream_name(bb->pos->pos.stream), bb->pos->pos.line);
 
 		FOR_EACH_PTR(bb->needs, needs) {
 			struct instruction *def = needs->def;
@@ -504,7 +504,7 @@ void show_bb(struct basic_block *bb)
 			struct basic_block *from;
 			FOR_EACH_PTR(bb->parents, from) {
 				printf("  **from %p (%s:%d:%d)**\n", from,
-					stream_name(from->pos.stream), from->pos.line, from->pos.pos);
+					stream_name(from->pos->pos.stream), from->pos->pos.line, from->pos->pos.pos);
 			} END_FOR_EACH_PTR(from);
 		}
 
@@ -512,7 +512,7 @@ void show_bb(struct basic_block *bb)
 			struct basic_block *to;
 			FOR_EACH_PTR(bb->children, to) {
 				printf("  **to %p (%s:%d:%d)**\n", to,
-					stream_name(to->pos.stream), to->pos.line, to->pos.pos);
+					stream_name(to->pos->pos.stream), to->pos->pos.line, to->pos->pos.pos);
 			} END_FOR_EACH_PTR(to);
 		}
 	}
@@ -839,7 +839,7 @@ struct access_data {
 	pseudo_t origval;		// pseudo for original value ..
 	unsigned int offset, alignment;	// byte offset
 	unsigned int bit_size, bit_offset; // which bits
-	struct position pos;
+	struct token *pos;
 };
 
 static void finish_address_gen(struct entrypoint *ep, struct access_data *ad)
@@ -897,7 +897,7 @@ static int linearize_address_gen(struct entrypoint *ep,
 	if (expr->type == EXPR_PREOP && expr->op == '*')
 		return linearize_simple_address(ep, expr->unop, ad);
 
-	warning(expr->pos, "generating address of non-lvalue (%d)", expr->type);
+	warning(expr->pos->pos, "generating address of non-lvalue (%d)", expr->type);
 	return 0;
 }
 
@@ -1199,7 +1199,7 @@ static pseudo_t linearize_call_expression(struct entrypoint *ep, struct expressi
 	struct sym_context *context;
 
 	if (!expr->ctype) {
-		warning(expr->pos, "call with no type!");
+		warning(expr->pos->pos, "call with no type!");
 		return VOID;
 	}
 
@@ -1542,7 +1542,7 @@ pseudo_t linearize_expression(struct entrypoint *ep, struct expression *expr)
 	if (!expr)
 		return VOID;
 
-	current_pos = expr->pos;
+	current_pos = expr->pos->pos;
 	switch (expr->type) {
 	case EXPR_SYMBOL:
 		linearize_one_symbol(ep, expr->symbol);
@@ -1602,10 +1602,10 @@ pseudo_t linearize_expression(struct entrypoint *ep, struct expression *expr)
 
 	case EXPR_INITIALIZER:
 	case EXPR_POS:
-		warning(expr->pos, "unexpected initializer expression (%d %d)", expr->type, expr->op);
+		warning(expr->pos->pos, "unexpected initializer expression (%d %d)", expr->type, expr->op);
 		return VOID;
 	default: 
-		warning(expr->pos, "unknown expression (%d %d)", expr->type, expr->op);
+		warning(expr->pos->pos, "unknown expression (%d %d)", expr->type, expr->op);
 		return VOID;
 	}
 	return VOID;
@@ -1756,7 +1756,7 @@ static pseudo_t linearize_asm_statement(struct entrypoint *ep, struct statement 
 	insn = alloc_instruction(OP_ASM, 0);
 	expr = stmt->asm_string;
 	if (!expr || expr->type != EXPR_STRING) {
-		warning(stmt->pos, "expected string in inline asm");
+		warning(stmt->pos->pos, "expected string in inline asm");
 		return VOID;
 	}
 	insn->string = expr->string->data;
@@ -1920,7 +1920,7 @@ static pseudo_t linearize_switch(struct entrypoint *ep, struct statement *stmt)
 		add_bb(&active->children, bb_case);
 	} END_FOR_EACH_PTR(sym);
 
-	bind_label(stmt->switch_break, switch_end, stmt->pos);
+	bind_label(stmt->switch_break, switch_end, stmt->pos->pos);
 
 	/* And linearize the actual statement */
 	linearize_statement(ep, stmt->switch_statement);
@@ -1963,8 +1963,8 @@ static pseudo_t linearize_iterator(struct entrypoint *ep, struct statement *stmt
 	if (pre_condition)
 			linearize_cond_branch(ep, pre_condition, loop_body, loop_end);
 
-	bind_label(stmt->iterator_continue, loop_continue, stmt->pos);
-	bind_label(stmt->iterator_break, loop_end, stmt->pos);
+	bind_label(stmt->iterator_continue, loop_continue, stmt->pos->pos);
+	bind_label(stmt->iterator_break, loop_end, stmt->pos->pos);
 
 	set_activeblock(ep, loop_body);
 	linearize_statement(ep, statement);
@@ -1991,7 +1991,7 @@ pseudo_t linearize_statement(struct entrypoint *ep, struct statement *stmt)
 	bb = ep->active;
 	if (bb && !bb->insns)
 		bb->pos = stmt->pos;
-	current_pos = stmt->pos;
+	current_pos = stmt->pos->pos;
 
 	switch (stmt->type) {
 	case STMT_NONE:
@@ -2212,7 +2212,7 @@ struct entrypoint *linearize_symbol(struct symbol *sym)
 
 	if (!sym)
 		return NULL;
-	current_pos = sym->pos;
+	current_pos = sym->pos->pos;
 	base_type = sym->ctype.base_type;
 	if (!base_type)
 		return NULL;
