@@ -41,6 +41,7 @@ int die_if_error = 0;
 int gcc_major = __GNUC__;
 int gcc_minor = __GNUC_MINOR__;
 int gcc_patchlevel = __GNUC_PATCHLEVEL__;
+struct token *pp_tokenlist = 0;
 
 static const char *gcc_base_dir = GCC_BASE;
 
@@ -247,11 +248,13 @@ void add_pre_buffer(const char *fmt, ...)
 	unsigned int size;
 	struct token *begin, *end;
 	char buffer[4096];
+	struct expansion *e;
 
 	va_start(args, fmt);
 	size = vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
-	begin = tokenize_buffer(buffer, size, &end);
+	e = tokenize_buffer(buffer, size, &end);
+	begin = e->s;
 	if (!pre_buffer_begin)
 		pre_buffer_begin = begin;
 	if (pre_buffer_end)
@@ -895,13 +898,15 @@ void create_builtin_stream(void)
 	add_pre_buffer("#weak_define __SIZEOF_POINTER__ " SPARSE_STRINGIFY(__SIZEOF_POINTER__) "\n");
 }
 
-static struct symbol_list *sparse_tokenstream(struct token *token)
+static struct symbol_list *sparse_tokenstream(struct expansion *e)
 {
+	struct token *token;
 	// Preprocess the stream
-	token = preprocess(token);
+	token = preprocess(e);
 
+	pp_tokenlist = token;
 	if (preprocess_only) {
-		while (!eof_token(token)) {
+	        while (!eof_token(token)) {
 			int prec = 1;
 			struct token *next = token->next;
 			const char *separator = "";
@@ -930,7 +935,7 @@ static struct symbol_list *sparse_tokenstream(struct token *token)
 static struct symbol_list *sparse_file(const char *filename)
 {
 	int fd;
-	struct token *token;
+	struct expansion *e;
 
 	if (strcmp (filename, "-") == 0) {
 		fd = 0;
@@ -941,10 +946,10 @@ static struct symbol_list *sparse_file(const char *filename)
 	}
 
 	// Tokenize the input stream
-	token = tokenize(filename, fd, NULL, includepath);
+	e = tokenize(filename, fd, NULL, includepath);
 	close(fd);
 
-	return sparse_tokenstream(token);
+	return sparse_tokenstream(e);
 }
 
 /*
@@ -958,14 +963,20 @@ static struct symbol_list *sparse_file(const char *filename)
  */
 static struct symbol_list *sparse_initial(void)
 {
-	int i;
+	int i; struct expansion *e;
 
 	// Prepend any "include" file to the stream.
 	// We're in global scope, it will affect all files!
 	for (i = 0; i < cmdline_include_nr; i++)
 		add_pre_buffer("#argv_include \"%s\"\n", cmdline_include[i]);
+	
+	e = __alloc_expansion(0);
+	memset(e, 0, sizeof(struct expansion));
+	e->typ = EXPANSION_CMDLINE;
+	e->s = pre_buffer_begin;
+	list_e(e->s, e);
 
-	return sparse_tokenstream(pre_buffer_begin);
+	return sparse_tokenstream(e);
 }
 
 struct symbol_list *sparse_initialize(int argc, char **argv, struct string_list **filelist)

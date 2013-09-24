@@ -43,13 +43,13 @@ sub ident    { my ($ctx) = @_; my $r = ""; for (my $i = 0; $i < $$ctx{'i'}; $i++
 while ($m =~ /($idre)$RE_balanced_smothbrackets:\s*\n/m) {
   my ($id, $typ) = ($1,$2);
   $m = $';
-#  print (STDERR "$id,$typ\n");
+  #  print (STDERR "$id,$typ\n"); 
   my @m = ();
   while (($m =~ /^((?:[ \t]+[^\n]*\n))/s)) {
     $m = $'; my $l = $1;
     #print ".".$l.":";
     if ($l =~ /(.+)\s+:\s+($idre)(.*)/) {
-      my ($t,$n,$r) = ($1,$2,$3);
+      my ($t,$n,$r) = ($1,$2,$3); $t = nrmspace($t);
       my $p = $n,;
       $p =~ s/\./_/g;
       my $a = {};
@@ -57,19 +57,32 @@ while ($m =~ /($idre)$RE_balanced_smothbrackets:\s*\n/m) {
 	eval ("\$a = { $1 };");
       }
       push(@m,{'n'=>nrmspace($n),'t'=>nrmspace($t),'a'=>$a});
+      my $newpre = "";my $newpost = "";      
+      my $gnewpre = "";my $gnewpost = "";      
+      my $derefget = ""; my $derefset = ""; 
+      if (defined($$a{'new'})) {
+	  $newpre = "new_${t}(";
+	  $newpost = ")";
+	  $gnewpre = "->m";
+	  $gnewpost = "";
+      }
+      if (defined($$a{'deref'})) {
+	  $derefget = "&"; 
+	  $derefset = "*";
+      }
       my $vpost = $$a{'vpost'};
       my $name = $$a{'n'} ? $$a{'n'} : $p;
 
 my $g = "
-MODULE = d   PACKAGE = ${id}Ptr
+MODULE = sparse   PACKAGE = ${id}
 PROTOTYPES: ENABLE
 
 ".nrmspace($t)." $vpost
-get_${name}(p)
-        $id *p
+${name}(p)
+        $typ p
     PREINIT:
     CODE:
-        RETVAL = p->$n;
+        RETVAL = ${newpre}${derefget}p->m->$n${newpost};
     OUTPUT:
 	RETVAL
 ";
@@ -80,11 +93,11 @@ get_${name}(p)
 my $s = "
 void
 set_${name}(p,v)
-        $id *p
-        ".nrmspace($t)." $vpost v
+        $typ p
+        ".nrmspace($t)." ${vpost}v
     PREINIT:
     CODE:
-        p->$n = $cast v;
+        p->m->$n = ${derefset}$cast v${gnewpre};
 ";
       print $s;
 

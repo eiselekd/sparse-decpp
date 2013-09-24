@@ -1,29 +1,21 @@
-use 5.012003;
-use ExtUtils::MakeMaker;
-use ExtUtils::Constant 0.23 'WriteConstants';
+use Data::Dumper;
+use Getopt::Long;
+use Getopt::Long;
+use Carp;
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+use Cwd;
+use Cwd 'abs_path';
 
-my $gcc = system("gcc --print-file-name=");
+print("
+MODULE = sparse         PACKAGE = sparse
 
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
-WriteMakefile(
-    NAME              => 'sparse',
-    VERSION_FROM      => 'lib/sparse.pm', # finds $VERSION
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/sparse.pm', # retrieve abstract from module
-       AUTHOR         => 'eiselekd <eiselekd@gmail.com>') : ()),
-#   LIBS              => [], # e.g., '-lm'
-    LIBS              => ['-L./.. '], # e.g., '-lm'
-    DEFINE            => '-DGCC_BASE="\"'.$gcc.'\""', # e.g., '-DHAVE_SOMETHING'
-    INC               => '-I. -I..', 
-    OBJECT            => 'sparse.o ../libsparse.a', # link all the C files too
-    realclean         => {FILES=> 'const-c.inc const-xs.inc'},
-);
+BOOT:
+    sparsestash = gv_stashpv(\"sparse\", TRUE);
 
-my @names =
-  (
-   qw(
+");
+
+foreach my $v (qw(
 	TOKEN_EOF
 	TOKEN_ERROR
 	TOKEN_IDENT
@@ -98,12 +90,10 @@ my @names =
         CONSTANT_FILE_NOPE
         CONSTANT_FILE_YES
 
-      )
-  );
+    )) {
+     print("    newCONSTSUB(sparsestash, \"$v\",            newSViv($v));\n");
+   }
 
-WriteConstants(
-#   PROXYSUBS => {croak_on_error => 1},
-    DEFAULT_TYPE => 'IV',
-    NAME => 'sparse',
-    NAMES => \@names,
-);
+print("
+");
+

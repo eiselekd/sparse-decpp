@@ -1,0 +1,52 @@
+TYPEMAP
+const_string		T_PV
+const_string_assume	CONST_STRING_ASSUME
+sparsepos		SPARSE_POS
+sparsetok		SPARSE_TOK
+sparsepos_assume	SPARSE_POS_ASSUME
+sparsetok_assume	SPARSE_TOK_ASSUME
+randstate		RANDSTATE
+ulong_coerce		ULONG_COERCE
+malloced_string		MALLOCED_STRING
+order_noswap		ORDER_NOSWAP
+dummy			DUMMY
+# perl 5.005 doesn't have UV in its standard typemap, so use this instead
+gmp_UV			GMP_UV
+
+
+INPUT
+SPARSE_POS
+	class_or_croak ($arg, sparsepos_class); $var = SvSPARSE_POS($arg);
+SPARSE_TOK
+	class_or_croak ($arg, sparsetok_class); $var = SvSPARSE_TOK($arg);
+SPARSE_POS_ASSUME
+        SPARSE_POS_ASSUME ($var, $arg)
+SPARSE_TOK_ASSUME
+        SPARSE_TOK_ASSUME ($var, $arg)
+RANDSTATE
+	class_or_croak ($arg, rand_class); $var = SvRANDSTATE($arg);
+ULONG_COERCE
+	$var = coerce_ulong ($arg)
+ORDER_NOSWAP
+	assert ($arg != &PL_sv_yes);
+DUMMY
+	/* dummy $var */
+CONST_STRING_ASSUME
+        /* No need to check for SvPOKp and use SvPV, this mapping is
+           only used for overload_constant, which always gets literal
+           strings.  */
+	assert (SvPOK ($arg));
+	$var = SvPVX ($arg);
+
+
+OUTPUT
+SPARSE_POS
+    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsepos_class_hv);
+SPARSE_TOK
+    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsetok_class_hv);
+RANDSTATE
+    sv_setref_pv ($arg, rand_class, $var);
+MALLOCED_STRING
+    sv_usepvn_mg ($arg, $var, strlen($var));
+GMP_UV
+    sv_setuv ($arg, (UV) ($var));

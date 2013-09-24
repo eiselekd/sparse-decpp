@@ -1,9 +1,13 @@
-sparse::pos(t_position):
+sparse::pos(sparsepos):
     int            : type       {}
     int            : stream     {}
+    int            : newline    {}
+    int            : whitespace {}
+    int            : pos        {}
     int            : line       {}
     int            : noexpand   {}
 
-sparse::tok(t_token):
-    sparse::tok    : next    {vpost=>'*',cast=>"(struct token *)"}
+sparse::tok(sparsetok):
+    sparsepos    : pos     { new=>1, deref=>1 }
+    sparsetok    : next    { new=>1 }
 

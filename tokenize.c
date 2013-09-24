@@ -957,10 +957,10 @@ static int get_one_token(int c, stream_t *stream)
 	return get_one_special(c, stream);
 }
 
-static struct token *setup_stream(stream_t *stream, int idx, int fd,
+static struct expansion *setup_stream(stream_t *stream, int idx, int fd,
 	unsigned char *buf, unsigned int buf_size)
 {
-	struct token *begin;
+	struct token *begin; struct expansion *e;
 
 	stream->nr = idx;
 	stream->line = 1;
@@ -977,7 +977,13 @@ static struct token *setup_stream(stream_t *stream, int idx, int fd,
 	begin = alloc_token_stream(stream);
 	token_type(begin) = TOKEN_STREAMBEGIN;
 	stream->tokenlist = &begin->next;
-	return begin;
+	
+	e = __alloc_expansion(0);
+	memset(e, 0, sizeof(struct expansion));
+	e->typ = EXPANSION_STREAM;
+	e->s = begin;
+	
+	return e;
 }
 
 static struct token *tokenize_stream(stream_t *stream)
@@ -998,32 +1004,40 @@ static struct token *tokenize_stream(stream_t *stream)
 	return mark_eof(stream);
 }
 
-struct token * tokenize_buffer(void *buffer, unsigned long size, struct token **endtoken)
+struct expansion * tokenize_buffer(void *buffer, unsigned long size, struct token **endtoken)
 {
 	stream_t stream;
-	struct token *begin;
+	struct expansion *e;
 
-	begin = setup_stream(&stream, 0, -1, buffer, size);
+	e = setup_stream(&stream, 0, -1, buffer, size);
 	*endtoken = tokenize_stream(&stream);
-	return begin;
+	list_e(e->s, e);
+	return e;
 }
 
-struct token * tokenize(const char *name, int fd, struct token *endtoken, const char **next_path)
+struct expansion * tokenize(const char *name, int fd, struct token *endtoken, const char **next_path)
 {
-	struct token *begin, *end;
-	stream_t stream;
+	struct token *end;
+	stream_t stream; struct expansion *e;
 	unsigned char buffer[BUFSIZE];
 	int idx;
 
 	idx = init_stream(name, fd, next_path);
 	if (idx < 0) {
+		e = __alloc_expansion(0);
+		memset(e, 0, sizeof(struct expansion));
+		e->typ = EXPANSION_STREAM;
+		e->s = endtoken;
 		// info(endtoken->pos, "File %s is const", name);
-		return endtoken;
+		return e;
 	}
 
-	begin = setup_stream(&stream, idx, fd, buffer, 0);
+	e = setup_stream(&stream, idx, fd, buffer, 0);
 	end = tokenize_stream(&stream);
 	if (endtoken)
 		end->next = endtoken;
-	return begin;
+
+	list_e(e->s, e);
+
+	return e;
 }

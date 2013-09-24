@@ -28,6 +28,9 @@
 #include "expression.h"
 #include "scope.h"
 
+#define PUSHTOK(p,v) *p = v; p = &((*p)->next);
+#define PUSHTOKCPY(p,v) *p = dup_one(v); p = &((*p)->next);
+
 static int false_nesting = 0;
 
 #define INCLUDEPATHS 300
@@ -83,7 +86,7 @@ static struct token *alloc_token(struct position *pos)
 }
 
 /* Expand symbol 'sym' at '*list' */
-static int expand(struct token **, struct symbol *);
+static int expand(struct token **, struct symbol *, struct token *);
 
 static void replace_with_string(struct token *token, const char *str)
 {
@@ -149,7 +152,7 @@ static int expand_one_symbol(struct token **list)
 	sym = lookup_macro(token->ident);
 	if (sym) {
 		sym->used_in = file_scope;
-		return expand(list, sym);
+		return expand(list, sym, token);
 	}
 	if (token->ident == &__LINE___ident) {
 		replace_with_integer(token, token->pos.line);
@@ -182,7 +185,7 @@ static inline struct token *scan_next(struct token **where)
 	return token;
 }
 
-static void expand_list(struct token **list)
+static void expand_list(struct token **list )
 {
 	struct token *next;
 	while (!eof_token(next = scan_next(list))) {
@@ -345,6 +348,11 @@ static struct token *dup_list(struct token *list)
 	return res;
 }
 
+static struct token *dup_list_e(struct token *list, struct expansion *e)
+{
+	return list_e(dup_list(list), e);
+}
+
 static const char *show_token_sequence(struct token *token, int quote)
 {
 	static char buffer[MAX_STRING];
@@ -389,9 +397,9 @@ static struct token *stringify(struct token *arg)
 	return token;
 }
 
-static void expand_arguments_pp(int count, struct arg *args)
+static void expand_arguments_pp(int count, struct arg *args, struct expansion *m)
 {
-	int i;
+	int i; struct expansion *e;
 	for (i = 0; i < count; i++) {
 		struct token *arg = args[i].arg;
 		if (!arg)
@@ -407,7 +415,14 @@ static void expand_arguments_pp(int count, struct arg *args)
 			} else {
 				args[i].expanded = dup_list(arg);
 			}
+			
+			e = __alloc_expansion(0);
+			memset(e, 0, sizeof(struct expansion));
+			e->typ = EXPANSION_MACROARG;
+			e->s = arg;
+			e->u.marg.m = m;
 			expand_list(&args[i].expanded);
+			e->d = args[i].expanded;
 		}
 	}
 }
@@ -483,12 +498,21 @@ static int merge(struct token *left, struct token *right)
 {
 	static char buffer[512];
 	enum token_type res = combine(left, right, buffer);
-	int n;
+	int n; struct token *tok;
+	struct expansion *e;
+
+	e = __alloc_expansion(0);
+	memset(e, 0, sizeof(struct expansion));
+	e->typ = EXPANSION_CONCAT;
+	e->s = dup_one(left);
+	e->s->next = tok = dup_one(right); tok->next = 0;
+	e->d = left;
 
 	switch (res) {
 	case TOKEN_IDENT:
 		left->ident = built_in_ident(buffer);
 		left->pos.noexpand = 0;
+		left->e = e;
 		return 1;
 
 	case TOKEN_NUMBER: {
@@ -496,6 +520,7 @@ static int merge(struct token *left, struct token *right)
 		memcpy(number, buffer, strlen(buffer) + 1);
 		token_type(left) = TOKEN_NUMBER;	/* could be . + num */
 		left->number = number;
+		left->e = e;
 		return 1;
 	}
 
@@ -505,6 +530,7 @@ static int merge(struct token *left, struct token *right)
 		for (n = SPECIAL_BASE; n < SPECIAL_ARG_SEPARATOR; n++) {
 			if (!memcmp(buffer, combinations[n-SPECIAL_BASE], 3)) {
 				left->special = n;
+				left->e = e;
 				return 1;
 			}
 		}
@@ -515,12 +541,14 @@ static int merge(struct token *left, struct token *right)
 		token_type(left) = res;
 		left->pos.noexpand = 0;
 		left->string = right->string;
+		left->e = e;
 		return 1;
 
 	case TOKEN_WIDE_CHAR_EMBEDDED_0 ... TOKEN_WIDE_CHAR_EMBEDDED_3:
 		token_type(left) = res;
 		left->pos.noexpand = 0;
 		memcpy(left->embedded, right->embedded, 4);
+		left->e = e;
 		return 1;
 
 	default:
@@ -684,8 +712,9 @@ static struct token **substitute(struct token **list, struct token *body, struct
 	return list;
 }
 
-static int expand(struct token **list, struct symbol *sym)
+static int expand(struct token **list, struct symbol *sym, struct token *mtok)
 {
+	struct expansion *e;
 	struct token *last;
 	struct token *token = *list;
 	struct ident *expanding = token->ident;
@@ -698,12 +727,19 @@ static int expand(struct token **list, struct symbol *sym)
 		return 1;
 	}
 
+	e = __alloc_expansion(0);
+	memset(e, 0, sizeof(struct expansion));
+	e->typ = EXPANSION_MACRO;
+	e->s = sym->expansion;
+	e->d = dup_list_e(sym->expansion, e);
+	e->u.m.tok = mtok;
+
 	if (sym->arglist) {
 		if (!match_op(scan_next(&token->next), '('))
 			return 1;
 		if (!collect_arguments(token->next, sym->arglist, args, token))
 			return 1;
-		expand_arguments_pp(nargs, args);
+		expand_arguments_pp(nargs, args, e);
 	}
 
 	expanding->tainted = 1;
@@ -830,7 +866,7 @@ static void set_stream_include_path(struct stream *stream)
 
 static int try_include(const char *path, const char *filename, int flen, struct token **where, const char **next_path)
 {
-	int fd;
+	int fd; struct expansion *e;
 	int plen = strlen(path);
 	static char fullname[PATH_MAX];
 
@@ -846,7 +882,8 @@ static int try_include(const char *path, const char *filename, int flen, struct 
 	if (fd >= 0) {
 		char * streamname = __alloc_bytes(plen + flen);
 		memcpy(streamname, fullname, plen + flen);
-		*where = tokenize(streamname, fd, *where, next_path);
+		e = tokenize(streamname, fd, *where, next_path);
+		*where = e->s;
 		close(fd);
 		return 1;
 	}
@@ -1880,10 +1917,17 @@ static void handle_preprocessor_line(struct stream *stream, struct token **line,
 {
 	int (*handler)(struct stream *, struct token **, struct token *);
 	struct token *token = start->next;
+	struct expansion *e;
 	int is_normal = 1;
 
 	if (eof_token(token))
 		return;
+
+	e = __alloc_expansion(0);
+	memset(e, 0, sizeof(struct expansion));
+	e->typ = EXPANSION_PREPRO;
+	e->s = start;
+	e->d = dup_list_e(token,e);
 
 	if (token_type(token) == TOKEN_IDENT) {
 		struct symbol *sym = lookup_symbol(token->ident, NS_PREPROCESSOR);
@@ -1927,9 +1971,9 @@ static void preprocessor_line(struct stream *stream, struct token **line)
 	handle_preprocessor_line(stream, line, start);
 }
 
-static void do_preprocess(struct token **list)
+static struct token *do_preprocess(struct token **list)
 {
-	struct token *next;
+	struct token *next; struct token *l = 0; /*, **c = &l;*/
 
 	while (!eof_token(next = scan_next(list))) {
 		struct stream *stream = input_streams + next->pos.stream;
@@ -1971,18 +2015,21 @@ static void do_preprocess(struct token **list)
 				list = &next->next;
 		}
 	}
+	return l;
 }
 
-struct token * preprocess(struct token *token)
+struct token * preprocess(struct expansion *e)
 {
 	preprocessing = 1;
 	init_preprocessor();
-	do_preprocess(&token);
+
+	e->d = dup_list_e(e->s, e);
+	do_preprocess(&e->d);
 
 	// Drop all expressions from preprocessing, they're not used any more.
 	// This is not true when we have multiple files, though ;/
 	// clear_expression_alloc();
 	preprocessing = 0;
 
-	return token;
+	return e->d;
 }

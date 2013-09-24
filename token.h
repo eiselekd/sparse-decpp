@@ -168,6 +168,7 @@ struct argcount {
 struct token {
 	struct position pos;
 	struct token *next;
+	struct expansion *e;
 	union {
 		const char *number;
 		struct ident *ident;
@@ -177,6 +178,28 @@ struct token {
 		struct argcount count;
 		char embedded[4];
 	};
+};
+
+enum expansion_typ {
+	EXPANSION_CMDLINE,
+	EXPANSION_STREAM,
+	EXPANSION_MACRO,
+	EXPANSION_MACROARG,
+	EXPANSION_CONCAT,
+	EXPANSION_PREPRO
+};
+
+struct expansion {
+	int typ;
+	struct token *s, *d;
+	union {
+		struct {
+			struct expansion *m;
+		} marg;
+		struct {
+			struct token *tok;
+		} m;
+	} u;
 };
 
 #define MAX_STRING 8191
@@ -197,6 +220,16 @@ static inline struct token *containing_token(struct token **p)
 extern struct token eof_token_entry;
 #define eof_token(x) ((x) == &eof_token_entry)
 
+static inline struct token *list_e(struct token *l, struct expansion *e)
+{
+	struct token *r = l;
+	while (!eof_token(l)) {
+		l->e = e;
+		l = l->next;
+	}
+	return r;
+}
+
 extern int init_stream(const char *, int fd, const char **next_path);
 extern const char *stream_name(int stream);
 extern struct ident *hash_ident(struct ident *);
@@ -207,11 +240,11 @@ extern const char *show_ident(const struct ident *);
 extern const char *show_string(const struct string *string);
 extern const char *show_token(const struct token *);
 extern const char *quote_token(const struct token *);
-extern struct token * tokenize(const char *, int, struct token *, const char **next_path);
-extern struct token * tokenize_buffer(void *, unsigned long, struct token **);
+extern struct expansion *tokenize(const char *, int, struct token *, const char **next_path);
+extern struct expansion * tokenize_buffer(void *, unsigned long, struct token **);
 
 extern void show_identifier_stats(void);
-extern struct token *preprocess(struct token *);
+extern struct token *preprocess(struct expansion *);
 
 static inline int match_op(struct token *token, int op)
 {
