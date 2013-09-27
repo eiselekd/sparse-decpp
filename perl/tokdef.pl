@@ -1,0 +1,49 @@
+use Data::Dumper;
+use Getopt::Long;
+use Getopt::Long;
+use Carp;
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+use Cwd;
+use Cwd 'abs_path';
+
+foreach my $v (qw(
+	TOKEN_EOF 
+	TOKEN_ERROR 
+	TOKEN_IDENT 
+	TOKEN_ZERO_IDENT 
+	TOKEN_NUMBER 
+	TOKEN_CHAR 
+	TOKEN_CHAR_EMBEDDED_0 
+	TOKEN_CHAR_EMBEDDED_1 
+	TOKEN_CHAR_EMBEDDED_2 
+	TOKEN_CHAR_EMBEDDED_3 
+	TOKEN_WIDE_CHAR 
+	TOKEN_WIDE_CHAR_EMBEDDED_0 
+	TOKEN_WIDE_CHAR_EMBEDDED_1 
+	TOKEN_WIDE_CHAR_EMBEDDED_2 
+	TOKEN_WIDE_CHAR_EMBEDDED_3 
+	TOKEN_STRING 
+	TOKEN_WIDE_STRING 
+	TOKEN_SPECIAL 
+	TOKEN_STREAMBEGIN 
+	TOKEN_STREAMEND 
+	TOKEN_MACRO_ARGUMENT 
+	TOKEN_STR_ARGUMENT 
+	TOKEN_QUOTED_ARGUMENT 
+	TOKEN_CONCAT 
+	TOKEN_GNU_KLUDGE 
+	TOKEN_UNTAINT 
+	TOKEN_ARG_COUNT 
+	TOKEN_IF 
+	TOKEN_SKIP_GROUPS 
+	TOKEN_ELSE 
+
+
+    )) {
+     print("package sparse::tok::$v;\n");
+     print("our \@ISA = qw (sparse::tok);\n");
+
+   }
+
+

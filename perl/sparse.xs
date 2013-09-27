@@ -28,6 +28,7 @@ static HV *sparsepos_class_hv;
 static HV *sparsetok_class_hv;
 static HV *sparsestash;
 
+
 assert_support (static long sparsepos_count = 0;)
 assert_support (static long sparsetok_count = 0;)
 
@@ -93,10 +94,53 @@ typedef struct token    *sparsetok_ptr;
     if (!e) return &PL_sv_undef;		        \
     return sv_bless (sv_setref_pv (sv_newmortal(), NULL, new_##type (e)), type##_class_hv); \
   } \
+  static SV *newsv_##type (type##_t e)				\
+  {							\
+    if (!e) return &PL_sv_undef;		        \
+    return sv_setref_pv (sv_newmortal(), NULL, new_##type (e)); \
+  } \
 
 
 CREATE_SPARSE(sparsepos);
 CREATE_SPARSE(sparsetok);
+
+static char *token_types_class[] =  {
+	"sparse::tok::TOKEN_EOF",
+	"sparse::tok::TOKEN_ERROR",
+	"sparse::tok::TOKEN_IDENT",
+	"sparse::tok::TOKEN_ZERO_IDENT",
+	"sparse::tok::TOKEN_NUMBER",
+	"sparse::tok::TOKEN_CHAR",
+	"sparse::tok::TOKEN_CHAR_EMBEDDED_0",
+	"sparse::tok::TOKEN_CHAR_EMBEDDED_1",
+	"sparse::tok::TOKEN_CHAR_EMBEDDED_2",
+	"sparse::tok::TOKEN_CHAR_EMBEDDED_3",
+	"sparse::tok::TOKEN_WIDE_CHAR",
+	"sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_0",
+	"sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_1",
+	"sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_2",
+	"sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_3",
+	"sparse::tok::TOKEN_STRING",
+	"sparse::tok::TOKEN_WIDE_STRING",
+	"sparse::tok::TOKEN_SPECIAL",
+	"sparse::tok::TOKEN_STREAMBEGIN",
+	"sparse::tok::TOKEN_STREAMEND",
+	"sparse::tok::TOKEN_MACRO_ARGUMENT",
+	"sparse::tok::TOKEN_STR_ARGUMENT",
+	"sparse::tok::TOKEN_QUOTED_ARGUMENT",
+	"sparse::tok::TOKEN_CONCAT",
+	"sparse::tok::TOKEN_GNU_KLUDGE",
+	"sparse::tok::TOKEN_UNTAINT",
+	"sparse::tok::TOKEN_ARG_COUNT",
+	"sparse::tok::TOKEN_IF",
+	"sparse::tok::TOKEN_SKIP_GROUPS",
+	"sparse::tok::TOKEN_ELSE",
+	0
+};
+static SV *bless_tok(sparsetok_t e) {
+    if (!e) return &PL_sv_undef;
+    return sv_bless (newsv_sparsetok (e), gv_stashpv (token_types_class[token_type(e)],1));
+}
 
 static void
 class_or_croak (SV *sv, const char *cl)
@@ -190,7 +234,7 @@ preprocess(...)
 		sparse(file);
 		EXTEND(SP, 1);
 		/*printf("pp_tokenlist:%p\n",pp_tokenlist);*/
-		PUSHs(newbless_sparsetok (pp_tokenlist)); pp_tokenlist = 0;
+		PUSHs(bless_tok (pp_tokenlist)); pp_tokenlist = 0;
 	} END_FOR_EACH_PTR_NOTAG(file);
 	free(a);
 
@@ -209,7 +253,7 @@ list(p,...)
 	        cnt++;
  	    	if (GIMME_V == G_ARRAY) {
 		   EXTEND(SP, 1);
-		   PUSHs(newbless_sparsetok (t));
+		   PUSHs(bless_tok (t));
  		}
 		t = t->next;
 	}
