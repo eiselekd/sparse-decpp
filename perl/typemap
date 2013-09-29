@@ -3,8 +3,12 @@ const_string		T_PV
 const_string_assume	CONST_STRING_ASSUME
 sparsepos		SPARSE_POS
 sparsetok		SPARSE_TOK
+sparsestmt		SPARSE_STMT
+sparseexpr		SPARSE_EXPR
+sparsesym		SPARSE_SYM
 sparsepos_assume	SPARSE_POS_ASSUME
 sparsetok_assume	SPARSE_TOK_ASSUME
+sparsestmt_assume	SPARSE_STMT_ASSUME
 randstate		RANDSTATE
 ulong_coerce		ULONG_COERCE
 malloced_string		MALLOCED_STRING
@@ -19,10 +23,18 @@ SPARSE_POS
 	class_or_croak ($arg, sparsepos_class); $var = SvSPARSE_POS($arg);
 SPARSE_TOK
 	class_or_croak ($arg, sparsetok_class); $var = SvSPARSE_TOK($arg);
+SPARSE_STMT
+	class_or_croak ($arg, sparsestmt_class); $var = SvSPARSE_STMT($arg);
+SPARSE_EXPR
+	class_or_croak ($arg, sparseexpr_class); $var = SvSPARSE_EXPR($arg);
+SPARSE_SYM
+	class_or_croak ($arg, sparsesym_class); $var = SvSPARSE_SYM($arg);
 SPARSE_POS_ASSUME
         SPARSE_POS_ASSUME ($var, $arg)
 SPARSE_TOK_ASSUME
         SPARSE_TOK_ASSUME ($var, $arg)
+SPARSE_STMT_ASSUME
+        SPARSE_STMT_ASSUME ($var, $arg)
 RANDSTATE
 	class_or_croak ($arg, rand_class); $var = SvRANDSTATE($arg);
 ULONG_COERCE
@@ -44,6 +56,12 @@ SPARSE_POS
     sv_bless (sv_setref_pv ($arg, NULL, $var), sparsepos_class_hv);
 SPARSE_TOK
     sv_bless (sv_setref_pv ($arg, NULL, $var), sparsetok_class_hv);
+SPARSE_STMT
+    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsestmt_class_hv);
+SPARSE_EXPR
+    sv_bless (sv_setref_pv ($arg, NULL, $var), sparseexpr_class_hv);
+SPARSE_SYM
+    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsesym_class_hv);
 RANDSTATE
     sv_setref_pv ($arg, rand_class, $var);
 MALLOCED_STRING

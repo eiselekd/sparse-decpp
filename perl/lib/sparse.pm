@@ -134,6 +134,9 @@ sub load_imports {
 
 
 use sparse::tok;
+use sparse::sym;
+use sparse::stmt;
+use sparse::expr;
 
 
 1;

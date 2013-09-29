@@ -12,6 +12,9 @@
 #include "../token.h"
 #include "../lib.h"
 #include "../symbol.h"
+#include "../parse.h"
+#include "../expression.h"
+#include "../symbol.h"
 #include "const-c.inc"
 
 #define TRACE(x) 
@@ -24,26 +27,43 @@
 
 static const char sparsepos_class[]  = "sparse::pos";
 static const char sparsetok_class[]  = "sparse::tok";
+static const char sparsestmt_class[]  = "sparse::stmt";
+static const char sparsesym_class[]  = "sparse::sym";
+static const char sparseexpr_class[]  = "sparse::expr";
 static HV *sparsepos_class_hv;
 static HV *sparsetok_class_hv;
+static HV *sparsestmt_class_hv;
+static HV *sparseexpr_class_hv;
+static HV *sparsesym_class_hv;
 static HV *sparsestash;
-
 
 assert_support (static long sparsepos_count = 0;)
 assert_support (static long sparsetok_count = 0;)
+assert_support (static long sparsestmt_count = 0;)
+assert_support (static long sparsesym_count = 0;)
+assert_support (static long sparseexpr_count = 0;)
 
-typedef struct token    t_token;
-typedef struct position t_position;
-typedef struct position sparse__pos;
-typedef struct token    sparse__tok;
-typedef struct position *sparsepos_t;
-typedef struct token    *sparsetok_t;
-typedef struct position *sparsepos_ptr;
-typedef struct token    *sparsetok_ptr;
+typedef struct token     t_token;
+typedef struct position  t_position;
+typedef struct position  sparse__pos;
+typedef struct token     sparse__tok;
+typedef struct position  *sparsepos_t;
+typedef struct token     *sparsetok_t;
+typedef struct statement *sparsestmt_t;
+typedef struct expression *sparseexpr_t;
+typedef struct symbol    *sparsesym_t;
+typedef struct position  *sparsepos_ptr;
+typedef struct token     *sparsetok_ptr;
+typedef struct statement *sparsestmt_ptr;
+typedef struct expression *sparseexpr_ptr;
+typedef struct symbol     *sparsesym_ptr;
 
 #define SvSPARSE(s,type)  ((type) SvIV((SV*) SvRV(s)))
 #define SvSPARSE_POS(s)       SvSPARSE(s,sparsepos)
 #define SvSPARSE_TOK(s)       SvSPARSE(s,sparsetok)
+#define SvSPARSE_STMT(s)      SvSPARSE(s,sparsestmt)
+#define SvSPARSE_EXPR(s)      SvSPARSE(s,sparseexpr)
+#define SvSPARSE_SYM(s)       SvSPARSE(s,sparsesym)
 
 #define SPARSE_ASSUME(x,sv,type)			\
   do {							\
@@ -103,6 +123,9 @@ typedef struct token    *sparsetok_ptr;
 
 CREATE_SPARSE(sparsepos);
 CREATE_SPARSE(sparsetok);
+CREATE_SPARSE(sparsestmt);
+CREATE_SPARSE(sparseexpr);
+CREATE_SPARSE(sparsesym);
 
 static char *token_types_class[] =  {
 	"sparse::tok::TOKEN_EOF",
@@ -141,6 +164,95 @@ static SV *bless_tok(sparsetok_t e) {
     if (!e) return &PL_sv_undef;
     return sv_bless (newsv_sparsetok (e), gv_stashpv (token_types_class[token_type(e)],1));
 }
+static char *stmt_types_class[] =  {
+	"sparse::stmt::STMT_NONE",
+	"sparse::stmt::STMT_DECLARATION",
+	"sparse::stmt::STMT_EXPRESSION",
+	"sparse::stmt::STMT_COMPOUND",
+	"sparse::stmt::STMT_IF",
+	"sparse::stmt::STMT_RETURN",
+	"sparse::stmt::STMT_CASE",
+	"sparse::stmt::STMT_SWITCH",
+	"sparse::stmt::STMT_ITERATOR",
+	"sparse::stmt::STMT_LABEL",
+	"sparse::stmt::STMT_GOTO",
+	"sparse::stmt::STMT_ASM",
+	"sparse::stmt::STMT_CONTEXT",
+	"sparse::stmt::STMT_RANGE"
+};
+static SV *bless_stmt(sparsestmt_t e) {
+    if (!e) return &PL_sv_undef;
+    return sv_bless (newsv_sparsestmt(e), gv_stashpv (stmt_types_class[e->type],1));
+}
+static SV *bless_sparsestmt(sparsestmt_t e) { return bless_stmt(e); }
+
+static char *sym_types_class[] =  {
+	"sparse::sym::SYM_UNINITIALIZED",
+	"sparse::sym::SYM_PREPROCESSOR",
+	"sparse::sym::SYM_BASETYPE",
+	"sparse::sym::SYM_NODE",
+	"sparse::sym::SYM_PTR",
+	"sparse::sym::SYM_FN",
+	"sparse::sym::SYM_ARRAY",
+	"sparse::sym::SYM_STRUCT",
+	"sparse::sym::SYM_UNION",
+	"sparse::sym::SYM_ENUM",
+	"sparse::sym::SYM_TYPEDEF",
+	"sparse::sym::SYM_TYPEOF",
+	"sparse::sym::SYM_MEMBER",
+	"sparse::sym::SYM_BITFIELD",
+	"sparse::sym::SYM_LABEL",
+	"sparse::sym::SYM_RESTRICT",
+	"sparse::sym::SYM_FOULED",
+	"sparse::sym::SYM_KEYWORD",
+	"sparse::sym::SYM_BAD",
+};
+static SV *bless_sym(sparsesym_t e)   { 
+    if (!e) return &PL_sv_undef;
+    return sv_bless (newsv_sparsesym(e), gv_stashpv (sym_types_class[e->type],1));
+}
+static SV *bless_sparsesym(sparsesym_t e)   { return bless_sym(e); }
+
+static char *expr_types_class[] =  {
+        "sparse::expr::EXPR_NONE",
+	"sparse::expr::EXPR_VALUE",
+	"sparse::expr::EXPR_STRING",
+	"sparse::expr::EXPR_SYMBOL",
+	"sparse::expr::EXPR_TYPE",
+	"sparse::expr::EXPR_BINOP",
+	"sparse::expr::EXPR_ASSIGNMENT",
+	"sparse::expr::EXPR_LOGICAL",
+	"sparse::expr::EXPR_DEREF",
+	"sparse::expr::EXPR_PREOP",
+	"sparse::expr::EXPR_POSTOP",
+	"sparse::expr::EXPR_CAST",
+	"sparse::expr::EXPR_FORCE_CAST",
+	"sparse::expr::EXPR_IMPLIED_CAST",
+	"sparse::expr::EXPR_SIZEOF",
+	"sparse::expr::EXPR_ALIGNOF",
+	"sparse::expr::EXPR_PTRSIZEOF",
+	"sparse::expr::EXPR_CONDITIONAL",
+	"sparse::expr::EXPR_SELECT",
+	"sparse::expr::EXPR_STATEMENT",
+	"sparse::expr::EXPR_CALL",
+	"sparse::expr::EXPR_COMMA",
+	"sparse::expr::EXPR_COMPARE",
+	"sparse::expr::EXPR_LABEL",
+	"sparse::expr::EXPR_INITIALIZER",
+	"sparse::expr::EXPR_IDENTIFIER",
+	"sparse::expr::EXPR_INDEX",
+	"sparse::expr::EXPR_POS",
+	"sparse::expr::EXPR_FVALUE",
+	"sparse::expr::EXPR_SLICE",
+	"sparse::expr::EXPR_OFFSETOF"
+};
+static SV *bless_expr(sparseexpr_t e) {
+    if (!e) return &PL_sv_undef;
+    return sv_bless (newsv_sparseexpr(e), gv_stashpv (expr_types_class[e->type],1));
+}
+static SV *bless_sparseexpr(sparseexpr_t e) { return bless_expr(e); }
+
+
 
 static void
 class_or_croak (SV *sv, const char *cl)
@@ -183,8 +295,9 @@ INCLUDE: const-xs.inc
 
 BOOT:
     TRACE (printf ("sparse boot\n"));
-    sparsepos_class_hv = gv_stashpv (sparsepos_class, 1);
-    sparsetok_class_hv = gv_stashpv (sparsetok_class, 1);
+    sparsepos_class_hv  = gv_stashpv (sparsepos_class, 1);
+    sparsetok_class_hv  = gv_stashpv (sparsetok_class, 1);
+    sparsestmt_class_hv = gv_stashpv (sparsestmt_class, 1);
 
 INCLUDE_COMMAND: perl constdef.pl
 
@@ -213,7 +326,6 @@ x2()
     CODE:
     OUTPUT:
 	RETVAL
-
 
 
 void

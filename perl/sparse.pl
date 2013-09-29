@@ -72,7 +72,35 @@ while ($m =~ /($idre)$RE_balanced_smothbrackets:\s*\n/m) {
       }
       my $vpost = $$a{'vpost'};
       my $name = $$a{'n'} ? $$a{'n'} : $p;
+      if ($$a{'arr'}) {
 
+my $g = "
+MODULE = sparse   PACKAGE = ${id}
+PROTOTYPES: ENABLE
+
+void
+${name}(p,...)
+        $typ p
+    PREINIT:
+        struct ptr_list *l; void *ptr; int i = 0;
+    PPCODE:
+        l = (struct ptr_list *)(p->m->$n);
+ 	if (GIMME_V == G_ARRAY) {
+	    FOR_EACH_PTR(l, ptr) {
+	        EXTEND(SP, 1);
+	        PUSHs(bless_${t}((${t}_t)ptr));
+            } END_FOR_EACH_PTR(ptr);
+        } else {
+            EXTEND(SP, 1);
+	    FOR_EACH_PTR(l, ptr) { i++; } END_FOR_EACH_PTR(ptr);
+            PUSHs(sv_2mortal(newSViv(i)));
+        }
+
+";
+      print $g;
+
+      } else {
+      
 my $g = "
 MODULE = sparse   PACKAGE = ${id}
 PROTOTYPES: ENABLE
@@ -102,6 +130,7 @@ set_${name}(p,v)
       print $s;
 
 
+      }
     }
   }
   
