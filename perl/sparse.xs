@@ -431,6 +431,26 @@ sparse(...)
 	} END_FOR_EACH_PTR_NOTAG(file);
 	free(a);
 
+void
+dissect(...)
+    PREINIT:
+	struct string_list *filelist = NULL;
+	char *file; char **a = 0; int i; struct symbol *sym; struct symbol_list *symlist;
+    PPCODE:
+        a = (char **)malloc(sizeof(void *) * (items+2));
+	a[0] = "sparse";
+        for (i = 0; i < items; i++) {
+            a[i+1] = SvPV_nolen(ST(i));
+	}
+        a[items+1] = 0;
+	TRACE(printf("sparse_initialize("));
+	for (i = 0; i < items+1; i++) {
+	    TRACE(printf(" \"%s\"",a[i]));
+        }
+	TRACE(printf(")\n"));
+	free(a);
+
+
 MODULE = sparse   PACKAGE = sparse::tok
 PROTOTYPES: ENABLE
 
@@ -507,8 +527,10 @@ typename(s)
     CODE:
 	if (!s->m || ! (sym = s->m->base_type))
 	   XSRETURN_UNDEF;
-	n = show_typename(sym);
+	n = show_typename_fn(sym);
         RETVAL = newSVpv(n,0);
+	if (n)
+	    free((char*)n);
     OUTPUT:
 	RETVAL
 

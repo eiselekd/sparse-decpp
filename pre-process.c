@@ -720,11 +720,14 @@ static int expand(struct token **list, struct symbol *sym, struct token *mtok)
 	struct ident *expanding = token->ident;
 	struct token **tail;
 	int nargs = sym->arglist ? sym->arglist->count.normal : 0;
-	struct arg args[nargs];
-
+	struct arg *args = NULL; /*[nargs];*/
+	
+	if (nargs)
+		args = malloc(nargs * sizeof(struct arg));
+	
 	if (expanding->tainted) {
 		token->pos.noexpand = 1;
-		return 1;
+		goto ret1;
 	}
 
 	e = __alloc_expansion(0);
@@ -736,9 +739,9 @@ static int expand(struct token **list, struct symbol *sym, struct token *mtok)
 
 	if (sym->arglist) {
 		if (!match_op(scan_next(&token->next), '('))
-			return 1;
+			goto ret1;
 		if (!collect_arguments(token->next, sym->arglist, args, token))
-			return 1;
+			goto ret1;
 		expand_arguments_pp(nargs, args, e);
 	}
 
@@ -755,8 +758,14 @@ static int expand(struct token **list, struct symbol *sym, struct token *mtok)
 	(*list)->pos.newline = token->pos.newline;
 	(*list)->pos.whitespace = token->pos.whitespace;
 	*tail = last;
-
+	
+	if (args)
+		free(args);
 	return 0;
+ret1:
+	if (args)
+		free(args);
+	return 1;
 }
 
 static const char *token_name_sequence(struct token *token, int endop, struct token *start)
@@ -962,6 +971,7 @@ static int handle_include_path(struct stream *stream, struct token **list, struc
 		return 0;
 out:
 	error_die(token->pos, "unable to open '%s'", filename);
+	return 0;
 }
 
 static int handle_include(struct stream *stream, struct token **list, struct token *token)

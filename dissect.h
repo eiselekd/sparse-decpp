@@ -25,6 +25,7 @@ struct reporter
 };
 
 extern void dissect(struct symbol_list *, struct reporter *);
+extern int dissect_arr(int argc, char **argv);
 
 #define	MK_IDENT(s)	({				\
 	static struct {					\

@@ -167,9 +167,30 @@ void show_symbol_list(struct symbol_list *list, const char *sep)
 }
 
 struct type_name {
+	int fnargs;
 	char *start;
 	char *end;
 };
+
+static void prepend_cnt(struct type_name *name, const char *buffer, int n)
+{
+	if (name->fnargs) {
+		int l = name->end - name->start;
+		if (name->fnargs < (l + n + 1)) {
+			name->fnargs = (l + n + 1) * 2;
+			name->start = (char *)realloc(name->start, name->fnargs);
+			name->end = name->start + l;
+		}
+		if (l)
+			memmove(name->start+n, name->start, l);
+		if (n)
+			memcpy(name->start, buffer, n);
+		name->end += n;
+	} else {
+		name->start -= n;
+		memcpy(name->start, buffer, n);
+	}
+}
 
 static void FORMAT_ATTR(2) prepend(struct type_name *name, const char *fmt, ...)
 {
@@ -181,8 +202,25 @@ static void FORMAT_ATTR(2) prepend(struct type_name *name, const char *fmt, ...)
 	n = vsprintf(buffer, fmt, args);
 	va_end(args);
 
-	name->start -= n;
-	memcpy(name->start, buffer, n);
+	prepend_cnt(name, buffer, n);
+}
+
+static void append_cnt(struct type_name *name, const char *buffer, int n)
+{
+	if (name->fnargs) {
+		int l = name->end - name->start;
+		if (name->fnargs < (l + n + 1)) {
+			name->fnargs = (l + n + 1) * 2;
+			name->start = (char *)realloc(name->start, name->fnargs);
+			name->end = name->start + l;
+		}
+		if (n)
+			memcpy(name->end, buffer, n);
+		name->end += n;
+	} else {
+		memcpy(name->end, buffer, n);
+		name->end += n;
+	}
 }
 
 static void FORMAT_ATTR(2) append(struct type_name *name, const char *fmt, ...)
@@ -195,8 +233,7 @@ static void FORMAT_ATTR(2) append(struct type_name *name, const char *fmt, ...)
 	n = vsprintf(buffer, fmt, args);
 	va_end(args);
 
-	memcpy(name->end, buffer, n);
-	name->end += n;
+	append_cnt(name, buffer, n);
 }
 
 static struct ctype_name {
@@ -276,8 +313,7 @@ deeper:
 
 		s = modifier_string(mod);
 		len = strlen(s);
-		name->start -= len;    
-		memcpy(name->start, s, len);  
+		prepend_cnt(name, s, len);
 		mod = 0;
 		as = 0;
 	}
@@ -288,9 +324,8 @@ deeper:
 	if ((typename = builtin_typename(sym))) {
 		int len = strlen(typename);
 		if (name->start != name->end)
-			*--name->start = ' ';
-		name->start -= len;
-		memcpy(name->start, typename, len);
+			prepend_cnt(name, " ", 1);
+		prepend_cnt(name, typename, len);
 		goto out;
 	}
 
@@ -309,18 +344,31 @@ deeper:
 			append(name, " )");
 			was_ptr = 0;
 		}
-		append(name, "( ... )");
+		if (name->fnargs) {
+			struct symbol *a; int i = 0;
+			append(name, "(");
+			FOR_EACH_PTR(sym->arguments, a) {
+				const char *n = show_typename_fn(a);
+				if (i != 0)
+					append(name, ", ");
+				append(name, "%s", n);
+				free((char *)n);
+				i++;
+			} END_FOR_EACH_PTR(a);
+			append(name, ")");
+		} else 
+			append(name, "( ... )");
 		break;
 
 	case SYM_STRUCT:
 		if (name->start != name->end)
-			*--name->start = ' ';
+			prepend_cnt(name, " ", 1);
 		prepend(name, "struct %s", show_ident(sym->ident));
 		goto out;
 
 	case SYM_UNION:
 		if (name->start != name->end)
-			*--name->start = ' ';
+			prepend_cnt(name, " ", 1);
 		prepend(name, "union %s", show_ident(sym->ident));
 		goto out;
 
@@ -361,7 +409,7 @@ deeper:
 			break;
 		}
 		if (name->start != name->end)
-			*--name->start = ' ';
+			prepend_cnt(name, " ", 1);
 		prepend(name, "restricted %s", show_ident(sym->ident));
 		goto out;
 
@@ -371,7 +419,7 @@ deeper:
 
 	default:
 		if (name->start != name->end)
-			*--name->start = ' ';
+			prepend_cnt(name, " ", 1);
 		prepend(name, "unknown type %d", sym->type);
 		goto out;
 	}
@@ -390,7 +438,7 @@ void show_type(struct symbol *sym)
 {
 	char array[200];
 	struct type_name name;
-
+	name.fnargs = 0;
 	name.start = name.end = array+100;
 	do_show_type(sym, &name);
 	*name.end = 0;
@@ -401,8 +449,18 @@ const char *show_typename(struct symbol *sym)
 {
 	static char array[200];
 	struct type_name name;
-
+	name.fnargs = 0;
 	name.start = name.end = array+100;
+	do_show_type(sym, &name);
+	*name.end = 0;
+	return name.start;
+}
+
+const char *show_typename_fn(struct symbol *sym)
+{
+	struct type_name name; char *n;
+	name.fnargs = 100;
+	name.start = name.end = n = (char *) malloc(name.fnargs);
 	do_show_type(sym, &name);
 	*name.end = 0;
 	return name.start;

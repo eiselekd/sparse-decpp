@@ -41,7 +41,7 @@ int die_if_error = 0;
 int gcc_major = __GNUC__;
 int gcc_minor = __GNUC_MINOR__;
 int gcc_patchlevel = __GNUC_PATCHLEVEL__;
-struct token *pp_tokenlist = 0;
+struct token *pp_tokenlist = NULL;
 
 static const char *gcc_base_dir = GCC_BASE;
 
@@ -167,7 +167,7 @@ void expression_error(struct expression *expr, const char *fmt, ...)
 	expr->ctype = &bad_ctype;
 }
 
-void error_die(struct position pos, const char * fmt, ...)
+void error_die(struct position pos, const char * fmt, ...) 
 {
 	va_list args;
 	va_start(args, fmt);
@@ -176,7 +176,7 @@ void error_die(struct position pos, const char * fmt, ...)
 	exit(1);
 }
 
-void sparse_die(const char *fmt, ...)
+void sparse_die(const char *fmt, ...) 
 {
 	va_list args;
 	static char buffer[512];

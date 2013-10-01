@@ -10,6 +10,12 @@ endif
 
 OS = linux
 
+ALL_SRC = tokenize.c pre-process.c symbol.c lib.c scope.c \
+expression.c evaluate.c expand.c  inline.c linearize.c \
+allocate.c ptrlist.c flow.c cse.c simplify.c memops.c \
+liveness.c  storage.c  unssa.c  dissect.c target.c \
+show-parse.c char.c  sort.c compat-linux.c 
+
 
 CC = gcc
 CFLAGS = -O2 -finline-functions -fno-strict-aliasing -g
@@ -51,7 +57,7 @@ INCLUDEDIR=$(PREFIX)/include
 PKGCONFIGDIR=$(LIBDIR)/pkgconfig
 
 PROGRAMS=test-lexing test-parsing obfuscate compile graph sparse \
-	 test-linearize example test-unssa test-dissect ctags
+	 test-linearize example test-unssa test-dissect ctags test-globals
 INST_PROGRAMS=sparse cgcc
 INST_MAN1=sparse.1 cgcc.1
 
@@ -216,3 +222,8 @@ clean-check:
 	                 -o -name "*.c.error.got" \
 	                 -o -name "*.c.error.diff" \
 	                 \) -exec rm {} \;
+
+
+sparse-sparse:
+	./test-globals $(ALL_SRC) $(BASIC_CFLAGS)
+

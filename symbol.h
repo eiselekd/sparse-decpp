@@ -288,6 +288,7 @@ extern struct symbol *examine_symbol_type(struct symbol *);
 extern struct symbol *examine_pointer_target(struct symbol *);
 extern void examine_simple_symbol_type(struct symbol *);
 extern const char *show_typename(struct symbol *sym);
+extern const char *show_typename_fn(struct symbol *sym);
 extern const char *builtin_typename(struct symbol *sym);
 extern const char *builtin_ctypename(struct ctype *ctype);
 extern const char* get_type_name(enum type type);

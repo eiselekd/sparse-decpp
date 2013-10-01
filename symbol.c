@@ -63,7 +63,7 @@ struct symbol *alloc_symbol(struct token *tok, int type)
 	sym->type = type;
 	sym->pos = tok;
 	sym->tok = tok;
-	sym->endpos = 0;
+	sym->endpos = NULL;
 	return sym;
 }
 

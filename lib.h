@@ -75,11 +75,11 @@ struct token *expect(struct token *, int, const char *);
 #define NORETURN_ATTR
 #define SENTINEL_ATTR
 #endif
-extern void sparse_die(const char *, ...) FORMAT_ATTR(1) NORETURN_ATTR;
+extern void sparse_die(const char *, ...);
 extern void info(struct position, const char *, ...) FORMAT_ATTR(2);
 extern void warning(struct position, const char *, ...) FORMAT_ATTR(2);
 extern void sparse_error(struct position, const char *, ...) FORMAT_ATTR(2);
-extern void error_die(struct position, const char *, ...) FORMAT_ATTR(2) NORETURN_ATTR;
+extern void error_die(struct position, const char *, ...);
 extern void expression_error(struct expression *, const char *, ...) FORMAT_ATTR(2);
 
 extern void add_pre_buffer(const char *fmt, ...) FORMAT_ATTR(1);
@@ -113,6 +113,9 @@ extern int Wvla;
 
 extern int dbg_entry;
 extern int dbg_dead;
+
+extern int arch_m64;
+extern int arch_msize_long;
 
 extern void declare_builtin_functions(void);
 extern void create_builtin_stream(void);
