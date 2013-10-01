@@ -1,8 +1,3 @@
-static int func0(void) {
+static int func0(int id0, int id1) {
   return 0;
 }
-
-static int func1(void) {
-  return 1;
-}
-

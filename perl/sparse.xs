@@ -15,9 +15,10 @@
 #include "../parse.h"
 #include "../expression.h"
 #include "../symbol.h"
+#include "../scope.h"
 #include "const-c.inc"
 
-#define TRACE(x) 
+#define TRACE(x) x
 #define TRACE_ACTIVE()
 #ifdef NDEBUG
 #define assert_support(x)
@@ -30,11 +31,19 @@ static const char sparsetok_class[]  = "sparse::tok";
 static const char sparsestmt_class[]  = "sparse::stmt";
 static const char sparsesym_class[]  = "sparse::sym";
 static const char sparseexpr_class[]  = "sparse::expr";
+static const char sparseident_class[]  = "sparse::ident";
+static const char sparsectype_class[]  = "sparse::ctype";
+static const char sparsesymctx_class[]  = "sparse::symctx";
+static const char sparsescope_class[]  = "sparse::scope";
 static HV *sparsepos_class_hv;
 static HV *sparsetok_class_hv;
 static HV *sparsestmt_class_hv;
 static HV *sparseexpr_class_hv;
 static HV *sparsesym_class_hv;
+static HV *sparseident_class_hv;
+static HV *sparsectype_class_hv;
+static HV *sparsesymctx_class_hv;
+static HV *sparsescope_class_hv;
 static HV *sparsestash;
 
 assert_support (static long sparsepos_count = 0;)
@@ -42,6 +51,10 @@ assert_support (static long sparsetok_count = 0;)
 assert_support (static long sparsestmt_count = 0;)
 assert_support (static long sparsesym_count = 0;)
 assert_support (static long sparseexpr_count = 0;)
+assert_support (static long sparseident_count = 0;)
+assert_support (static long sparsectype_count = 0;)
+assert_support (static long sparsesymctx_count = 0;)
+assert_support (static long sparsescope_count = 0;)
 
 typedef struct token     t_token;
 typedef struct position  t_position;
@@ -52,11 +65,19 @@ typedef struct token     *sparsetok_t;
 typedef struct statement *sparsestmt_t;
 typedef struct expression *sparseexpr_t;
 typedef struct symbol    *sparsesym_t;
+typedef struct ident     *sparseident_t;
+typedef struct sym_context*sparsesymctx_t;
+typedef struct ctype      *sparsectype_t;
+typedef struct scope      *sparsescope_t;
 typedef struct position  *sparsepos_ptr;
 typedef struct token     *sparsetok_ptr;
 typedef struct statement *sparsestmt_ptr;
 typedef struct expression *sparseexpr_ptr;
 typedef struct symbol     *sparsesym_ptr;
+typedef struct ident      *sparseident_ptr;
+typedef struct sym_context*sparsesymctx_ptr;
+typedef struct ctype      *sparsectype_ptr;
+typedef struct scope      *sparsescope_ptr;
 
 #define SvSPARSE(s,type)  ((type) SvIV((SV*) SvRV(s)))
 #define SvSPARSE_POS(s)       SvSPARSE(s,sparsepos)
@@ -64,6 +85,10 @@ typedef struct symbol     *sparsesym_ptr;
 #define SvSPARSE_STMT(s)      SvSPARSE(s,sparsestmt)
 #define SvSPARSE_EXPR(s)      SvSPARSE(s,sparseexpr)
 #define SvSPARSE_SYM(s)       SvSPARSE(s,sparsesym)
+#define SvSPARSE_IDENT(s)     SvSPARSE(s,sparseident)
+#define SvSPARSE_CTYPE(s)     SvSPARSE(s,sparsectype)
+#define SvSPARSE_SYMCTX(s)    SvSPARSE(s,sparsesymctx)
+#define SvSPARSE_SCOPE(s)     SvSPARSE(s,sparsescope)
 
 #define SPARSE_ASSUME(x,sv,type)			\
   do {							\
@@ -92,7 +117,7 @@ typedef struct symbol     *sparsesym_ptr;
   new_##type (type##_t e)				\
   {                                                     \
     type p;                                             \
-    TRACE (printf ("new %s(%p)\n", type##_class, e));          \
+    /*TRACE (printf ("new %s(%p)\n", type##_class, e));*/          \
     if (type##_freelist != NULL)                        \
       {                                                 \
         p = type##_freelist;                            \
@@ -103,7 +128,7 @@ typedef struct symbol     *sparsesym_ptr;
         New (GMP_MALLOC_ID, p, 1, struct type##_elem);  \
         p->m = e;					\
       }                                                 \
-    TRACE (printf ("  p=%p\n", p));                     \
+    /*TRACE (printf ("  p=%p\n", p));*/                     \
     assert_support (type##_count++);                    \
     TRACE_ACTIVE ();                                    \
     return p;                                           \
@@ -126,6 +151,10 @@ CREATE_SPARSE(sparsetok);
 CREATE_SPARSE(sparsestmt);
 CREATE_SPARSE(sparseexpr);
 CREATE_SPARSE(sparsesym);
+CREATE_SPARSE(sparseident);
+CREATE_SPARSE(sparsectype);
+CREATE_SPARSE(sparsesymctx);
+CREATE_SPARSE(sparsescope);
 
 static char *token_types_class[] =  {
 	"sparse::tok::TOKEN_EOF",
@@ -252,7 +281,21 @@ static SV *bless_expr(sparseexpr_t e) {
 }
 static SV *bless_sparseexpr(sparseexpr_t e) { return bless_expr(e); }
 
-
+static SV *bless_ctype(sparsectype_t e) {
+    if (!e) return &PL_sv_undef;
+    return sv_bless (newsv_sparsectype(e), gv_stashpv (sparsectype_class,1));
+}
+static SV *bless_sparsectype(sparsectype_t e) { return bless_ctype(e); }
+static SV *bless_symctx(sparsesymctx_t e) {
+    if (!e) return &PL_sv_undef;
+    return sv_bless (newsv_sparsesymctx(e), gv_stashpv (sparsesymctx_class,1));
+}
+static SV *bless_sparsesymctx(sparsesymctx_t e) { return bless_symctx(e); }
+static SV *bless_scope(sparsescope_t e) {
+    if (!e) return &PL_sv_undef;
+    return sv_bless (newsv_sparsescope(e), gv_stashpv (sparsescope_class,1));
+}
+static SV *bless_sparsescope(sparsesymctx_t e) { return bless_symctx(e); }
 
 static void
 class_or_croak (SV *sv, const char *cl)
@@ -298,6 +341,12 @@ BOOT:
     sparsepos_class_hv  = gv_stashpv (sparsepos_class, 1);
     sparsetok_class_hv  = gv_stashpv (sparsetok_class, 1);
     sparsestmt_class_hv = gv_stashpv (sparsestmt_class, 1);
+    sparsesym_class_hv = gv_stashpv (sparsesym_class, 1);
+    sparseexpr_class_hv = gv_stashpv (sparseexpr_class, 1);
+    sparseident_class_hv = gv_stashpv (sparseident_class, 1);
+    sparsectype_class_hv = gv_stashpv (sparsectype_class, 1);
+    sparsesymctx_class_hv = gv_stashpv (sparsesymctx_class, 1);
+    sparsescope_class_hv = gv_stashpv (sparsescope_class, 1);
 
 INCLUDE_COMMAND: perl constdef.pl
 
@@ -351,6 +400,37 @@ preprocess(...)
 	free(a);
 
 
+void
+sparse(...)
+    PREINIT:
+	struct string_list *filelist = NULL;
+	char *file; char **a = 0; int i; struct symbol *sym; struct symbol_list *symlist;
+    PPCODE:
+        a = (char **)malloc(sizeof(void *) * (items+2));
+	a[0] = "sparse";
+        for (i = 0; i < items; i++) {
+            a[i+1] = SvPV_nolen(ST(i));
+	}
+        a[items+1] = 0;
+	TRACE(printf("sparse_initialize("));
+	for (i = 0; i < items+1; i++) {
+	    TRACE(printf(" \"%s\"",a[i]));
+        }
+	TRACE(printf(")\n"));
+	symlist = sparse_initialize(items+1, a, &filelist);
+	FOR_EACH_PTR(symlist, sym) {
+	    EXTEND(SP, 1);
+	    PUSHs(bless_sym (sym));
+	} END_FOR_EACH_PTR(sym);
+	FOR_EACH_PTR_NOTAG(filelist, file) {
+	    symlist = sparse(file);
+	    FOR_EACH_PTR(symlist, sym) {
+	        EXTEND(SP, 1);
+		PUSHs(bless_sym (sym));
+	    } END_FOR_EACH_PTR(sym);
+	} END_FOR_EACH_PTR_NOTAG(file);
+	free(a);
+
 MODULE = sparse   PACKAGE = sparse::tok
 PROTOTYPES: ENABLE
 
@@ -373,5 +453,64 @@ list(p,...)
  	    EXTEND(SP, 1);
             PUSHs(sv_2mortal(newSViv(cnt)));
 	}
+
+MODULE = sparse   PACKAGE = sparse::ident
+PROTOTYPES: ENABLE
+
+SV *
+name(i)
+	sparseident i
+    PREINIT:
+        int len = 0;
+    CODE:
+        RETVAL = newSVpv(i->m->name,i->m->len);
+    OUTPUT:
+	RETVAL
+
+MODULE = sparse   PACKAGE = sparse::sym
+PROTOTYPES: ENABLE
+
+SV *
+name(s)
+	sparsesym s
+    PREINIT:
+        int len = 0; struct ident *i; const char *n;
+    CODE:
+	if (!s->m || !(i = s->m->ident))
+	   XSRETURN_UNDEF;
+	n = show_ident(i);
+        RETVAL = newSVpv(n,0);
+    OUTPUT:
+	RETVAL
+
+MODULE = sparse   PACKAGE = sparse::ctype
+PROTOTYPES: ENABLE
+
+SV *
+name(s)
+	sparsectype s
+    PREINIT:
+        int len = 0; const char *n; struct symbol *sym;
+    CODE:
+	if (!s->m || ! (sym = s->m->base_type))
+	   XSRETURN_UNDEF;
+	n = builtin_typename(sym) ?: show_ident(sym->ident);
+        RETVAL = newSVpv(n,0);
+    OUTPUT:
+	RETVAL
+
+SV *
+typename(s)
+	sparsectype s
+    PREINIT:
+        int len = 0; const char *n; struct symbol *sym;
+    CODE:
+	if (!s->m || ! (sym = s->m->base_type))
+	   XSRETURN_UNDEF;
+	n = show_typename(sym);
+        RETVAL = newSVpv(n,0);
+    OUTPUT:
+	RETVAL
+
 
 INCLUDE_COMMAND: perl sparse.pl sparse.xsh

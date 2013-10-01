@@ -505,7 +505,7 @@ static int merge(struct token *left, struct token *right)
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_CONCAT;
 	e->s = dup_one(left);
-	e->s->next = tok = dup_one(right); tok->next = 0;
+	e->s->next = tok = dup_one(right); tok->next = NULL;
 	e->d = left;
 
 	switch (res) {
@@ -1973,7 +1973,7 @@ static void preprocessor_line(struct stream *stream, struct token **line)
 
 static struct token *do_preprocess(struct token **list)
 {
-	struct token *next; struct token *l = 0; /*, **c = &l;*/
+	struct token *next; struct token *l = NULL; /*, **c = &l;*/
 
 	while (!eof_token(next = scan_next(list))) {
 		struct stream *stream = input_streams + next->pos.stream;
