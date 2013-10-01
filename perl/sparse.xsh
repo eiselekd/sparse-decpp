@@ -14,7 +14,6 @@ sparse::tok(sparsetok):
     sparsetok    : next             { new=>1 }
     sparseexpand : e                { new=>1 }
 
-
 sparse::exp(sparseexpand):
     int   : typ 
     sparsetok :  s { new=>1 }

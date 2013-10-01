@@ -29,20 +29,20 @@ static inline const char *show_mode(unsigned mode)
 	return str;
 }
 
-static void print_usage(struct position *pos, struct symbol *sym, unsigned mode)
+static void print_usage(struct token *pos, struct symbol *sym, unsigned mode)
 {
 	static unsigned curr_stream = -1;
 
-	if (curr_stream != pos->stream) {
-		curr_stream = pos->stream;
+	if (curr_stream != pos->pos.stream) {
+		curr_stream = pos->pos.stream;
 		printf("\nFILE: %s\n\n", stream_name(curr_stream));
 	}
 
 	printf("%4d:%-3d %c %-5.3s",
-		pos->line, pos->pos, storage(sym), show_mode(mode));
+		pos->pos.line, pos->pos.pos, storage(sym), show_mode(mode));
 }
 
-static void r_symbol(unsigned mode, struct position *pos, struct symbol *sym)
+static void r_symbol(unsigned mode, struct token *pos, struct symbol *sym)
 {
 	print_usage(pos, sym, mode);
 
@@ -54,7 +54,7 @@ static void r_symbol(unsigned mode, struct position *pos, struct symbol *sym)
 		show_typename(sym->ctype.base_type));
 }
 
-static void r_member(unsigned mode, struct position *pos, struct symbol *sym, struct symbol *mem)
+static void r_member(unsigned mode, struct token *pos, struct symbol *sym, struct symbol *mem)
 {
 	struct ident *ni, *si, *mi;
 
@@ -73,7 +73,7 @@ static void r_member(unsigned mode, struct position *pos, struct symbol *sym, st
 
 static void r_symdef(struct symbol *sym)
 {
-	r_symbol(-1, &sym->pos->pos, sym);
+	r_symbol(-1, sym->pos, sym);
 }
 
 int main(int argc, char **argv)

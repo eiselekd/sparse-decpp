@@ -114,7 +114,7 @@ static inline struct symbol *no_member(struct ident *name)
 	return &sym;
 }
 
-static struct symbol *report_member(mode_t mode, struct position *pos,
+static struct symbol *report_member(mode_t mode, struct token *pos,
 					struct symbol *type, struct symbol *mem)
 {
 	struct symbol *ret = mem->ctype.base_type;
@@ -125,7 +125,7 @@ static struct symbol *report_member(mode_t mode, struct position *pos,
 	return ret;
 }
 
-static void report_implicit(usage_t mode, struct position *pos, struct symbol *type)
+static void report_implicit(usage_t mode, struct token *pos, struct symbol *type)
 {
 	if (type->type != SYM_STRUCT && type->type != SYM_UNION)
 		return;
@@ -166,10 +166,10 @@ static struct symbol *report_symbol(usage_t mode, struct expression *expr)
 	struct symbol *ret = base_type_dis(sym);
 
 	if (0 && ret->type == SYM_ENUM)
-		return report_member(mode, &expr->pos->pos, ret, expr->symbol);
+		return report_member(mode, expr->pos, ret, expr->symbol);
 
 	if (reporter->r_symbol)
-		reporter->r_symbol(fix_mode(ret, mode), &expr->pos->pos, sym);
+		reporter->r_symbol(fix_mode(ret, mode), expr->pos, sym);
 
 	return ret;
 }
@@ -347,7 +347,7 @@ again:
 		if (expr->op == '=')
 			mode &= ~U_R_VAL;
 		ret = do_expression(mode, expr->left);
-		report_implicit(mode, &expr->pos->pos, ret);
+		report_implicit(mode, expr->pos, ret);
 		mode = expr->op == '='
 			? u_lval(ret) : U_R_VAL;
 		do_expression(mode, expr->right);
@@ -409,7 +409,7 @@ again:
 			p_mode = U_R_VAL;
 		p_type = do_expression(p_mode, expr->deref);
 
-		ret = report_member(mode, &expr->pos->pos, p_type,
+		ret = report_member(mode, expr->pos, p_type,
 			lookup_member(p_type, expr->member, NULL));
 	}
 
@@ -517,7 +517,7 @@ static struct symbol *do_initializer(struct symbol *type, struct expression *exp
 				if (m_expr->type == EXPR_INDEX)
 					m_expr = m_expr->idx_expression;
 			} else {
-				struct position *pos = &m_expr->pos->pos;
+				struct token *pos = m_expr->pos;
 				struct ident *m_name = NULL;
 
 				if (m_expr->type == EXPR_IDENTIFIER) {
@@ -547,14 +547,15 @@ static inline struct symbol *do_symbol(struct symbol *sym)
 	if (reporter->r_symdef)
 		reporter->r_symdef(sym);
 
+	reporter->indent++;
 	switch (type->type) {
 	default:
 		if (!sym->initializer)
 			break;
 		if (reporter->r_symbol)
-			reporter->r_symbol(U_W_VAL, &sym->pos->pos, sym);
+			reporter->r_symbol(U_W_VAL, sym->pos, sym);
 		do_initializer(type, sym->initializer);
-
+		
 	break; case SYM_FN:
 		do_sym_list(type->arguments);
 		return_type = base_type_dis(type);
@@ -562,6 +563,7 @@ static inline struct symbol *do_symbol(struct symbol *sym)
 					? type->inline_stmt
 					: type->stmt);
 	}
+	reporter->indent--;
 
 	return type;
 }
@@ -581,7 +583,7 @@ void dissect(struct symbol_list *list, struct reporter *rep)
 
 static unsigned dotc_stream;
 
-static inline char storage(struct symbol *sym)
+char dissect_storage(struct symbol *sym)
 {
 	int t = sym->type;
 	unsigned m = sym->ctype.modifiers;
@@ -592,7 +594,7 @@ static inline char storage(struct symbol *sym)
 	return (m & MOD_STATIC) ? 's' : (m & MOD_NONLOCAL) ? 'g' : 'l';
 }
 
-static inline const char *show_mode(unsigned mode)
+const char *dissect_show_mode(unsigned mode)
 {
 	static char str[3];
 
@@ -608,51 +610,43 @@ static inline const char *show_mode(unsigned mode)
 	return str;
 }
 
-static void print_usage(struct position *pos, struct symbol *sym, unsigned mode)
-{
-	static unsigned curr_stream = -1;
-
-	if (curr_stream != pos->stream) {
-		curr_stream = pos->stream;
-		printf("\nFILE: %s\n\n", stream_name(curr_stream));
-	}
-
-	printf("%4d:%-3d %c %-5.3s",
-		pos->line, pos->pos, storage(sym), show_mode(mode));
-}
-
-static void r_symbol(unsigned mode, struct position *pos, struct symbol *sym)
-{
-	print_usage(pos, sym, mode);
-
-	if (!sym->ident)
-		sym->ident = MK_IDENT("__asm__");
-
-	printf("%-32.*s %s\n",
-		sym->ident->len, sym->ident->name,
-		show_typename(sym->ctype.base_type));
-}
-
-static void r_member(unsigned mode, struct position *pos, struct symbol *sym, struct symbol *mem)
-{
-	struct ident *ni, *si, *mi;
-
-	print_usage(pos, sym, mode);
-
-	ni = MK_IDENT("?");
-	si = sym->ident ?: ni;
-	/* mem == NULL means entire struct accessed */
-	mi = mem ? (mem->ident ?: ni) : MK_IDENT("*");
-
-	printf("%.*s.%-*.*s %s\n",
-		si->len, si->name,
-		32-1 - si->len, mi->len, mi->name,
-		show_typename(mem ? mem->ctype.base_type : sym));
-}
+#define PUSH_REPORT(n,r) do {						\
+		int i = reporter->defs_pos++;				\
+		if (i >= reporter->defs_cnt)  {				\
+			reporter->defs_cnt = (i+1)*2;			\
+			reporter->defs = realloc(reporter->defs,reporter->defs_cnt*sizeof(void*)); \
+		}							\
+		r = (struct reporter_def*)(reporter->defs[i] = malloc(sizeof(struct reporter_def)));	\
+		r->indent = reporter->indent;				\
+	} while(0);
 
 static void r_symdef(struct symbol *sym)
 {
-	r_symbol(-1, &sym->pos->pos, sym);
+	struct reporter_def *r;
+	PUSH_REPORT(symdefs,r);
+	r->type = REPORT_SYMDEF;
+	r->sym = sym;
+}
+
+static void r_symbol(unsigned mode, struct token *pos, struct symbol *sym)
+{
+	struct reporter_def *r;
+	PUSH_REPORT(syms,r);
+	r->type = REPORT_SYMBOL;
+	r->sym_mode = mode;
+	r->sym_pos = pos;
+	r->sym_sym = sym;
+}
+
+static void r_member(unsigned mode, struct token *pos, struct symbol *sym, struct symbol *mem)
+{
+	struct reporter_def *r;
+	PUSH_REPORT(members,r);
+	r->type = REPORT_MEMBER;
+	r->mem_mode = mode;
+	r->mem_pos = pos;
+	r->mem_sym = sym;
+	r->mem_mem = mem;
 }
 
 int dissect_arr(int argc, char **argv)

@@ -466,11 +466,12 @@ dissect(...)
             a[i+1] = SvPV_nolen(ST(i));
 	}
         a[items+1] = 0;
-	TRACE(printf("sparse_initialize("));
+	TRACE(printf("dissect-sparse_initialize("));
 	for (i = 0; i < items+1; i++) {
 	    TRACE(printf(" \"%s\"",a[i]));
         }
 	TRACE(printf(")\n"));
+	dissect_arr(i, a);
 	free(a);
 
 

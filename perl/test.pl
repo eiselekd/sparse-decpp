@@ -25,7 +25,7 @@ use Devel::Peek;
 );
 
 
-@a = sparse::sparse("../lib.c");
+@a = sparse::dissect("../lib.c");
 
 foreach my $a (@a) {
   if ($a->namespace != sparse::NS_PREPROCESSOR) {

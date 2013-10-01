@@ -16,12 +16,39 @@
 #define	U_R_PTR		(U_R_VAL << U_SHIFT)
 #define	U_W_PTR		(U_W_VAL << U_SHIFT)
 
+enum {
+	REPORT_SYMBOL,
+	REPORT_MEMBER,
+	REPORT_SYMDEF
+};
+
+struct reporter_def {
+	int type, indent;
+	union {
+		struct {
+			struct symbol *sym;
+		};
+		struct {
+			unsigned sym_mode;
+			struct token *sym_pos;
+			struct symbol *sym_sym;
+		};
+		struct {
+			unsigned mem_mode;
+			struct token *mem_pos;
+			struct symbol *mem_sym;
+			struct symbol *mem_mem;
+		};
+	};
+};
+
 struct reporter
 {
 	void (*r_symdef)(struct symbol *);
-
-	void (*r_symbol)(unsigned, struct position *, struct symbol *);
-	void (*r_member)(unsigned, struct position *, struct symbol *, struct symbol *);
+	void (*r_symbol)(unsigned, struct token *, struct symbol *);
+	void (*r_member)(unsigned, struct token *, struct symbol *, struct symbol *);
+	struct reporter_symdef **defs; int defs_pos, defs_cnt;
+	int indent;
 };
 
 extern void dissect(struct symbol_list *, struct reporter *);
