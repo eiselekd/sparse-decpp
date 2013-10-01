@@ -212,7 +212,7 @@ use sparse::tok;
 use sparse::sym;
 use sparse::stmt;
 use sparse::expr;
-
+use sparse::expand;
 
 
 1;

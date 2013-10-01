@@ -193,13 +193,14 @@ struct expansion {
 	int typ;
 	struct token *s, *d;
 	union {
-		struct {
-			struct expansion *m;
-		} marg;
-		struct {
+		struct { /* marg */
+			struct expansion *mac;
+		};
+		struct { /* macro */
+			struct symbol *msym;
 			struct token *tok;
-		} m;
-	} u;
+		};
+	};
 };
 
 #define MAX_STRING 8191

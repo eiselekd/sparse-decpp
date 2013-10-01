@@ -35,6 +35,7 @@ static const char sparseident_class[]  = "sparse::ident";
 static const char sparsectype_class[]  = "sparse::ctype";
 static const char sparsesymctx_class[]  = "sparse::symctx";
 static const char sparsescope_class[]  = "sparse::scope";
+static const char sparseexpand_class[]  = "sparse::expand";
 static HV *sparsepos_class_hv;
 static HV *sparsetok_class_hv;
 static HV *sparsestmt_class_hv;
@@ -44,6 +45,7 @@ static HV *sparseident_class_hv;
 static HV *sparsectype_class_hv;
 static HV *sparsesymctx_class_hv;
 static HV *sparsescope_class_hv;
+static HV *sparseexpand_class_hv;
 static HV *sparsestash;
 
 assert_support (static long sparsepos_count = 0;)
@@ -55,6 +57,7 @@ assert_support (static long sparseident_count = 0;)
 assert_support (static long sparsectype_count = 0;)
 assert_support (static long sparsesymctx_count = 0;)
 assert_support (static long sparsescope_count = 0;)
+assert_support (static long sparseexpand_count = 0;)
 
 typedef struct token     t_token;
 typedef struct position  t_position;
@@ -69,6 +72,7 @@ typedef struct ident     *sparseident_t;
 typedef struct sym_context*sparsesymctx_t;
 typedef struct ctype      *sparsectype_t;
 typedef struct scope      *sparsescope_t;
+typedef struct expansion  *sparseexpand_t;
 typedef struct position  *sparsepos_ptr;
 typedef struct token     *sparsetok_ptr;
 typedef struct statement *sparsestmt_ptr;
@@ -78,6 +82,7 @@ typedef struct ident      *sparseident_ptr;
 typedef struct sym_context*sparsesymctx_ptr;
 typedef struct ctype      *sparsectype_ptr;
 typedef struct scope      *sparsescope_ptr;
+typedef struct expansion  *sparseexpand_ptr;
 
 #define SvSPARSE(s,type)  ((type) SvIV((SV*) SvRV(s)))
 #define SvSPARSE_POS(s)       SvSPARSE(s,sparsepos)
@@ -89,6 +94,7 @@ typedef struct scope      *sparsescope_ptr;
 #define SvSPARSE_CTYPE(s)     SvSPARSE(s,sparsectype)
 #define SvSPARSE_SYMCTX(s)    SvSPARSE(s,sparsesymctx)
 #define SvSPARSE_SCOPE(s)     SvSPARSE(s,sparsescope)
+#define SvSPARSE_EXPAND(s)       SvSPARSE(s,sparseexpand)
 
 #define SPARSE_ASSUME(x,sv,type)			\
   do {							\
@@ -155,6 +161,7 @@ CREATE_SPARSE(sparseident);
 CREATE_SPARSE(sparsectype);
 CREATE_SPARSE(sparsesymctx);
 CREATE_SPARSE(sparsescope);
+CREATE_SPARSE(sparseexpand);
 
 static char *token_types_class[] =  {
 	"sparse::tok::TOKEN_EOF",
@@ -297,6 +304,21 @@ static SV *bless_scope(sparsescope_t e) {
 }
 static SV *bless_sparsescope(sparsesymctx_t e) { return bless_symctx(e); }
 
+static char *expand_types_class[] =  {
+	"sparse::expand::EXPANSION_CMDLINE",
+	"sparse::expand::EXPANSION_STREAM",
+	"sparse::expand::EXPANSION_MACRO",
+	"sparse::expand::EXPANSION_MACROARG",
+	"sparse::expand::EXPANSION_CONCAT",
+	"sparse::expand::EXPANSION_PREPRO",
+};
+static SV *bless_expand(sparseexpand_t e) {
+    if (!e) return &PL_sv_undef;
+    return sv_bless (newsv_sparseexpand(e), gv_stashpv (expand_types_class[e->typ],1));
+}
+static SV *bless_sparseexpand(sparseexpand_t e) { return bless_expand(e); }
+
+
 static void
 class_or_croak (SV *sv, const char *cl)
 {
@@ -347,6 +369,7 @@ BOOT:
     sparsectype_class_hv = gv_stashpv (sparsectype_class, 1);
     sparsesymctx_class_hv = gv_stashpv (sparsesymctx_class, 1);
     sparsescope_class_hv = gv_stashpv (sparsescope_class, 1);
+    sparseexpand_class_hv = gv_stashpv (sparseexpand_class, 1);
 
 INCLUDE_COMMAND: perl constdef.pl
 

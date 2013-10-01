@@ -12,6 +12,20 @@ sparse::stmt::STMT_NONE(sparsestmt):
 sparse::tok(sparsetok):
     sparsepos    : pos              { new=>1, deref=>1 }
     sparsetok    : next             { new=>1 }
+    sparseexpand : e                { new=>1 }
+
+
+sparse::exp(sparseexpand):
+    int   : typ 
+    sparsetok :  s { new=>1 }
+    sparsetok :  d { new=>1 }
+
+sparse::exp::EXPANSION_MACROARG(sparseexpand):
+    sparseexpand :  mac { new=>1 }
+
+sparse::exp::EXPANSION_MACRO(sparseexpand):
+    sparsesym :  msym { new=>1 }
+    sparsetok :  tok  { new=>1 }
 
 sparse::ident(sparseident):
     sparseident : next              { new=>1 }

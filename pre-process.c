@@ -420,7 +420,7 @@ static void expand_arguments_pp(int count, struct arg *args, struct expansion *m
 			memset(e, 0, sizeof(struct expansion));
 			e->typ = EXPANSION_MACROARG;
 			e->s = arg;
-			e->u.marg.m = m;
+			e->mac = m;
 			expand_list(&args[i].expanded);
 			e->d = args[i].expanded;
 		}
@@ -735,7 +735,8 @@ static int expand(struct token **list, struct symbol *sym, struct token *mtok)
 	e->typ = EXPANSION_MACRO;
 	e->s = sym->expansion;
 	e->d = dup_list_e(sym->expansion, e);
-	e->u.m.tok = mtok;
+	e->tok = mtok;
+	e->msym = sym;
 
 	if (sym->arglist) {
 		if (!match_op(scan_next(&token->next), '('))
