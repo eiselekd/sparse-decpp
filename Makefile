@@ -225,5 +225,5 @@ clean-check:
 
 
 sparse-sparse:
-	./test-globals $(ALL_SRC) $(BASIC_CFLAGS)
+	./test-dissect $(ALL_SRC) $(BASIC_CFLAGS)
 

@@ -45,30 +45,30 @@ struct token *pp_tokenlist = NULL;
 
 static const char *gcc_base_dir = GCC_BASE;
 
-struct token *skip_to(struct token *token, int op)
+struct token *skip_to(SCTX_ struct token *token, int op)
 {
 	while (!match_op(token, op) && !eof_token(token))
 		token = token->next;
 	return token;
 }
 
-struct token *expect(struct token *token, int op, const char *where)
+struct token *expect(SCTX_ struct token *token, int op, const char *where)
 {
 	if (!match_op(token, op)) {
 		static struct token bad_token;
 		if (token != &bad_token) {
 			bad_token.next = token;
-			sparse_error(token->pos, "Expected %s %s", show_special(op), where);
-			sparse_error(token->pos, "got %s", show_token(token));
+			sparse_error(sctx_ token->pos, "Expected %s %s", show_special(sctx_ op), where);
+			sparse_error(sctx_ token->pos, "got %s", show_token(sctx_ token));
 		}
 		if (op == ';')
-			return skip_to(token, op);
+			return skip_to(sctx_ token, op);
 		return &bad_token;
 	}
 	return token->next;
 }
 
-unsigned int hexval(unsigned int c)
+unsigned int hexval(SCTX_ unsigned int c)
 {
 	int retval = 256;
 	switch (c) {
@@ -85,13 +85,13 @@ unsigned int hexval(unsigned int c)
 	return retval;
 }
 
-static void do_warn(const char *type, struct position pos, const char * fmt, va_list args)
+static void do_warn(SCTX_ const char *type, struct position pos, const char * fmt, va_list args)
 {
 	static char buffer[512];
 	const char *name;
 
 	vsprintf(buffer, fmt, args);	
-	name = stream_name(pos.stream);
+	name = stream_name(sctx_ pos.stream);
 		
 	fprintf(stderr, "%s:%d:%d: %s%s\n",
 		name, pos.line, pos.pos, type, buffer);
@@ -100,18 +100,18 @@ static void do_warn(const char *type, struct position pos, const char * fmt, va_
 static int max_warnings = 100;
 static int show_info = 1;
 
-void info(struct position pos, const char * fmt, ...)
+void info(SCTX_ struct position pos, const char * fmt, ...)
 {
 	va_list args;
 
 	if (!show_info)
 		return;
 	va_start(args, fmt);
-	do_warn("", pos, fmt, args);
+	do_warn(sctx_ "", pos, fmt, args);
 	va_end(args);
 }
 
-void warning(struct position pos, const char * fmt, ...)
+void warning(SCTX_ struct position pos, const char * fmt, ...)
 {
 	va_list args;
 
@@ -126,11 +126,11 @@ void warning(struct position pos, const char * fmt, ...)
 	}
 
 	va_start(args, fmt);
-	do_warn("warning: ", pos, fmt, args);
+	do_warn(sctx_ "warning: ", pos, fmt, args);
 	va_end(args);
 }	
 
-static void do_error(struct position pos, const char * fmt, va_list args)
+static void do_error(SCTX_ struct position pos, const char * fmt, va_list args)
 {
 	static int errors = 0;
         die_if_error = 1;
@@ -146,37 +146,37 @@ static void do_error(struct position pos, const char * fmt, va_list args)
 		once = 1;
 	}
 
-	do_warn("error: ", pos, fmt, args);
+	do_warn(sctx_ "error: ", pos, fmt, args);
 	errors++;
 }	
 
-void sparse_error(struct position pos, const char * fmt, ...)
+void sparse_error(SCTX_ struct position pos, const char * fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	do_error(pos, fmt, args);
+	do_error(sctx_ pos, fmt, args);
 	va_end(args);
 }
 
-void expression_error(struct expression *expr, const char *fmt, ...)
+void expression_error(SCTX_ struct expression *expr, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	do_error(expr->pos->pos, fmt, args);
+	do_error(sctx_ expr->pos->pos, fmt, args);
 	va_end(args);
 	expr->ctype = &bad_ctype;
 }
 
-void error_die(struct position pos, const char * fmt, ...) 
+void error_die(SCTX_ struct position pos, const char * fmt, ...) 
 {
 	va_list args;
 	va_start(args, fmt);
-	do_warn("error: ", pos, fmt, args);
+	do_warn(sctx_ "error: ", pos, fmt, args);
 	va_end(args);
 	exit(1);
 }
 
-void sparse_die(const char *fmt, ...) 
+void sparse_die(SCTX_ const char *fmt, ...) 
 {
 	va_list args;
 	static char buffer[512];
@@ -242,7 +242,7 @@ static int cmdline_include_nr = 0;
 static char *cmdline_include[CMDLINE_INCLUDE];
 
 
-void add_pre_buffer(const char *fmt, ...)
+void add_pre_buffer(SCTX_ const char *fmt, ...)
 {
 	va_list args;
 	unsigned int size;
@@ -253,7 +253,7 @@ void add_pre_buffer(const char *fmt, ...)
 	va_start(args, fmt);
 	size = vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
-	e = tokenize_buffer(buffer, size, &end);
+	e = tokenize_buffer(sctx_ buffer, size, &end);
 	begin = e->s;
 	if (!pre_buffer_begin)
 		pre_buffer_begin = begin;
@@ -262,13 +262,13 @@ void add_pre_buffer(const char *fmt, ...)
 	pre_buffer_end = end;
 }
 
-static char **handle_switch_D(char *arg, char **next)
+static char **handle_switch_D(SCTX_ char *arg, char **next)
 {
 	const char *name = arg + 1;
 	const char *value = "1";
 
 	if (!*name || isspace(*name))
-		sparse_die("argument to `-D' is missing");
+		sparse_die(sctx_ "argument to `-D' is missing");
 
 	for (;;) {
 		char c;
@@ -281,75 +281,75 @@ static char **handle_switch_D(char *arg, char **next)
 			break;
 		}
 	}
-	add_pre_buffer("#define %s %s\n", name, value);
+	add_pre_buffer(sctx_ "#define %s %s\n", name, value);
 	return next;
 }
 
-static char **handle_switch_E(char *arg, char **next)
+static char **handle_switch_E(SCTX_ char *arg, char **next)
 {
 	if (arg[1] == '\0')
 		preprocess_only = 1;
 	return next;
 }
 
-static char **handle_switch_I(char *arg, char **next)
+static char **handle_switch_I(SCTX_ char *arg, char **next)
 {
 	char *path = arg+1;
 
 	switch (arg[1]) {
 	case '-':
-		add_pre_buffer("#split_include\n");
+		add_pre_buffer(sctx_ "#split_include\n");
 		break;
 
 	case '\0':	/* Plain "-I" */
 		path = *++next;
 		if (!path)
-			sparse_die("missing argument for -I option");
+			sparse_die(sctx_ "missing argument for -I option");
 		/* Fall through */
 	default:
-		add_pre_buffer("#add_include \"%s/\"\n", path);
+		add_pre_buffer(sctx_ "#add_include \"%s/\"\n", path);
 	}
 	return next;
 }
 
-static void add_cmdline_include(char *filename)
+static void add_cmdline_include(SCTX_ char *filename)
 {
 	if (cmdline_include_nr >= CMDLINE_INCLUDE)
-		sparse_die("too many include files for %s\n", filename);
+		sparse_die(sctx_ "too many include files for %s\n", filename);
 	cmdline_include[cmdline_include_nr++] = filename;
 }
 
-static char **handle_switch_i(char *arg, char **next)
+static char **handle_switch_i(SCTX_ char *arg, char **next)
 {
 	if (*next && !strcmp(arg, "include"))
-		add_cmdline_include(*++next);
+		add_cmdline_include(sctx_ *++next);
 	else if (*next && !strcmp(arg, "imacros"))
-		add_cmdline_include(*++next);
+		add_cmdline_include(sctx_ *++next);
 	else if (*next && !strcmp(arg, "isystem")) {
 		char *path = *++next;
 		if (!path)
-			sparse_die("missing argument for -isystem option");
-		add_pre_buffer("#add_isystem \"%s/\"\n", path);
+			sparse_die(sctx_ "missing argument for -isystem option");
+		add_pre_buffer(sctx_ "#add_isystem \"%s/\"\n", path);
 	} else if (*next && !strcmp(arg, "idirafter")) {
 		char *path = *++next;
 		if (!path)
-			sparse_die("missing argument for -idirafter option");
-		add_pre_buffer("#add_dirafter \"%s/\"\n", path);
+			sparse_die(sctx_ "missing argument for -idirafter option");
+		add_pre_buffer(sctx_ "#add_dirafter \"%s/\"\n", path);
 	}
 	return next;
 }
 
-static char **handle_switch_M(char *arg, char **next)
+static char **handle_switch_M(SCTX_ char *arg, char **next)
 {
 	if (!strcmp(arg, "MF") || !strcmp(arg,"MQ") || !strcmp(arg,"MT")) {
 		if (!*next)
-			sparse_die("missing argument for -%s option", arg);
+			sparse_die(sctx_ "missing argument for -%s option", arg);
 		return next + 1;
 	}
 	return next;
 }
 
-static char **handle_switch_m(char *arg, char **next)
+static char **handle_switch_m(SCTX_ char *arg, char **next)
 {
 	if (!strcmp(arg, "m64")) {
 		arch_m64 = 1;
@@ -361,7 +361,7 @@ static char **handle_switch_m(char *arg, char **next)
 	return next;
 }
 
-static void handle_arch_m64_finalize(void)
+static void handle_arch_m64_finalize(SCTX_ void)
 {
 	if (arch_m64) {
 		bits_in_long = 64;
@@ -371,12 +371,12 @@ static void handle_arch_m64_finalize(void)
 		size_t_ctype = &ulong_ctype;
 		ssize_t_ctype = &long_ctype;
 #ifdef __x86_64__
-		add_pre_buffer("#weak_define __x86_64__ 1\n");
+		add_pre_buffer(sctx_ "#weak_define __x86_64__ 1\n");
 #endif
 	}
 }
 
-static void handle_arch_msize_long_finalize(void)
+static void handle_arch_msize_long_finalize(SCTX_ void)
 {
 	if (arch_msize_long) {
 		size_t_ctype = &ulong_ctype;
@@ -384,18 +384,18 @@ static void handle_arch_msize_long_finalize(void)
 	}
 }
 
-static void handle_arch_finalize(void)
+static void handle_arch_finalize(SCTX_ void)
 {
-	handle_arch_m64_finalize();
-	handle_arch_msize_long_finalize();
+	handle_arch_m64_finalize(sctx_ );
+	handle_arch_msize_long_finalize(sctx_ );
 }
 
 
-static char **handle_switch_o(char *arg, char **next)
+static char **handle_switch_o(SCTX_ char *arg, char **next)
 {
 	if (!strcmp (arg, "o")) {       // "-o foo"
 		if (!*++next)
-			sparse_die("argument to '-o' is missing");
+			sparse_die(sctx_ "argument to '-o' is missing");
 	}
 	// else "-ofoo"
 
@@ -439,7 +439,7 @@ enum {
 };
 
 
-static char **handle_onoff_switch(char *arg, char **next, const struct warning warnings[], int n)
+static char **handle_onoff_switch(SCTX_ char *arg, char **next, const struct warning warnings[], int n)
 {
 	int flag = WARNING_ON;
 	char *p = arg + 1;
@@ -471,9 +471,9 @@ static char **handle_onoff_switch(char *arg, char **next, const struct warning w
 	return NULL;
 }
 
-static char **handle_switch_W(char *arg, char **next)
+static char **handle_switch_W(SCTX_ char *arg, char **next)
 {
-	char ** ret = handle_onoff_switch(arg, next, warnings, ARRAY_SIZE(warnings));
+	char ** ret = handle_onoff_switch(sctx_ arg, next, warnings, ARRAY_SIZE(warnings));
 	if (ret)
 		return ret;
 
@@ -487,9 +487,9 @@ static struct warning debugs[] = {
 };
 
 
-static char **handle_switch_v(char *arg, char **next)
+static char **handle_switch_v(SCTX_ char *arg, char **next)
 {
-	char ** ret = handle_onoff_switch(arg, next, debugs, ARRAY_SIZE(debugs));
+	char ** ret = handle_onoff_switch(sctx_ arg, next, debugs, ARRAY_SIZE(debugs));
 	if (ret)
 		return ret;
 
@@ -501,7 +501,7 @@ static char **handle_switch_v(char *arg, char **next)
 }
 
 
-static void handle_onoff_switch_finalize(const struct warning warnings[], int n)
+static void handle_onoff_switch_finalize(SCTX_ const struct warning warnings[], int n)
 {
 	unsigned i;
 
@@ -511,9 +511,9 @@ static void handle_onoff_switch_finalize(const struct warning warnings[], int n)
 	}
 }
 
-static void handle_switch_W_finalize(void)
+static void handle_switch_W_finalize(SCTX_ void)
 {
-	handle_onoff_switch_finalize(warnings, ARRAY_SIZE(warnings));
+	handle_onoff_switch_finalize(sctx_ warnings, ARRAY_SIZE(warnings));
 
 	/* default Wdeclarationafterstatement based on the C dialect */
 	if (-1 == Wdeclarationafterstatement)
@@ -538,19 +538,19 @@ static void handle_switch_W_finalize(void)
 	}
 }
 
-static void handle_switch_v_finalize(void)
+static void handle_switch_v_finalize(SCTX_ void)
 {
-	handle_onoff_switch_finalize(debugs, ARRAY_SIZE(debugs));
+	handle_onoff_switch_finalize(sctx_ debugs, ARRAY_SIZE(debugs));
 }
 
-static char **handle_switch_U(char *arg, char **next)
+static char **handle_switch_U(SCTX_ char *arg, char **next)
 {
 	const char *name = arg + 1;
-	add_pre_buffer ("#undef %s\n", name);
+	add_pre_buffer (sctx_ "#undef %s\n", name);
 	return next;
 }
 
-static char **handle_switch_O(char *arg, char **next)
+static char **handle_switch_O(SCTX_ char *arg, char **next)
 {
 	int level = 1;
 	if (arg[1] >= '0' && arg[1] <= '9')
@@ -560,13 +560,13 @@ static char **handle_switch_O(char *arg, char **next)
 	return next;
 }
 
-static char **handle_switch_ftabstop(char *arg, char **next)
+static char **handle_switch_ftabstop(SCTX_ char *arg, char **next)
 {
 	char *end;
 	unsigned long val;
 
 	if (*arg == '\0')
-		sparse_die("error: missing argument to \"-ftabstop=\"");
+		sparse_die(sctx_ "error: missing argument to \"-ftabstop=\"");
 
 	/* we silently ignore silly values */
 	val = strtoul(arg, &end, 10);
@@ -576,12 +576,12 @@ static char **handle_switch_ftabstop(char *arg, char **next)
 	return next;
 }
 
-static char **handle_switch_f(char *arg, char **next)
+static char **handle_switch_f(SCTX_ char *arg, char **next)
 {
 	arg++;
 
 	if (!strncmp(arg, "tabstop=", 8))
-		return handle_switch_ftabstop(arg+8, next);
+		return handle_switch_ftabstop(sctx_ arg+8, next);
 
 	/* handle switches w/ arguments above, boolean and only boolean below */
 
@@ -592,7 +592,7 @@ static char **handle_switch_f(char *arg, char **next)
 	return next;
 }
 
-static char **handle_switch_G(char *arg, char **next)
+static char **handle_switch_G(SCTX_ char *arg, char **next)
 {
 	if (!strcmp (arg, "G") && *next)
 		return next + 1; // "-G 0"
@@ -600,7 +600,7 @@ static char **handle_switch_G(char *arg, char **next)
 		return next;     // "-G0" or (bogus) terminal "-G"
 }
 
-static char **handle_switch_a(char *arg, char **next)
+static char **handle_switch_a(SCTX_ char *arg, char **next)
 {
 	if (!strcmp (arg, "ansi"))
 		standard = STANDARD_C89;
@@ -608,7 +608,7 @@ static char **handle_switch_a(char *arg, char **next)
 	return next;
 }
 
-static char **handle_switch_s(char *arg, char **next)
+static char **handle_switch_s(SCTX_ char *arg, char **next)
 {
 	if (!strncmp (arg, "std=", 4))
 	{
@@ -634,27 +634,27 @@ static char **handle_switch_s(char *arg, char **next)
 			standard = STANDARD_GNU99;
 
 		else
-			sparse_die ("Unsupported C dialect");
+			sparse_die (sctx_ "Unsupported C dialect");
 	}
 
 	return next;
 }
 
-static char **handle_nostdinc_lib(char *arg, char **next)
+static char **handle_nostdinc_lib(SCTX_ char *arg, char **next)
 {
-	add_pre_buffer("#nostdinc\n");
+	add_pre_buffer(sctx_ "#nostdinc\n");
 	return next;
 }
 
-static char **handle_base_dir(char *arg, char **next)
+static char **handle_base_dir(SCTX_ char *arg, char **next)
 {
 	gcc_base_dir = *++next;
 	if (!gcc_base_dir)
-		sparse_die("missing argument for -gcc-base-dir option");
+		sparse_die(sctx_ "missing argument for -gcc-base-dir option");
 	return next;
 }
 
-static char **handle_version(char *arg, char **next)
+static char **handle_version(SCTX_ char *arg, char **next)
 {
 	printf("%s\n", SPARSE_VERSION);
 	exit(0);
@@ -665,7 +665,7 @@ struct switches {
 	char **(*fn)(char *, char **);
 };
 
-static char **handle_long_options(char *arg, char **next)
+static char **handle_long_options(SCTX_ char *arg, char **next)
 {
 	static struct switches cmd[] = {
 		{ "version", handle_version },
@@ -682,7 +682,7 @@ static char **handle_long_options(char *arg, char **next)
 
 }
 
-static char **handle_switch(char *arg, char **next)
+static char **handle_switch(SCTX_ char *arg, char **next)
 {
 	static struct switches cmd[] = {
 		{ "nostdinc", handle_nostdinc_lib },
@@ -692,22 +692,22 @@ static char **handle_switch(char *arg, char **next)
 	struct switches *s;
 
 	switch (*arg) {
-	case 'D': return handle_switch_D(arg, next);
-	case 'E': return handle_switch_E(arg, next);
-	case 'I': return handle_switch_I(arg, next);
-	case 'i': return handle_switch_i(arg, next);
-	case 'M': return handle_switch_M(arg, next);
-	case 'm': return handle_switch_m(arg, next);
-	case 'o': return handle_switch_o(arg, next);
-	case 'U': return handle_switch_U(arg, next);
-	case 'v': return handle_switch_v(arg, next);
-	case 'W': return handle_switch_W(arg, next);
-	case 'O': return handle_switch_O(arg, next);
-	case 'f': return handle_switch_f(arg, next);
-	case 'G': return handle_switch_G(arg, next);
-	case 'a': return handle_switch_a(arg, next);
-	case 's': return handle_switch_s(arg, next);
-	case '-': return handle_long_options(arg + 1, next);
+	case 'D': return handle_switch_D(sctx_ arg, next);
+	case 'E': return handle_switch_E(sctx_ arg, next);
+	case 'I': return handle_switch_I(sctx_ arg, next);
+	case 'i': return handle_switch_i(sctx_ arg, next);
+	case 'M': return handle_switch_M(sctx_ arg, next);
+	case 'm': return handle_switch_m(sctx_ arg, next);
+	case 'o': return handle_switch_o(sctx_ arg, next);
+	case 'U': return handle_switch_U(sctx_ arg, next);
+	case 'v': return handle_switch_v(sctx_ arg, next);
+	case 'W': return handle_switch_W(sctx_ arg, next);
+	case 'O': return handle_switch_O(sctx_ arg, next);
+	case 'f': return handle_switch_f(sctx_ arg, next);
+	case 'G': return handle_switch_G(sctx_ arg, next);
+	case 'a': return handle_switch_a(sctx_ arg, next);
+	case 's': return handle_switch_s(sctx_ arg, next);
+	case '-': return handle_long_options(sctx_ arg + 1, next);
 	default:
 		break;
 	}
@@ -726,65 +726,65 @@ static char **handle_switch(char *arg, char **next)
 	return next;
 }
 
-void declare_builtin_functions(void)
+void declare_builtin_functions(SCTX_ void)
 {
 	/* Gaah. gcc knows tons of builtin <string.h> functions */
-	add_pre_buffer("extern void *__builtin_memcpy(void *, const void *, __SIZE_TYPE__);\n");
-	add_pre_buffer("extern void *__builtin_mempcpy(void *, const void *, __SIZE_TYPE__);\n");
-	add_pre_buffer("extern void *__builtin_memset(void *, int, __SIZE_TYPE__);\n");
-	add_pre_buffer("extern int __builtin_memcmp(const void *, const void *, __SIZE_TYPE__);\n");
-	add_pre_buffer("extern char *__builtin_strcat(char *, const char *);\n");
-	add_pre_buffer("extern char *__builtin_strncat(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer("extern int __builtin_strcmp(const char *, const char *);\n");
-	add_pre_buffer("extern char *__builtin_strchr(const char *, int);\n");
-	add_pre_buffer("extern char *__builtin_strcpy(char *, const char *);\n");
-	add_pre_buffer("extern char *__builtin_strncpy(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer("extern __SIZE_TYPE__ __builtin_strspn(const char *, const char *);\n");
-	add_pre_buffer("extern __SIZE_TYPE__ __builtin_strcspn(const char *, const char *);\n");
-	add_pre_buffer("extern char * __builtin_strpbrk(const char *, const char *);\n");
-	add_pre_buffer("extern char* __builtin_stpcpy(const char *, const char*);\n");
-	add_pre_buffer("extern __SIZE_TYPE__ __builtin_strlen(const char *);\n");
+	add_pre_buffer(sctx_ "extern void *__builtin_memcpy(void *, const void *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ "extern void *__builtin_mempcpy(void *, const void *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ "extern void *__builtin_memset(void *, int, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_memcmp(const void *, const void *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ "extern char *__builtin_strcat(char *, const char *);\n");
+	add_pre_buffer(sctx_ "extern char *__builtin_strncat(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_strcmp(const char *, const char *);\n");
+	add_pre_buffer(sctx_ "extern char *__builtin_strchr(const char *, int);\n");
+	add_pre_buffer(sctx_ "extern char *__builtin_strcpy(char *, const char *);\n");
+	add_pre_buffer(sctx_ "extern char *__builtin_strncpy(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ "extern __SIZE_TYPE__ __builtin_strspn(const char *, const char *);\n");
+	add_pre_buffer(sctx_ "extern __SIZE_TYPE__ __builtin_strcspn(const char *, const char *);\n");
+	add_pre_buffer(sctx_ "extern char * __builtin_strpbrk(const char *, const char *);\n");
+	add_pre_buffer(sctx_ "extern char* __builtin_stpcpy(const char *, const char*);\n");
+	add_pre_buffer(sctx_ "extern __SIZE_TYPE__ __builtin_strlen(const char *);\n");
 
 	/* And bitwise operations.. */
-	add_pre_buffer("extern int __builtin_clz(int);\n");
-	add_pre_buffer("extern int __builtin_clzl(long);\n");
-	add_pre_buffer("extern int __builtin_clzll(long long);\n");
-	add_pre_buffer("extern int __builtin_ctz(int);\n");
-	add_pre_buffer("extern int __builtin_ctzl(long);\n");
-	add_pre_buffer("extern int __builtin_ctzll(long long);\n");
-	add_pre_buffer("extern int __builtin_ffs(int);\n");
-	add_pre_buffer("extern int __builtin_ffsl(long);\n");
-	add_pre_buffer("extern int __builtin_ffsll(long long);\n");
-	add_pre_buffer("extern int __builtin_popcount(unsigned int);\n");
-	add_pre_buffer("extern int __builtin_popcountl(unsigned long);\n");
-	add_pre_buffer("extern int __builtin_popcountll(unsigned long long);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_clz(int);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_clzl(long);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_clzll(long long);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_ctz(int);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_ctzl(long);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_ctzll(long long);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_ffs(int);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_ffsl(long);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_ffsll(long long);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_popcount(unsigned int);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_popcountl(unsigned long);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_popcountll(unsigned long long);\n");
 
 	/* And byte swaps.. */
-	add_pre_buffer("extern unsigned short __builtin_bswap16(unsigned short);\n");
-	add_pre_buffer("extern unsigned int __builtin_bswap32(unsigned int);\n");
-	add_pre_buffer("extern unsigned long long __builtin_bswap64(unsigned long long);\n");
+	add_pre_buffer(sctx_ "extern unsigned short __builtin_bswap16(unsigned short);\n");
+	add_pre_buffer(sctx_ "extern unsigned int __builtin_bswap32(unsigned int);\n");
+	add_pre_buffer(sctx_ "extern unsigned long long __builtin_bswap64(unsigned long long);\n");
 
 	/* And some random ones.. */
-	add_pre_buffer("extern void *__builtin_return_address(unsigned int);\n");
-	add_pre_buffer("extern void *__builtin_extract_return_addr(void *);\n");
-	add_pre_buffer("extern void *__builtin_frame_address(unsigned int);\n");
-	add_pre_buffer("extern void __builtin_trap(void);\n");
-	add_pre_buffer("extern void *__builtin_alloca(__SIZE_TYPE__);\n");
-	add_pre_buffer("extern void __builtin_prefetch (const void *, ...);\n");
-	add_pre_buffer("extern long __builtin_alpha_extbl(long, long);\n");
-	add_pre_buffer("extern long __builtin_alpha_extwl(long, long);\n");
-	add_pre_buffer("extern long __builtin_alpha_insbl(long, long);\n");
-	add_pre_buffer("extern long __builtin_alpha_inswl(long, long);\n");
-	add_pre_buffer("extern long __builtin_alpha_insql(long, long);\n");
-	add_pre_buffer("extern long __builtin_alpha_inslh(long, long);\n");
-	add_pre_buffer("extern long __builtin_alpha_cmpbge(long, long);\n");
-	add_pre_buffer("extern long __builtin_labs(long);\n");
-	add_pre_buffer("extern double __builtin_fabs(double);\n");
-	add_pre_buffer("extern void __sync_synchronize();\n");
-	add_pre_buffer("extern int __sync_bool_compare_and_swap(void *, ...);\n");
+	add_pre_buffer(sctx_ "extern void *__builtin_return_address(unsigned int);\n");
+	add_pre_buffer(sctx_ "extern void *__builtin_extract_return_addr(void *);\n");
+	add_pre_buffer(sctx_ "extern void *__builtin_frame_address(unsigned int);\n");
+	add_pre_buffer(sctx_ "extern void __builtin_trap(void);\n");
+	add_pre_buffer(sctx_ "extern void *__builtin_alloca(__SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ "extern void __builtin_prefetch (const void *, ...);\n");
+	add_pre_buffer(sctx_ "extern long __builtin_alpha_extbl(long, long);\n");
+	add_pre_buffer(sctx_ "extern long __builtin_alpha_extwl(long, long);\n");
+	add_pre_buffer(sctx_ "extern long __builtin_alpha_insbl(long, long);\n");
+	add_pre_buffer(sctx_ "extern long __builtin_alpha_inswl(long, long);\n");
+	add_pre_buffer(sctx_ "extern long __builtin_alpha_insql(long, long);\n");
+	add_pre_buffer(sctx_ "extern long __builtin_alpha_inslh(long, long);\n");
+	add_pre_buffer(sctx_ "extern long __builtin_alpha_cmpbge(long, long);\n");
+	add_pre_buffer(sctx_ "extern long __builtin_labs(long);\n");
+	add_pre_buffer(sctx_ "extern double __builtin_fabs(double);\n");
+	add_pre_buffer(sctx_ "extern void __sync_synchronize();\n");
+	add_pre_buffer(sctx_ "extern int __sync_bool_compare_and_swap(void *, ...);\n");
 
 	/* Add Blackfin-specific stuff */
-	add_pre_buffer(
+	add_pre_buffer(sctx_ 
 		"#ifdef __bfin__\n"
 		"extern void __builtin_bfin_csync(void);\n"
 		"extern void __builtin_bfin_ssync(void);\n"
@@ -793,44 +793,44 @@ void declare_builtin_functions(void)
 	);
 
 	/* And some floating point stuff.. */
-	add_pre_buffer("extern int __builtin_isgreater(float, float);\n");
-	add_pre_buffer("extern int __builtin_isgreaterequal(float, float);\n");
-	add_pre_buffer("extern int __builtin_isless(float, float);\n");
-	add_pre_buffer("extern int __builtin_islessequal(float, float);\n");
-	add_pre_buffer("extern int __builtin_islessgreater(float, float);\n");
-	add_pre_buffer("extern int __builtin_isunordered(float, float);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_isgreater(float, float);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_isgreaterequal(float, float);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_isless(float, float);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_islessequal(float, float);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_islessgreater(float, float);\n");
+	add_pre_buffer(sctx_ "extern int __builtin_isunordered(float, float);\n");
 
 	/* And some __FORTIFY_SOURCE ones.. */
-	add_pre_buffer ("extern __SIZE_TYPE__ __builtin_object_size(void *, int);\n");
-	add_pre_buffer ("extern void * __builtin___memcpy_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer ("extern void * __builtin___memmove_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer ("extern void * __builtin___mempcpy_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer ("extern void * __builtin___memset_chk(void *, int, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer ("extern int __builtin___sprintf_chk(char *, int, __SIZE_TYPE__, const char *, ...);\n");
-	add_pre_buffer ("extern int __builtin___snprintf_chk(char *, __SIZE_TYPE__, int , __SIZE_TYPE__, const char *, ...);\n");
-	add_pre_buffer ("extern char * __builtin___stpcpy_chk(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer ("extern char * __builtin___strcat_chk(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer ("extern char * __builtin___strcpy_chk(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer ("extern char * __builtin___strncat_chk(char *, const char *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer ("extern char * __builtin___strncpy_chk(char *, const char *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer ("extern int __builtin___vsprintf_chk(char *, int, __SIZE_TYPE__, const char *, __builtin_va_list);\n");
-	add_pre_buffer ("extern int __builtin___vsnprintf_chk(char *, __SIZE_TYPE__, int, __SIZE_TYPE__, const char *, __builtin_va_list ap);\n");
-	add_pre_buffer ("extern void __builtin_unreachable(void);\n");
+	add_pre_buffer (sctx_ "extern __SIZE_TYPE__ __builtin_object_size(void *, int);\n");
+	add_pre_buffer (sctx_ "extern void * __builtin___memcpy_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ "extern void * __builtin___memmove_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ "extern void * __builtin___mempcpy_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ "extern void * __builtin___memset_chk(void *, int, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ "extern int __builtin___sprintf_chk(char *, int, __SIZE_TYPE__, const char *, ...);\n");
+	add_pre_buffer (sctx_ "extern int __builtin___snprintf_chk(char *, __SIZE_TYPE__, int , __SIZE_TYPE__, const char *, ...);\n");
+	add_pre_buffer (sctx_ "extern char * __builtin___stpcpy_chk(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ "extern char * __builtin___strcat_chk(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ "extern char * __builtin___strcpy_chk(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ "extern char * __builtin___strncat_chk(char *, const char *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ "extern char * __builtin___strncpy_chk(char *, const char *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ "extern int __builtin___vsprintf_chk(char *, int, __SIZE_TYPE__, const char *, __builtin_va_list);\n");
+	add_pre_buffer (sctx_ "extern int __builtin___vsnprintf_chk(char *, __SIZE_TYPE__, int, __SIZE_TYPE__, const char *, __builtin_va_list ap);\n");
+	add_pre_buffer (sctx_ "extern void __builtin_unreachable(void);\n");
 }
 
-void create_builtin_stream(void)
+void create_builtin_stream(SCTX_ void)
 {
-	add_pre_buffer("#weak_define __GNUC__ %d\n", gcc_major);
-	add_pre_buffer("#weak_define __GNUC_MINOR__ %d\n", gcc_minor);
-	add_pre_buffer("#weak_define __GNUC_PATCHLEVEL__ %d\n", gcc_patchlevel);
+	add_pre_buffer(sctx_ "#weak_define __GNUC__ %d\n", gcc_major);
+	add_pre_buffer(sctx_ "#weak_define __GNUC_MINOR__ %d\n", gcc_minor);
+	add_pre_buffer(sctx_ "#weak_define __GNUC_PATCHLEVEL__ %d\n", gcc_patchlevel);
 
 	/* We add compiler headers path here because we have to parse
 	 * the arguments to get it, falling back to default. */
-	add_pre_buffer("#add_system \"%s/include\"\n", gcc_base_dir);
-	add_pre_buffer("#add_system \"%s/include-fixed\"\n", gcc_base_dir);
+	add_pre_buffer(sctx_ "#add_system \"%s/include\"\n", gcc_base_dir);
+	add_pre_buffer(sctx_ "#add_system \"%s/include-fixed\"\n", gcc_base_dir);
 
-	add_pre_buffer("#define __extension__\n");
-	add_pre_buffer("#define __pragma__\n");
+	add_pre_buffer(sctx_ "#define __extension__\n");
+	add_pre_buffer(sctx_ "#define __pragma__\n");
 
 	// gcc defines __SIZE_TYPE__ to be size_t.  For linux/i86 and
 	// solaris/sparc that is really "unsigned int" and for linux/x86_64
@@ -838,71 +838,71 @@ void create_builtin_stream(void)
 	// get away with this.  We need the #weak_define as cgcc will define
 	// the right __SIZE_TYPE__.
 	if (size_t_ctype == &ulong_ctype)
-		add_pre_buffer("#weak_define __SIZE_TYPE__ long unsigned int\n");
+		add_pre_buffer(sctx_ "#weak_define __SIZE_TYPE__ long unsigned int\n");
 	else
-		add_pre_buffer("#weak_define __SIZE_TYPE__ unsigned int\n");
-	add_pre_buffer("#weak_define __STDC__ 1\n");
+		add_pre_buffer(sctx_ "#weak_define __SIZE_TYPE__ unsigned int\n");
+	add_pre_buffer(sctx_ "#weak_define __STDC__ 1\n");
 
 	switch (standard)
 	{
 		case STANDARD_C89:
-			add_pre_buffer("#weak_define __STRICT_ANSI__\n");
+			add_pre_buffer(sctx_ "#weak_define __STRICT_ANSI__\n");
 			break;
 
 		case STANDARD_C94:
-			add_pre_buffer("#weak_define __STDC_VERSION__ 199409L\n");
-			add_pre_buffer("#weak_define __STRICT_ANSI__\n");
+			add_pre_buffer(sctx_ "#weak_define __STDC_VERSION__ 199409L\n");
+			add_pre_buffer(sctx_ "#weak_define __STRICT_ANSI__\n");
 			break;
 
 		case STANDARD_C99:
-			add_pre_buffer("#weak_define __STDC_VERSION__ 199901L\n");
-			add_pre_buffer("#weak_define __STRICT_ANSI__\n");
+			add_pre_buffer(sctx_ "#weak_define __STDC_VERSION__ 199901L\n");
+			add_pre_buffer(sctx_ "#weak_define __STRICT_ANSI__\n");
 			break;
 
 		case STANDARD_GNU89:
 			break;
 
 		case STANDARD_GNU99:
-			add_pre_buffer("#weak_define __STDC_VERSION__ 199901L\n");
+			add_pre_buffer(sctx_ "#weak_define __STDC_VERSION__ 199901L\n");
 			break;
 
 		default:
 			assert (0);
 	}
 
-	add_pre_buffer("#define __builtin_stdarg_start(a,b) ((a) = (__builtin_va_list)(&(b)))\n");
-	add_pre_buffer("#define __builtin_va_start(a,b) ((a) = (__builtin_va_list)(&(b)))\n");
-	add_pre_buffer("#define __builtin_ms_va_start(a,b) ((a) = (__builtin_ms_va_list)(&(b)))\n");
-	add_pre_buffer("#define __builtin_va_arg(arg,type)  ({ type __va_arg_ret = *(type *)(arg); arg += sizeof(type); __va_arg_ret; })\n");
-	add_pre_buffer("#define __builtin_va_alist (*(void *)0)\n");
-	add_pre_buffer("#define __builtin_va_arg_incr(x) ((x) + 1)\n");
-	add_pre_buffer("#define __builtin_va_copy(dest, src) ({ dest = src; (void)0; })\n");
-	add_pre_buffer("#define __builtin_va_end(arg)\n");
-	add_pre_buffer("#define __builtin_ms_va_end(arg)\n");
+	add_pre_buffer(sctx_ "#define __builtin_stdarg_start(a,b) ((a) = (__builtin_va_list)(&(b)))\n");
+	add_pre_buffer(sctx_ "#define __builtin_va_start(a,b) ((a) = (__builtin_va_list)(&(b)))\n");
+	add_pre_buffer(sctx_ "#define __builtin_ms_va_start(a,b) ((a) = (__builtin_ms_va_list)(&(b)))\n");
+	add_pre_buffer(sctx_ "#define __builtin_va_arg(arg,type)  ({ type __va_arg_ret = *(type *)(arg); arg += sizeof(type); __va_arg_ret; })\n");
+	add_pre_buffer(sctx_ "#define __builtin_va_alist (*(void *)0)\n");
+	add_pre_buffer(sctx_ "#define __builtin_va_arg_incr(x) ((x) + 1)\n");
+	add_pre_buffer(sctx_ "#define __builtin_va_copy(dest, src) ({ dest = src; (void)0; })\n");
+	add_pre_buffer(sctx_ "#define __builtin_va_end(arg)\n");
+	add_pre_buffer(sctx_ "#define __builtin_ms_va_end(arg)\n");
 
 	/* FIXME! We need to do these as special magic macros at expansion time! */
-	add_pre_buffer("#define __BASE_FILE__ \"base_file.c\"\n");
+	add_pre_buffer(sctx_ "#define __BASE_FILE__ \"base_file.c\"\n");
 
 	if (optimize)
-		add_pre_buffer("#define __OPTIMIZE__ 1\n");
+		add_pre_buffer(sctx_ "#define __OPTIMIZE__ 1\n");
 	if (optimize_size)
-		add_pre_buffer("#define __OPTIMIZE_SIZE__ 1\n");
+		add_pre_buffer(sctx_ "#define __OPTIMIZE_SIZE__ 1\n");
 
 	/* GCC defines these for limits.h */
-	add_pre_buffer("#weak_define __SHRT_MAX__ " SPARSE_STRINGIFY(__SHRT_MAX__) "\n");
-	add_pre_buffer("#weak_define __SCHAR_MAX__ " SPARSE_STRINGIFY(__SCHAR_MAX__) "\n");
-	add_pre_buffer("#weak_define __INT_MAX__ " SPARSE_STRINGIFY(__INT_MAX__) "\n");
-	add_pre_buffer("#weak_define __LONG_MAX__ " SPARSE_STRINGIFY(__LONG_MAX__) "\n");
-	add_pre_buffer("#weak_define __LONG_LONG_MAX__ " SPARSE_STRINGIFY(__LONG_LONG_MAX__) "\n");
-	add_pre_buffer("#weak_define __WCHAR_MAX__ " SPARSE_STRINGIFY(__WCHAR_MAX__) "\n");
-	add_pre_buffer("#weak_define __SIZEOF_POINTER__ " SPARSE_STRINGIFY(__SIZEOF_POINTER__) "\n");
+	add_pre_buffer(sctx_ "#weak_define __SHRT_MAX__ " SPARSE_STRINGIFY(__SHRT_MAX__) "\n");
+	add_pre_buffer(sctx_ "#weak_define __SCHAR_MAX__ " SPARSE_STRINGIFY(__SCHAR_MAX__) "\n");
+	add_pre_buffer(sctx_ "#weak_define __INT_MAX__ " SPARSE_STRINGIFY(__INT_MAX__) "\n");
+	add_pre_buffer(sctx_ "#weak_define __LONG_MAX__ " SPARSE_STRINGIFY(__LONG_MAX__) "\n");
+	add_pre_buffer(sctx_ "#weak_define __LONG_LONG_MAX__ " SPARSE_STRINGIFY(__LONG_LONG_MAX__) "\n");
+	add_pre_buffer(sctx_ "#weak_define __WCHAR_MAX__ " SPARSE_STRINGIFY(__WCHAR_MAX__) "\n");
+	add_pre_buffer(sctx_ "#weak_define __SIZEOF_POINTER__ " SPARSE_STRINGIFY(__SIZEOF_POINTER__) "\n");
 }
 
-static struct symbol_list *sparse_tokenstream(struct expansion *e)
+static struct symbol_list *sparse_tokenstream(SCTX_ struct expansion *e)
 {
 	struct token *token;
 	// Preprocess the stream
-	token = preprocess(e);
+	token = preprocess(sctx_ e);
 
 	pp_tokenlist = token;
 	if (preprocess_only) {
@@ -918,7 +918,7 @@ static struct symbol_list *sparse_tokenstream(struct expansion *e)
 				if (prec > 4)
 					prec = 4;
 			}
-			printf("%s%.*s", show_token(token), prec, separator);
+			printf("%s%.*s", show_token(sctx_ token), prec, separator);
 			token = next;
 		}
 		putchar('\n');
@@ -932,7 +932,7 @@ static struct symbol_list *sparse_tokenstream(struct expansion *e)
 	return translation_unit_used_list;
 }
 
-static struct symbol_list *sparse_file(const char *filename)
+static struct symbol_list *sparse_file(SCTX_ const char *filename)
 {
 	int fd;
 	struct expansion *e;
@@ -942,14 +942,14 @@ static struct symbol_list *sparse_file(const char *filename)
 	} else {
 		fd = open(filename, O_RDONLY);
 		if (fd < 0)
-			sparse_die("No such file: %s", filename);
+			sparse_die(sctx_ "No such file: %s", filename);
 	}
 
 	// Tokenize the input stream
-	e = tokenize(filename, fd, NULL, includepath);
+	e = tokenize(sctx_ filename, fd, NULL, includepath);
 	close(fd);
 
-	return sparse_tokenstream(e);
+	return sparse_tokenstream(sctx_ e);
 }
 
 /*
@@ -961,31 +961,31 @@ static struct symbol_list *sparse_file(const char *filename)
  * affect all subsequent files too, i.e. we can have non-local
  * behaviour between files!
  */
-static struct symbol_list *sparse_initial(void)
+static struct symbol_list *sparse_initial(SCTX_ void)
 {
 	int i; struct expansion *e;
 
 	// Prepend any "include" file to the stream.
 	// We're in global scope, it will affect all files!
 	for (i = 0; i < cmdline_include_nr; i++)
-		add_pre_buffer("#argv_include \"%s\"\n", cmdline_include[i]);
+		add_pre_buffer(sctx_ "#argv_include \"%s\"\n", cmdline_include[i]);
 	
-	e = __alloc_expansion(0);
+	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_CMDLINE;
 	e->s = pre_buffer_begin;
 	list_e(e->s, e);
 
-	return sparse_tokenstream(e);
+	return sparse_tokenstream(sctx_ e);
 }
 
-struct symbol_list *sparse_initialize(int argc, char **argv, struct string_list **filelist)
+struct symbol_list *sparse_initialize(SCTX_ int argc, char **argv, struct string_list **filelist)
 {
 	char **args;
 	struct symbol_list *list;
 
 	// Initialize symbol stream first, so that we can add defines etc
-	init_symbols();
+	init_symbols(sctx_ );
 
 	args = argv;
 	for (;;) {
@@ -994,71 +994,71 @@ struct symbol_list *sparse_initialize(int argc, char **argv, struct string_list 
 			break;
 
 		if (arg[0] == '-' && arg[1]) {
-			args = handle_switch(arg+1, args);
+			args = handle_switch(sctx_ arg+1, args);
 			continue;
 		}
 		add_ptr_list_notag(filelist, arg);
 	}
-	handle_switch_W_finalize();
-	handle_switch_v_finalize();
+	handle_switch_W_finalize(sctx_ );
+	handle_switch_v_finalize(sctx_ );
 
-	handle_arch_finalize();
+	handle_arch_finalize(sctx_ );
 
 	list = NULL;
 	if (!ptr_list_empty(filelist)) {
 		// Initialize type system
-		init_ctype();
+		init_ctype(sctx_ );
 
-		create_builtin_stream();
-		add_pre_buffer("#define __CHECKER__ 1\n");
+		create_builtin_stream(sctx_ );
+		add_pre_buffer(sctx_ "#define __CHECKER__ 1\n");
 		if (!preprocess_only)
-			declare_builtin_functions();
+			declare_builtin_functions(sctx_ );
 
-		list = sparse_initial();
+		list = sparse_initial(sctx_ );
 
 		/*
 		 * Protect the initial token allocations, since
 		 * they need to survive all the others
 		 */
-		protect_token_alloc();
+		protect_token_alloc(sctx_ );
 	}
 	return list;
 }
 
-struct symbol_list * sparse_keep_tokens(char *filename)
+struct symbol_list * sparse_keep_tokens(SCTX_ char *filename)
 {
 	struct symbol_list *res;
 
 	/* Clear previous symbol list */
 	translation_unit_used_list = NULL;
 
-	new_file_scope();
-	res = sparse_file(filename);
+	new_file_scope(sctx_ );
+	res = sparse_file(sctx_ filename);
 
 	/* And return it */
 	return res;
 }
 
 
-struct symbol_list * __sparse(char *filename)
+struct symbol_list * __sparse(SCTX_ char *filename)
 {
 	struct symbol_list *res;
 
-	res = sparse_keep_tokens(filename);
+	res = sparse_keep_tokens(sctx_ filename);
 
 	/* Drop the tokens for this file after parsing */
-	clear_token_alloc();
+	clear_token_alloc(sctx_ );
 
 	/* And return it */
 	return res;
 }
 
-struct symbol_list * sparse(char *filename)
+struct symbol_list * sparse(SCTX_ char *filename)
 {
-	struct symbol_list *res = __sparse(filename);
+	struct symbol_list *res = __sparse(sctx_ filename);
 
 	/* Evaluate the complete symbol list */
-	evaluate_symbol_list(res);
+	evaluate_symbol_list(sctx_ res);
 
 	return res;
 }

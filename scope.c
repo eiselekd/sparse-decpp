@@ -24,23 +24,23 @@ struct scope	*block_scope = &builtin_scope,		// regular automatic variables etc
 		*file_scope = &builtin_scope,		// static
 		*global_scope = &builtin_scope;		// externally visible
 
-void bind_scope(struct symbol *sym, struct scope *scope)
+void bind_scope(SCTX_ struct symbol *sym, struct scope *scope)
 {
 	sym->scope = scope;
 	add_symbol(&scope->symbols, sym);
 }
 
-static void start_scope(struct scope **s)
+static void start_scope(SCTX_ struct scope **s)
 {
-	struct scope *scope = __alloc_scope(0);
+	struct scope *scope = __alloc_scope(sctx_ 0);
 	memset(scope, 0, sizeof(*scope));
 	scope->next = *s;
 	*s = scope;
 }
 
-void start_file_scope(void)
+void start_file_scope(SCTX_ void)
 {
-	struct scope *scope = __alloc_scope(0);
+	struct scope *scope = __alloc_scope(sctx_ 0);
 
 	memset(scope, 0, sizeof(*scope));
 	scope->next = &builtin_scope;
@@ -51,18 +51,18 @@ void start_file_scope(void)
 	block_scope = scope;
 }
 
-void start_symbol_scope(void)
+void start_symbol_scope(SCTX_ void)
 {
-	start_scope(&block_scope);
+	start_scope(sctx_ &block_scope);
 }
 
-void start_function_scope(void)
+void start_function_scope(SCTX_ void)
 {
-	start_scope(&function_scope);
-	start_scope(&block_scope);
+	start_scope(sctx_ &function_scope);
+	start_scope(sctx_ &block_scope);
 }
 
-static void remove_symbol_scope(struct symbol *sym)
+static void remove_symbol_scope(SCTX_ struct symbol *sym)
 {
 	struct symbol **ptr = &sym->ident->symbols;
 
@@ -71,7 +71,7 @@ static void remove_symbol_scope(struct symbol *sym)
 	*ptr = sym->next_id;
 }
 
-static void end_scope(struct scope **s)
+static void end_scope(SCTX_ struct scope **s)
 {
 	struct scope *scope = *s;
 	struct symbol_list *symbols = scope->symbols;
@@ -80,34 +80,34 @@ static void end_scope(struct scope **s)
 	*s = scope->next;
 	scope->symbols = NULL;
 	FOR_EACH_PTR(symbols, sym) {
-		remove_symbol_scope(sym);
+		remove_symbol_scope(sctx_ sym);
 	} END_FOR_EACH_PTR(sym);
 }
 
-void end_file_scope(void)
+void end_file_scope(SCTX_ void)
 {
-	end_scope(&file_scope);
+	end_scope(sctx_ &file_scope);
 }
 
-void new_file_scope(void)
+void new_file_scope(SCTX_ void)
 {
 	if (file_scope != &builtin_scope)
-		end_file_scope();
-	start_file_scope();
+		end_file_scope(sctx_ );
+	start_file_scope(sctx_ );
 }
 
-void end_symbol_scope(void)
+void end_symbol_scope(SCTX_ void)
 {
-	end_scope(&block_scope);
+	end_scope(sctx_ &block_scope);
 }
 
-void end_function_scope(void)
+void end_function_scope(SCTX_ void)
 {
-	end_scope(&block_scope);
-	end_scope(&function_scope);
+	end_scope(sctx_ &block_scope);
+	end_scope(sctx_ &function_scope);
 }
 
-int is_outer_scope(struct scope *scope)
+int is_outer_scope(SCTX_ struct scope *scope)
 {
 	if (scope == block_scope)
 		return 0;
@@ -115,4 +115,3 @@ int is_outer_scope(struct scope *scope)
 		return 0;
 	return 1;
 }
-

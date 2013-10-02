@@ -16,7 +16,7 @@
 __DECLARE_ALLOCATOR(struct ptr_list, ptrlist);
 __ALLOCATOR(struct ptr_list, "ptr list", ptrlist, 0);
 
-int ptr_list_size(struct ptr_list *head)
+int ptr_list_size(SCTX_ struct ptr_list *head)
 {
 	int nr = 0;
 
@@ -37,7 +37,7 @@ int ptr_list_size(struct ptr_list *head)
  * be "void *x[]", but we want to let people fill in any kind
  * of pointer array, so let's just call it "void **".
  */
-int linearize_ptr_list(struct ptr_list *head, void **arr, int max)
+int linearize_ptr_list(SCTX_ struct ptr_list *head, void **arr, int max)
 {
 	int nr = 0;
 	if (head && max > 0) {
@@ -64,7 +64,7 @@ int linearize_ptr_list(struct ptr_list *head, void **arr, int max)
  * any empty blocks left (empty blocks upset the
  * walking code
  */
-void pack_ptr_list(struct ptr_list **listp)
+void pack_ptr_list(SCTX_ struct ptr_list **listp)
 {
 	struct ptr_list *head = *listp;
 
@@ -77,14 +77,14 @@ restart:
 			if (!entry->nr) {
 				struct ptr_list *prev;
 				if (next == entry) {
-					__free_ptrlist(entry);
+					__free_ptrlist(sctx_ entry);
 					*listp = NULL;
 					return;
 				}
 				prev = entry->prev;
 				prev->next = next;
 				next->prev = prev;
-				__free_ptrlist(entry);
+				__free_ptrlist(sctx_ entry);
 				if (entry == head) {
 					*listp = next;
 					head = next;
@@ -97,10 +97,10 @@ restart:
 	}
 }		
 
-void split_ptr_list_head(struct ptr_list *head)
+void split_ptr_list_head(SCTX_ struct ptr_list *head)
 {
 	int old = head->nr, nr = old / 2;
-	struct ptr_list *newlist = __alloc_ptrlist(0);
+	struct ptr_list *newlist = __alloc_ptrlist(sctx_ 0);
 	struct ptr_list *next = head->next;
 
 	old -= nr;
@@ -114,7 +114,7 @@ void split_ptr_list_head(struct ptr_list *head)
 	memset(head->list + old, 0xf0, nr * sizeof(void *));
 }
 
-void **__add_ptr_list(struct ptr_list **listp, void *ptr, unsigned long tag)
+void **__add_ptr_list(SCTX_ struct ptr_list **listp, void *ptr, unsigned long tag)
 {
 	struct ptr_list *list = *listp;
 	struct ptr_list *last = NULL; /* gcc complains needlessly */
@@ -127,7 +127,7 @@ void **__add_ptr_list(struct ptr_list **listp, void *ptr, unsigned long tag)
 	ptr = (void *)(tag | (unsigned long)ptr);
 
 	if (!list || (nr = (last = list->prev)->nr) >= LIST_NODE_NR) {
-		struct ptr_list *newlist = __alloc_ptrlist(0);
+		struct ptr_list *newlist = __alloc_ptrlist(sctx_ 0);
 		if (!list) {
 			newlist->next = newlist;
 			newlist->prev = newlist;
@@ -148,7 +148,7 @@ void **__add_ptr_list(struct ptr_list **listp, void *ptr, unsigned long tag)
 	return ret;
 }
 
-int delete_ptr_list_entry(struct ptr_list **list, void *entry, int count)
+int delete_ptr_list_entry(SCTX_ struct ptr_list **list, void *entry, int count)
 {
 	void *ptr;
 
@@ -161,11 +161,11 @@ int delete_ptr_list_entry(struct ptr_list **list, void *entry, int count)
 	} END_FOR_EACH_PTR(ptr);
 	assert(count <= 0);
 out:
-	pack_ptr_list(list);
+	pack_ptr_list(sctx_ list);
 	return count;
 }
 
-int replace_ptr_list_entry(struct ptr_list **list, void *old_ptr, void *new_ptr, int count)
+int replace_ptr_list_entry(SCTX_ struct ptr_list **list, void *old_ptr, void *new_ptr, int count)
 {
 	void *ptr;
 
@@ -182,7 +182,7 @@ out:
 }
 
 /* This removes the last entry, but doesn't pack the ptr list */
-void * undo_ptr_list_last(struct ptr_list **head)
+void * undo_ptr_list_last(SCTX_ struct ptr_list **head)
 {
 	struct ptr_list *last, *first = *head;
 
@@ -202,7 +202,7 @@ void * undo_ptr_list_last(struct ptr_list **head)
 	return NULL;
 }
 
-void * delete_ptr_list_last(struct ptr_list **head)
+void * delete_ptr_list_last(SCTX_ struct ptr_list **head)
 {
 	void *ptr = NULL;
 	struct ptr_list *last, *first = *head;
@@ -217,12 +217,12 @@ void * delete_ptr_list_last(struct ptr_list **head)
 		last->prev->next = first;
 		if (last == first)
 			*head = NULL;
-		__free_ptrlist(last);
+		__free_ptrlist(sctx_ last);
 	}
 	return ptr;
 }
 
-void concat_ptr_list(struct ptr_list *a, struct ptr_list **b)
+void concat_ptr_list(SCTX_ struct ptr_list *a, struct ptr_list **b)
 {
 	void *entry;
 	FOR_EACH_PTR(a, entry) {
@@ -230,7 +230,7 @@ void concat_ptr_list(struct ptr_list *a, struct ptr_list **b)
 	} END_FOR_EACH_PTR(entry);
 }
 
-void __free_ptr_list(struct ptr_list **listp)
+void __free_ptr_list(SCTX_ struct ptr_list **listp)
 {
 	struct ptr_list *tmp, *list = *listp;
 
@@ -241,7 +241,7 @@ void __free_ptr_list(struct ptr_list **listp)
 	while (list) {
 		tmp = list;
 		list = list->next;
-		__free_ptrlist(tmp);
+		__free_ptrlist(sctx_ tmp);
 	}
 
 	*listp = NULL;

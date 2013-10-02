@@ -51,6 +51,8 @@ struct reporter
 	int indent;
 };
 
+extern struct reporter *reporter;
+
 extern void dissect(struct symbol_list *, struct reporter *);
 extern int dissect_arr(int argc, char **argv);
 

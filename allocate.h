@@ -1,6 +1,8 @@
 #ifndef ALLOCATE_H
 #define ALLOCATE_H
 
+#include "ctx.h"
+
 struct allocation_blob {
 	struct allocation_blob *next;
 	unsigned int left, offset;
@@ -39,25 +41,25 @@ extern void show_allocations(struct allocator_struct *);
 		.chunking = CHUNK,				\
 		.nofree = norel					\
 	};							\
-	type *__alloc_##x(int extra)				\
+	type *__alloc_##x(SCTX_ int extra)			\
 	{							\
 		return allocate(&x##_allocator, objsize+extra);	\
 	}							\
-	void __free_##x(type *entry)				\
+	void __free_##x(SCTX_  type *entry)			\
 	{							\
 		if ((!x##_allocator.nofree))			\
 			free_one_entry(&x##_allocator, entry);	\
 	}							\
-	void show_##x##_alloc(void)				\
+	void show_##x##_alloc(SCTX)				\
 	{							\
 		show_allocations(&x##_allocator);		\
 	}							\
-	void clear_##x##_alloc(void)				\
+	void clear_##x##_alloc(SCTX)				\
 	{							\
 		if ((!x##_allocator.nofree))			\
 			drop_all_allocations(&x##_allocator);	\
 	}							\
-	void protect_##x##_alloc(void)				\
+	void protect_##x##_alloc(SCTX)				\
 	{							\
 		protect_allocations(&x##_allocator);		\
 	}

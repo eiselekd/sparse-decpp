@@ -25,13 +25,13 @@
 pseudo_t linearize_statement(struct entrypoint *ep, struct statement *stmt);
 pseudo_t linearize_expression(struct entrypoint *ep, struct expression *expr);
 
-static pseudo_t add_binary_op(struct entrypoint *ep, struct symbol *ctype, int op, pseudo_t left, pseudo_t right);
-static pseudo_t add_setval(struct entrypoint *ep, struct symbol *ctype, struct expression *val);
-static pseudo_t linearize_one_symbol(struct entrypoint *ep, struct symbol *sym);
+static pseudo_t add_binary_op(SCTX_ struct entrypoint *ep, struct symbol *ctype, int op, pseudo_t left, pseudo_t right);
+static pseudo_t add_setval(SCTX_ struct entrypoint *ep, struct symbol *ctype, struct expression *val);
+static pseudo_t linearize_one_symbol(SCTX_ struct entrypoint *ep, struct symbol *sym);
 
 struct access_data;
-static pseudo_t add_load(struct entrypoint *ep, struct access_data *);
-static pseudo_t linearize_initializer(struct entrypoint *ep, struct expression *initializer, struct access_data *);
+static pseudo_t add_load(SCTX_ struct entrypoint *ep, struct access_data *);
+static pseudo_t linearize_initializer(SCTX_ struct entrypoint *ep, struct expression *initializer, struct access_data *);
 
 struct pseudo void_pseudo = {};
 
@@ -39,9 +39,9 @@ static struct position current_pos;
 
 ALLOCATOR(pseudo_user, "pseudo_user", 0);
 
-static struct instruction *alloc_instruction(int opcode, int size)
+static struct instruction *alloc_instruction(SCTX_ int opcode, int size)
 {
-	struct instruction * insn = __alloc_instruction(0);
+	struct instruction * insn = __alloc_instruction(sctx_ 0);
 	insn->opcode = opcode;
 	insn->size = size;
 	insn->pos = current_pos;
@@ -53,30 +53,30 @@ static inline int type_size(struct symbol *type)
 	return type ? type->bit_size > 0 ? type->bit_size : 0 : 0;
 }
 
-static struct instruction *alloc_typed_instruction(int opcode, struct symbol *type)
+static struct instruction *alloc_typed_instruction(SCTX_ int opcode, struct symbol *type)
 {
-	struct instruction *insn = alloc_instruction(opcode, type_size(type));
+	struct instruction *insn = alloc_instruction(sctx_ opcode, type_size(type));
 	insn->type = type;
 	return insn;
 }
 
-static struct entrypoint *alloc_entrypoint(void)
+static struct entrypoint *alloc_entrypoint(SCTX_ void)
 {
-	return __alloc_entrypoint(0);
+	return __alloc_entrypoint(sctx_ 0);
 }
 
-static struct basic_block *alloc_basic_block(struct entrypoint *ep, struct token *pos)
+static struct basic_block *alloc_basic_block(SCTX_ struct entrypoint *ep, struct token *pos)
 {
-	struct basic_block *bb = __alloc_basic_block(0);
+	struct basic_block *bb = __alloc_basic_block(sctx_ 0);
 	bb->context = -1;
 	bb->pos = pos;
 	bb->ep = ep;
 	return bb;
 }
 
-static struct multijmp *alloc_multijmp(struct basic_block *target, int begin, int end)
+static struct multijmp *alloc_multijmp(SCTX_ struct basic_block *target, int begin, int end)
 {
-	struct multijmp *multijmp = __alloc_multijmp(0);
+	struct multijmp *multijmp = __alloc_multijmp(sctx_ 0);
 	multijmp->target = target;
 	multijmp->begin = begin;
 	multijmp->end = end;
@@ -91,7 +91,7 @@ static inline int regno(pseudo_t n)
 	return retval;
 }
 
-const char *show_pseudo(pseudo_t pseudo)
+const char *show_pseudo(SCTX_ pseudo_t pseudo)
 {
 	static int n;
 	static char buffer[4][64];
@@ -113,7 +113,7 @@ const char *show_pseudo(pseudo_t pseudo)
 			break;
 		}
 		if (sym->ident) {
-			snprintf(buf, 64, "%s", show_ident(sym->ident));
+			snprintf(buf, 64, "%s", show_ident(sctx_ sym->ident));
 			break;
 		}
 		expr = sym->initializer;
@@ -124,7 +124,7 @@ const char *show_pseudo(pseudo_t pseudo)
 				snprintf(buf, 64, "<symbol value: %lld>", expr->value);
 				break;
 			case EXPR_STRING:
-				return show_string(expr->string);
+				return show_string(sctx_ expr->string);
 			default:
 				break;
 			}
@@ -134,7 +134,7 @@ const char *show_pseudo(pseudo_t pseudo)
 	case PSEUDO_REG:
 		i = snprintf(buf, 64, "%%r%d", pseudo->nr);
 		if (pseudo->ident)
-			sprintf(buf+i, "(%s)", show_ident(pseudo->ident));
+			sprintf(buf+i, "(%s)", show_ident(sctx_ pseudo->ident));
 		break;
 	case PSEUDO_VAL: {
 		long long value = pseudo->value;
@@ -150,7 +150,7 @@ const char *show_pseudo(pseudo_t pseudo)
 	case PSEUDO_PHI:
 		i = snprintf(buf, 64, "%%phi%d", pseudo->nr);
 		if (pseudo->ident)
-			sprintf(buf+i, "(%s)", show_ident(pseudo->ident));
+			sprintf(buf+i, "(%s)", show_ident(sctx_ pseudo->ident));
 		break;
 	default:
 		snprintf(buf, 64, "<bad pseudo type %d>", pseudo->type);
@@ -246,33 +246,33 @@ static const char *opcodes[] = {
 	[OP_COPY] = "copy",
 };
 
-static char *show_asm_constraints(char *buf, const char *sep, struct asm_constraint_list *list)
+static char *show_asm_constraints(SCTX_ char *buf, const char *sep, struct asm_constraint_list *list)
 {
 	struct asm_constraint *entry;
 
 	FOR_EACH_PTR(list, entry) {
 		buf += sprintf(buf, "%s\"%s\"", sep, entry->constraint);
 		if (entry->pseudo)
-			buf += sprintf(buf, " (%s)", show_pseudo(entry->pseudo));
+			buf += sprintf(buf, " (%s)", show_pseudo(sctx_ entry->pseudo));
 		if (entry->ident)
-			buf += sprintf(buf, " [%s]", show_ident(entry->ident));
+			buf += sprintf(buf, " [%s]", show_ident(sctx_ entry->ident));
 		sep = ", ";		
 	} END_FOR_EACH_PTR(entry);
 	return buf;
 }
 
-static char *show_asm(char *buf, struct instruction *insn)
+static char *show_asm(SCTX_ char *buf, struct instruction *insn)
 {
 	struct asm_rules *rules = insn->asm_rules;
 
 	buf += sprintf(buf, "\"%s\"", insn->string);
-	buf = show_asm_constraints(buf, "\n\t\tout: ", rules->outputs);
-	buf = show_asm_constraints(buf, "\n\t\tin: ", rules->inputs);
-	buf = show_asm_constraints(buf, "\n\t\tclobber: ", rules->clobbers);
+	buf = show_asm_constraints(sctx_ buf, "\n\t\tout: ", rules->outputs);
+	buf = show_asm_constraints(sctx_ buf, "\n\t\tin: ", rules->inputs);
+	buf = show_asm_constraints(sctx_ buf, "\n\t\tclobber: ", rules->clobbers);
 	return buf;
 }
 
-const char *show_instruction(struct instruction *insn)
+const char *show_instruction(SCTX_ struct instruction *insn)
 {
 	int opcode = insn->opcode;
 	static char buffer[4096];
@@ -299,11 +299,11 @@ const char *show_instruction(struct instruction *insn)
 	switch (opcode) {
 	case OP_RET:
 		if (insn->src && insn->src != VOID)
-			buf += sprintf(buf, "%s", show_pseudo(insn->src));
+			buf += sprintf(buf, "%s", show_pseudo(sctx_ insn->src));
 		break;
 	case OP_BR:
 		if (insn->bb_true && insn->bb_false) {
-			buf += sprintf(buf, "%s, .L%p, .L%p", show_pseudo(insn->cond), insn->bb_true, insn->bb_false);
+			buf += sprintf(buf, "%s, .L%p, .L%p", show_pseudo(sctx_ insn->cond), insn->bb_true, insn->bb_false);
 			break;
 		}
 		buf += sprintf(buf, ".L%p", insn->bb_true ? insn->bb_true : insn->bb_false);
@@ -311,14 +311,14 @@ const char *show_instruction(struct instruction *insn)
 
 	case OP_SYMADDR: {
 		struct symbol *sym = insn->symbol->sym;
-		buf += sprintf(buf, "%s <- ", show_pseudo(insn->target));
+		buf += sprintf(buf, "%s <- ", show_pseudo(sctx_ insn->target));
 
 		if (sym->bb_target) {
 			buf += sprintf(buf, ".L%p", sym->bb_target);
 			break;
 		}
 		if (sym->ident) {
-			buf += sprintf(buf, "%s", show_ident(sym->ident));
+			buf += sprintf(buf, "%s", show_ident(sctx_ sym->ident));
 			break;
 		}
 		buf += sprintf(buf, "<anon symbol:%p>", sym);
@@ -327,7 +327,7 @@ const char *show_instruction(struct instruction *insn)
 		
 	case OP_SETVAL: {
 		struct expression *expr = insn->val;
-		buf += sprintf(buf, "%s <- ", show_pseudo(insn->target));
+		buf += sprintf(buf, "%s <- ", show_pseudo(sctx_ insn->target));
 
 		if (!expr) {
 			buf += sprintf(buf, "%s", "<none>");
@@ -342,10 +342,10 @@ const char *show_instruction(struct instruction *insn)
 			buf += sprintf(buf, "%Lf", expr->fvalue);
 			break;
 		case EXPR_STRING:
-			buf += sprintf(buf, "%.40s", show_string(expr->string));
+			buf += sprintf(buf, "%.40s", show_string(sctx_ expr->string));
 			break;
 		case EXPR_SYMBOL:
-			buf += sprintf(buf, "%s", show_ident(expr->symbol->ident));
+			buf += sprintf(buf, "%s", show_ident(sctx_ expr->symbol->ident));
 			break;
 		case EXPR_LABEL:
 			buf += sprintf(buf, ".L%p", expr->symbol->bb_target);
@@ -357,7 +357,7 @@ const char *show_instruction(struct instruction *insn)
 	}
 	case OP_SWITCH: {
 		struct multijmp *jmp;
-		buf += sprintf(buf, "%s", show_pseudo(insn->target));
+		buf += sprintf(buf, "%s", show_pseudo(sctx_ insn->target));
 		FOR_EACH_PTR(insn->multijmp_list, jmp) {
 			if (jmp->begin == jmp->end)
 				buf += sprintf(buf, ", %d -> .L%p", jmp->begin, jmp->target);
@@ -370,7 +370,7 @@ const char *show_instruction(struct instruction *insn)
 	}
 	case OP_COMPUTEDGOTO: {
 		struct multijmp *jmp;
-		buf += sprintf(buf, "%s", show_pseudo(insn->target));
+		buf += sprintf(buf, "%s", show_pseudo(sctx_ insn->target));
 		FOR_EACH_PTR(insn->multijmp_list, jmp) {
 			buf += sprintf(buf, ", .L%p", jmp->target);
 		} END_FOR_EACH_PTR(jmp);
@@ -379,9 +379,9 @@ const char *show_instruction(struct instruction *insn)
 
 	case OP_PHISOURCE: {
 		struct instruction *phi;
-		buf += sprintf(buf, "%s <- %s    ", show_pseudo(insn->target), show_pseudo(insn->phi_src));
+		buf += sprintf(buf, "%s <- %s    ", show_pseudo(sctx_ sctx_ insn->target), show_pseudo(insn->phi_src));
 		FOR_EACH_PTR(insn->phi_users, phi) {
-			buf += sprintf(buf, " (%s)", show_pseudo(phi->target));
+			buf += sprintf(buf, " (%s)", show_pseudo(sctx_ phi->target));
 		} END_FOR_EACH_PTR(phi);
 		break;
 	}
@@ -389,27 +389,27 @@ const char *show_instruction(struct instruction *insn)
 	case OP_PHI: {
 		pseudo_t phi;
 		const char *s = " <-";
-		buf += sprintf(buf, "%s", show_pseudo(insn->target));
+		buf += sprintf(buf, "%s", show_pseudo(sctx_ insn->target));
 		FOR_EACH_PTR(insn->phi_list, phi) {
-			buf += sprintf(buf, "%s %s", s, show_pseudo(phi));
+			buf += sprintf(buf, "%s %s", s, show_pseudo(sctx_ phi));
 			s = ",";
 		} END_FOR_EACH_PTR(phi);
 		break;
 	}	
 	case OP_LOAD: case OP_LNOP:
-		buf += sprintf(buf, "%s <- %d[%s]", show_pseudo(insn->target), insn->offset, show_pseudo(insn->src));
+		buf += sprintf(buf, "%s <- %d[%s]", show_pseudo(sctx_ sctx_ insn->target), insn->offset, show_pseudo(insn->src));
 		break;
 	case OP_STORE: case OP_SNOP:
-		buf += sprintf(buf, "%s -> %d[%s]", show_pseudo(insn->target), insn->offset, show_pseudo(insn->src));
+		buf += sprintf(buf, "%s -> %d[%s]", show_pseudo(sctx_ sctx_ insn->target), insn->offset, show_pseudo(insn->src));
 		break;
 	case OP_INLINED_CALL:
 	case OP_CALL: {
 		struct pseudo *arg;
 		if (insn->target && insn->target != VOID)
-			buf += sprintf(buf, "%s <- ", show_pseudo(insn->target));
-		buf += sprintf(buf, "%s", show_pseudo(insn->func));
+			buf += sprintf(buf, "%s <- ", show_pseudo(sctx_ insn->target));
+		buf += sprintf(buf, "%s", show_pseudo(sctx_ insn->func));
 		FOR_EACH_PTR(insn->arguments, arg) {
-			buf += sprintf(buf, ", %s", show_pseudo(arg));
+			buf += sprintf(buf, ", %s", show_pseudo(sctx_ arg));
 		} END_FOR_EACH_PTR(arg);
 		break;
 	}
@@ -424,72 +424,72 @@ const char *show_instruction(struct instruction *insn)
 		break;
 	case OP_BINARY ... OP_BINARY_END:
 	case OP_BINCMP ... OP_BINCMP_END:
-		buf += sprintf(buf, "%s <- %s, %s", show_pseudo(insn->target), show_pseudo(insn->src1), show_pseudo(insn->src2));
+		buf += sprintf(buf, "%s <- %s, %s", show_pseudo(sctx_ sctx_ sctx_ insn->target), show_pseudo(insn->src1), show_pseudo(insn->src2));
 		break;
 
 	case OP_SEL:
-		buf += sprintf(buf, "%s <- %s, %s, %s", show_pseudo(insn->target),
+		buf += sprintf(buf, "%s <- %s, %s, %s", show_pseudo(sctx_ sctx_ sctx_ sctx_ insn->target),
 			show_pseudo(insn->src1), show_pseudo(insn->src2), show_pseudo(insn->src3));
 		break;
 
 	case OP_SLICE:
-		buf += sprintf(buf, "%s <- %s, %d, %d", show_pseudo(insn->target), show_pseudo(insn->base), insn->from, insn->len);
+		buf += sprintf(buf, "%s <- %s, %d, %d", show_pseudo(sctx_ sctx_ insn->target), show_pseudo(insn->base), insn->from, insn->len);
 		break;
 
 	case OP_NOT_LIN: case OP_NEG:
-		buf += sprintf(buf, "%s <- %s", show_pseudo(insn->target), show_pseudo(insn->src1));
+		buf += sprintf(buf, "%s <- %s", show_pseudo(sctx_ sctx_ insn->target), show_pseudo(insn->src1));
 		break;
 
 	case OP_CONTEXT:
 		buf += sprintf(buf, "%s%d", insn->check ? "check: " : "", insn->increment);
 		break;
 	case OP_RANGE_LIN:
-		buf += sprintf(buf, "%s between %s..%s", show_pseudo(insn->src1), show_pseudo(insn->src2), show_pseudo(insn->src3));
+		buf += sprintf(buf, "%s between %s..%s", show_pseudo(sctx_ sctx_ sctx_ insn->src1), show_pseudo(insn->src2), show_pseudo(insn->src3));
 		break;
 	case OP_NOP:
-		buf += sprintf(buf, "%s <- %s", show_pseudo(insn->target), show_pseudo(insn->src1));
+		buf += sprintf(buf, "%s <- %s", show_pseudo(sctx_ sctx_ insn->target), show_pseudo(insn->src1));
 		break;
 	case OP_DEATHNOTE:
-		buf += sprintf(buf, "%s", show_pseudo(insn->target));
+		buf += sprintf(buf, "%s", show_pseudo(sctx_ insn->target));
 		break;
 	case OP_ASM:
-		buf = show_asm(buf, insn);
+		buf = show_asm(sctx_ buf, insn);
 		break;
 	case OP_COPY:
-		buf += sprintf(buf, "%s <- %s", show_pseudo(insn->target), show_pseudo(insn->src));
+		buf += sprintf(buf, "%s <- %s", show_pseudo(sctx_ sctx_ insn->target), show_pseudo(insn->src));
 		break;
 	default:
 		break;
 	}
 
 	if (buf >= buffer + sizeof(buffer))
-		sparse_die("instruction buffer overflowed %td\n", buf - buffer);
+		sparse_die(sctx_ "instruction buffer overflowed %td\n", buf - buffer);
 	do { --buf; } while (*buf == ' ');
 	*++buf = 0;
 	return buffer;
 }
 
-void show_bb(struct basic_block *bb)
+void show_bb(SCTX_ struct basic_block *bb)
 {
 	struct instruction *insn;
 
 	printf(".L%p:\n", bb);
 	if (verbose) {
 		pseudo_t needs, defines;
-		printf("%s:%d\n", stream_name(bb->pos->pos.stream), bb->pos->pos.line);
+		printf("%s:%d\n", stream_name(sctx_ bb->pos->pos.stream), bb->pos->pos.line);
 
 		FOR_EACH_PTR(bb->needs, needs) {
 			struct instruction *def = needs->def;
 			if (def->opcode != OP_PHI) {
-				printf("  **uses %s (from .L%p)**\n", show_pseudo(needs), def->bb);
+				printf("  **uses %s (from .L%p)**\n", show_pseudo(sctx_ needs), def->bb);
 			} else {
 				pseudo_t phi;
 				const char *sep = " ";
-				printf("  **uses %s (from", show_pseudo(needs));
+				printf("  **uses %s (from", show_pseudo(sctx_ needs));
 				FOR_EACH_PTR(def->phi_list, phi) {
 					if (phi == VOID)
 						continue;
-					printf("%s(%s:.L%p)", sep, show_pseudo(phi), phi->def->bb);
+					printf("%s(%s:.L%p)", sep, show_pseudo(sctx_ phi), phi->def->bb);
 					sep = ", ";
 				} END_FOR_EACH_PTR(phi);		
 				printf(")**\n");
@@ -497,14 +497,14 @@ void show_bb(struct basic_block *bb)
 		} END_FOR_EACH_PTR(needs);
 
 		FOR_EACH_PTR(bb->defines, defines) {
-			printf("  **defines %s **\n", show_pseudo(defines));
+			printf("  **defines %s **\n", show_pseudo(sctx_ defines));
 		} END_FOR_EACH_PTR(defines);
 
 		if (bb->parents) {
 			struct basic_block *from;
 			FOR_EACH_PTR(bb->parents, from) {
 				printf("  **from %p (%s:%d:%d)**\n", from,
-					stream_name(from->pos->pos.stream), from->pos->pos.line, from->pos->pos.pos);
+					stream_name(sctx_ from->pos->pos.stream), from->pos->pos.line, from->pos->pos.pos);
 			} END_FOR_EACH_PTR(from);
 		}
 
@@ -512,7 +512,7 @@ void show_bb(struct basic_block *bb)
 			struct basic_block *to;
 			FOR_EACH_PTR(bb->children, to) {
 				printf("  **to %p (%s:%d:%d)**\n", to,
-					stream_name(to->pos->pos.stream), to->pos->pos.line, to->pos->pos.pos);
+					stream_name(sctx_ to->pos->pos.stream), to->pos->pos.line, to->pos->pos.pos);
 			} END_FOR_EACH_PTR(to);
 		}
 	}
@@ -520,42 +520,42 @@ void show_bb(struct basic_block *bb)
 	FOR_EACH_PTR(bb->insns, insn) {
 		if (!insn->bb && verbose < 2)
 			continue;
-		printf("\t%s\n", show_instruction(insn));
+		printf("\t%s\n", show_instruction(sctx_ insn));
 	} END_FOR_EACH_PTR(insn);
 	if (!bb_terminated(bb))
 		printf("\tEND\n");
 }
 
-static void show_symbol_usage(pseudo_t pseudo)
+static void show_symbol_usage(SCTX_ pseudo_t pseudo)
 {
 	struct pseudo_user *pu;
 
 	if (pseudo) {
 		FOR_EACH_PTR(pseudo->users, pu) {
-			printf("\t%s\n", show_instruction(pu->insn));
+			printf("\t%s\n", show_instruction(sctx_ pu->insn));
 		} END_FOR_EACH_PTR(pu);
 	}
 }
 
-void show_entry(struct entrypoint *ep)
+void show_entry(SCTX_ struct entrypoint *ep)
 {
 	struct symbol *sym;
 	struct basic_block *bb;
 
-	printf("%s:\n", show_ident(ep->name->ident));
+	printf("%s:\n", show_ident(sctx_ ep->name->ident));
 
 	if (verbose) {
-		printf("ep %p: %s\n", ep, show_ident(ep->name->ident));
+		printf("ep %p: %s\n", ep, show_ident(sctx_ ep->name->ident));
 
 		FOR_EACH_PTR(ep->syms, sym) {
 			if (!sym->pseudo)
 				continue;
 			if (!sym->pseudo->users)
 				continue;
-			printf("   sym: %p %s\n", sym, show_ident(sym->ident));
+			printf("   sym: %p %s\n", sym, show_ident(sctx_ sym->ident));
 			if (sym->ctype.modifiers & (MOD_EXTERN | MOD_STATIC | MOD_ADDRESSABLE))
 				printf("\texternal visibility\n");
-			show_symbol_usage(sym->pseudo);
+			show_symbol_usage(sctx_ sym->pseudo);
 		} END_FOR_EACH_PTR(sym);
 
 		printf("\n");
@@ -566,43 +566,43 @@ void show_entry(struct entrypoint *ep)
 			continue;
 		if (!bb->parents && !bb->children && !bb->insns && verbose < 2)
 			continue;
-		show_bb(bb);
+		show_bb(sctx_ bb);
 		printf("\n");
 	} END_FOR_EACH_PTR(bb);
 
 	printf("\n");
 }
 
-static void bind_label(struct symbol *label, struct basic_block *bb, struct position pos)
+static void bind_label(SCTX_ struct symbol *label, struct basic_block *bb, struct position pos)
 {
 	if (label->bb_target)
-		warning(pos, "label '%s' already bound", show_ident(label->ident));
+		warning(sctx_ pos, "label '%s' already bound", show_ident(sctx_ label->ident));
 	label->bb_target = bb;
 }
 
-static struct basic_block * get_bound_block(struct entrypoint *ep, struct symbol *label)
+static struct basic_block * get_bound_block(SCTX_ struct entrypoint *ep, struct symbol *label)
 {
 	struct basic_block *bb = label->bb_target;
 
 	if (!bb) {
-		bb = alloc_basic_block(ep, label->pos);
+		bb = alloc_basic_block(sctx_ ep, label->pos);
 		label->bb_target = bb;
 	}
 	return bb;
 }
 
-static void finish_block(struct entrypoint *ep)
+static void finish_block(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *src = ep->active;
 	if (bb_reachable(src))
 		ep->active = NULL;
 }
 
-static void add_goto(struct entrypoint *ep, struct basic_block *dst)
+static void add_goto(SCTX_ struct entrypoint *ep, struct basic_block *dst)
 {
 	struct basic_block *src = ep->active;
 	if (bb_reachable(src)) {
-		struct instruction *br = alloc_instruction(OP_BR, 0);
+		struct instruction *br = alloc_instruction(sctx_ OP_BR, 0);
 		br->bb_true = dst;
 		add_bb(&dst->parents, src);
 		add_bb(&src->children, dst);
@@ -612,7 +612,7 @@ static void add_goto(struct entrypoint *ep, struct basic_block *dst)
 	}
 }
 
-static void add_one_insn(struct entrypoint *ep, struct instruction *insn)
+static void add_one_insn(SCTX_ struct entrypoint *ep, struct instruction *insn)
 {
 	struct basic_block *bb = ep->active;    
 
@@ -622,25 +622,25 @@ static void add_one_insn(struct entrypoint *ep, struct instruction *insn)
 	}
 }
 
-static void set_activeblock(struct entrypoint *ep, struct basic_block *bb)
+static void set_activeblock(SCTX_ struct entrypoint *ep, struct basic_block *bb)
 {
 	if (!bb_terminated(ep->active))
-		add_goto(ep, bb);
+		add_goto(sctx_ ep, bb);
 
 	ep->active = bb;
 	if (bb_reachable(bb))
 		add_bb(&ep->bbs, bb);
 }
 
-static void remove_parent(struct basic_block *child, struct basic_block *parent)
+static void remove_parent(SCTX_ struct basic_block *child, struct basic_block *parent)
 {
 	remove_bb_from_list(&child->parents, parent, 1);
 	if (!child->parents)
-		kill_bb(child);
+		kill_bb(sctx_ child);
 }
 
 /* Change a "switch" into a branch */
-void insert_branch(struct basic_block *bb, struct instruction *jmp, struct basic_block *target)
+void insert_branch(SCTX_ struct basic_block *bb, struct instruction *jmp, struct basic_block *target)
 {
 	struct instruction *br, *old;
 	struct basic_block *child;
@@ -649,7 +649,7 @@ void insert_branch(struct basic_block *bb, struct instruction *jmp, struct basic
 	old = delete_last_instruction(&bb->insns);
 	assert(old == jmp);
 
-	br = alloc_instruction(OP_BR, 0);
+	br = alloc_instruction(sctx_ OP_BR, 0);
 	br->bb = bb;
 	br->bb_true = target;
 	add_instruction(&bb->insns, br);
@@ -660,13 +660,13 @@ void insert_branch(struct basic_block *bb, struct instruction *jmp, struct basic
 			continue;
 		}
 		DELETE_CURRENT_PTR(child);
-		remove_parent(child, bb);
+		remove_parent(sctx_ child, bb);
 	} END_FOR_EACH_PTR(child);
 	PACK_PTR_LIST(&bb->children);
 }
 	
 
-void insert_select(struct basic_block *bb, struct instruction *br, struct instruction *phi_node, pseudo_t if_true, pseudo_t if_false)
+void insert_select(SCTX_ struct basic_block *bb, struct instruction *br, struct instruction *phi_node, pseudo_t if_true, pseudo_t if_false)
 {
 	pseudo_t target;
 	struct instruction *select;
@@ -674,7 +674,7 @@ void insert_select(struct basic_block *bb, struct instruction *br, struct instru
 	/* Remove the 'br' */
 	delete_last_instruction(&bb->insns);
 
-	select = alloc_instruction(OP_SEL, phi_node->size);
+	select = alloc_instruction(sctx_ OP_SEL, phi_node->size);
 	select->bb = bb;
 
 	assert(br->cond);
@@ -698,30 +698,30 @@ static inline int bb_empty(struct basic_block *bb)
 }
 
 /* Add a label to the currently active block, return new active block */
-static struct basic_block * add_label(struct entrypoint *ep, struct symbol *label)
+static struct basic_block * add_label(SCTX_ struct entrypoint *ep, struct symbol *label)
 {
 	struct basic_block *bb = label->bb_target;
 
 	if (bb) {
-		set_activeblock(ep, bb);
+		set_activeblock(sctx_ ep, bb);
 		return bb;
 	}
 	bb = ep->active;
 	if (!bb_reachable(bb) || !bb_empty(bb)) {
-		bb = alloc_basic_block(ep, label->pos);
-		set_activeblock(ep, bb);
+		bb = alloc_basic_block(sctx_ ep, label->pos);
+		set_activeblock(sctx_ ep, bb);
 	}
 	label->bb_target = bb;
 	return bb;
 }
 
-static void add_branch(struct entrypoint *ep, struct expression *expr, pseudo_t cond, struct basic_block *bb_true, struct basic_block *bb_false)
+static void add_branch(SCTX_ struct entrypoint *ep, struct expression *expr, pseudo_t cond, struct basic_block *bb_true, struct basic_block *bb_false)
 {
 	struct basic_block *bb = ep->active;
 	struct instruction *br;
 
 	if (bb_reachable(bb)) {
-       		br = alloc_instruction(OP_BR, 0);
+       		br = alloc_instruction(sctx_ OP_BR, 0);
 		use_pseudo(br, cond, &br->cond);
 		br->bb_true = bb_true;
 		br->bb_false = bb_false;
@@ -729,22 +729,22 @@ static void add_branch(struct entrypoint *ep, struct expression *expr, pseudo_t 
 		add_bb(&bb_false->parents, bb);
 		add_bb(&bb->children, bb_true);
 		add_bb(&bb->children, bb_false);
-		add_one_insn(ep, br);
+		add_one_insn(sctx_ ep, br);
 	}
 }
 
 /* Dummy pseudo allocator */
-pseudo_t alloc_pseudo(struct instruction *def)
+pseudo_t alloc_pseudo(SCTX_ struct instruction *def)
 {
 	static int nr = 0;
-	struct pseudo * pseudo = __alloc_pseudo(0);
+	struct pseudo * pseudo = __alloc_pseudo(sctx_ 0);
 	pseudo->type = PSEUDO_REG;
 	pseudo->nr = ++nr;
 	pseudo->def = def;
 	return pseudo;
 }
 
-static void clear_symbol_pseudos(struct entrypoint *ep)
+static void clear_symbol_pseudos(SCTX_ struct entrypoint *ep)
 {
 	pseudo_t pseudo;
 
@@ -753,7 +753,7 @@ static void clear_symbol_pseudos(struct entrypoint *ep)
 	} END_FOR_EACH_PTR(pseudo);
 }
 
-static pseudo_t symbol_pseudo(struct entrypoint *ep, struct symbol *sym)
+static pseudo_t symbol_pseudo(SCTX_ struct entrypoint *ep, struct symbol *sym)
 {
 	pseudo_t pseudo;
 
@@ -762,7 +762,7 @@ static pseudo_t symbol_pseudo(struct entrypoint *ep, struct symbol *sym)
 
 	pseudo = sym->pseudo;
 	if (!pseudo) {
-		pseudo = __alloc_pseudo(0);
+		pseudo = __alloc_pseudo(sctx_ 0);
 		pseudo->nr = -1;
 		pseudo->type = PSEUDO_SYM;
 		pseudo->sym = sym;
@@ -774,7 +774,7 @@ static pseudo_t symbol_pseudo(struct entrypoint *ep, struct symbol *sym)
 	return pseudo;
 }
 
-pseudo_t value_pseudo(long long val)
+pseudo_t value_pseudo(SCTX_ long long val)
 {
 #define MAX_VAL_HASH 64
 	static struct pseudo_list *prev[MAX_VAL_HASH];
@@ -787,7 +787,7 @@ pseudo_t value_pseudo(long long val)
 			return pseudo;
 	} END_FOR_EACH_PTR(pseudo);
 
-	pseudo = __alloc_pseudo(0);
+	pseudo = __alloc_pseudo(sctx_ 0);
 	pseudo->type = PSEUDO_VAL;
 	pseudo->value = val;
 	add_pseudo(list, pseudo);
@@ -796,9 +796,9 @@ pseudo_t value_pseudo(long long val)
 	return pseudo;
 }
 
-static pseudo_t argument_pseudo(struct entrypoint *ep, int nr)
+static pseudo_t argument_pseudo(SCTX_ struct entrypoint *ep, int nr)
 {
-	pseudo_t pseudo = __alloc_pseudo(0);
+	pseudo_t pseudo = __alloc_pseudo(sctx_ 0);
 	struct instruction *entry = ep->entry;
 
 	pseudo->type = PSEUDO_ARG;
@@ -810,10 +810,10 @@ static pseudo_t argument_pseudo(struct entrypoint *ep, int nr)
 	return pseudo;
 }
 
-pseudo_t alloc_phi(struct basic_block *source, pseudo_t pseudo, int size)
+pseudo_t alloc_phi(SCTX_ struct basic_block *source, pseudo_t pseudo, int size)
 {
-	struct instruction *insn = alloc_instruction(OP_PHISOURCE, size);
-	pseudo_t phi = __alloc_pseudo(0);
+	struct instruction *insn = alloc_instruction(sctx_ OP_PHISOURCE, size);
+	pseudo_t phi = __alloc_pseudo(sctx_ 0);
 	static int nr = 0;
 
 	phi->type = PSEUDO_PHI;
@@ -842,32 +842,32 @@ struct access_data {
 	struct token *pos;
 };
 
-static void finish_address_gen(struct entrypoint *ep, struct access_data *ad)
+static void finish_address_gen(SCTX_ struct entrypoint *ep, struct access_data *ad)
 {
 }
 
-static int linearize_simple_address(struct entrypoint *ep,
+static int linearize_simple_address(SCTX_ struct entrypoint *ep,
 	struct expression *addr,
 	struct access_data *ad)
 {
 	if (addr->type == EXPR_SYMBOL) {
-		linearize_one_symbol(ep, addr->symbol);
-		ad->address = symbol_pseudo(ep, addr->symbol);
+		linearize_one_symbol(sctx_ ep, addr->symbol);
+		ad->address = symbol_pseudo(sctx_ ep, addr->symbol);
 		return 1;
 	}
 	if (addr->type == EXPR_BINOP) {
 		if (addr->right->type == EXPR_VALUE) {
 			if (addr->op == '+') {
-				ad->offset += get_expression_value(addr->right);
-				return linearize_simple_address(ep, addr->left, ad);
+				ad->offset += get_expression_value(sctx_ addr->right);
+				return linearize_simple_address(sctx_ ep, addr->left, ad);
 			}
 		}
 	}
-	ad->address = linearize_expression(ep, addr);
+	ad->address = linearize_expression(sctx_ ep, addr);
 	return 1;
 }
 
-static struct symbol *base_type_lin(struct symbol *sym)
+static struct symbol *base_type_lin(SCTX_ struct symbol *sym)
 {
 	struct symbol *base = sym;
 
@@ -880,7 +880,7 @@ static struct symbol *base_type_lin(struct symbol *sym)
 	return sym;
 }
 
-static int linearize_address_gen(struct entrypoint *ep,
+static int linearize_address_gen(SCTX_ struct entrypoint *ep,
 	struct expression *expr,
 	struct access_data *ad)
 {
@@ -890,18 +890,18 @@ static int linearize_address_gen(struct entrypoint *ep,
 		return 0;
 	ad->pos = expr->pos;
 	ad->result_type = ctype;
-	ad->source_type = base_type_lin(ctype);
+	ad->source_type = base_type_lin(sctx_ ctype);
 	ad->bit_size = ctype->bit_size;
 	ad->alignment = ctype->ctype.alignment;
 	ad->bit_offset = ctype->bit_offset;
 	if (expr->type == EXPR_PREOP && expr->op == '*')
-		return linearize_simple_address(ep, expr->unop, ad);
+		return linearize_simple_address(sctx_ ep, expr->unop, ad);
 
-	warning(expr->pos->pos, "generating address of non-lvalue (%d)", expr->type);
+	warning(sctx_ expr->pos->pos, "generating address of non-lvalue (%d)", expr->type);
 	return 0;
 }
 
-static pseudo_t add_load(struct entrypoint *ep, struct access_data *ad)
+static pseudo_t add_load(SCTX_ struct entrypoint *ep, struct access_data *ad)
 {
 	struct instruction *insn;
 	pseudo_t new;
@@ -910,171 +910,171 @@ static pseudo_t add_load(struct entrypoint *ep, struct access_data *ad)
 	if (0 && new)
 		return new;
 
-	insn = alloc_typed_instruction(OP_LOAD, ad->source_type);
-	new = alloc_pseudo(insn);
+	insn = alloc_typed_instruction(sctx_ OP_LOAD, ad->source_type);
+	new = alloc_pseudo(sctx_ insn);
 	ad->origval = new;
 
 	insn->target = new;
 	insn->offset = ad->offset;
 	use_pseudo(insn, ad->address, &insn->src);
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 	return new;
 }
 
-static void add_store(struct entrypoint *ep, struct access_data *ad, pseudo_t value)
+static void add_store(SCTX_ struct entrypoint *ep, struct access_data *ad, pseudo_t value)
 {
 	struct basic_block *bb = ep->active;
 
 	if (bb_reachable(bb)) {
-		struct instruction *store = alloc_typed_instruction(OP_STORE, ad->source_type);
+		struct instruction *store = alloc_typed_instruction(sctx_ OP_STORE, ad->source_type);
 		store->offset = ad->offset;
 		use_pseudo(store, value, &store->target);
 		use_pseudo(store, ad->address, &store->src);
-		add_one_insn(ep, store);
+		add_one_insn(sctx_ ep, store);
 	}
 }
 
-static pseudo_t linearize_store_gen(struct entrypoint *ep,
+static pseudo_t linearize_store_gen(SCTX_ struct entrypoint *ep,
 		pseudo_t value,
 		struct access_data *ad)
 {
 	pseudo_t store = value;
 
 	if (type_size(ad->source_type) != type_size(ad->result_type)) {
-		pseudo_t orig = add_load(ep, ad);
+		pseudo_t orig = add_load(sctx_ ep, ad);
 		int shift = ad->bit_offset;
 		unsigned long long mask = (1ULL << ad->bit_size)-1;
 
 		if (shift) {
-			store = add_binary_op(ep, ad->source_type, OP_SHL, value, value_pseudo(shift));
+			store = add_binary_op(sctx_ ep, ad->source_type, OP_SHL, value, value_pseudo(sctx_ shift));
 			mask <<= shift;
 		}
-		orig = add_binary_op(ep, ad->source_type, OP_AND_LIN, orig, value_pseudo(~mask));
-		store = add_binary_op(ep, ad->source_type, OP_OR_LIN, orig, store);
+		orig = add_binary_op(sctx_ ep, ad->source_type, OP_AND_LIN, orig, value_pseudo(sctx_ ~mask));
+		store = add_binary_op(sctx_ ep, ad->source_type, OP_OR_LIN, orig, store);
 	}
-	add_store(ep, ad, store);
+	add_store(sctx_ ep, ad, store);
 	return value;
 }
 
-static pseudo_t add_binary_op(struct entrypoint *ep, struct symbol *ctype, int op, pseudo_t left, pseudo_t right)
+static pseudo_t add_binary_op(SCTX_ struct entrypoint *ep, struct symbol *ctype, int op, pseudo_t left, pseudo_t right)
 {
-	struct instruction *insn = alloc_typed_instruction(op, ctype);
-	pseudo_t target = alloc_pseudo(insn);
+	struct instruction *insn = alloc_typed_instruction(sctx_ op, ctype);
+	pseudo_t target = alloc_pseudo(sctx_ insn);
 	insn->target = target;
 	use_pseudo(insn, left, &insn->src1);
 	use_pseudo(insn, right, &insn->src2);
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 	return target;
 }
 
-static pseudo_t add_setval(struct entrypoint *ep, struct symbol *ctype, struct expression *val)
+static pseudo_t add_setval(SCTX_ struct entrypoint *ep, struct symbol *ctype, struct expression *val)
 {
-	struct instruction *insn = alloc_typed_instruction(OP_SETVAL, ctype);
-	pseudo_t target = alloc_pseudo(insn);
+	struct instruction *insn = alloc_typed_instruction(sctx_ OP_SETVAL, ctype);
+	pseudo_t target = alloc_pseudo(sctx_ insn);
 	insn->target = target;
 	insn->val = val;
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 	return target;
 }
 
-static pseudo_t add_symbol_address(struct entrypoint *ep, struct symbol *sym)
+static pseudo_t add_symbol_address(SCTX_ struct entrypoint *ep, struct symbol *sym)
 {
-	struct instruction *insn = alloc_instruction(OP_SYMADDR, bits_in_pointer);
-	pseudo_t target = alloc_pseudo(insn);
+	struct instruction *insn = alloc_instruction(sctx_ OP_SYMADDR, bits_in_pointer);
+	pseudo_t target = alloc_pseudo(sctx_ insn);
 
 	insn->target = target;
-	use_pseudo(insn, symbol_pseudo(ep, sym), &insn->symbol);
-	add_one_insn(ep, insn);
+	use_pseudo(insn, symbol_pseudo(sctx_ ep, sym), &insn->symbol);
+	add_one_insn(sctx_ ep, insn);
 	return target;
 }
 
-static pseudo_t linearize_load_gen(struct entrypoint *ep, struct access_data *ad)
+static pseudo_t linearize_load_gen(SCTX_ struct entrypoint *ep, struct access_data *ad)
 {
-	pseudo_t new = add_load(ep, ad);
+	pseudo_t new = add_load(sctx_ ep, ad);
 
 	if (ad->bit_offset) {
-		pseudo_t shift = value_pseudo(ad->bit_offset);
-		pseudo_t newval = add_binary_op(ep, ad->source_type, OP_LSR, new, shift);
+		pseudo_t shift = value_pseudo(sctx_ ad->bit_offset);
+		pseudo_t newval = add_binary_op(sctx_ ep, ad->source_type, OP_LSR, new, shift);
 		new = newval;
 	}
 		
 	return new;
 }
 
-static pseudo_t linearize_access(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_access(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	struct access_data ad = { NULL, };
 	pseudo_t value;
 
-	if (!linearize_address_gen(ep, expr, &ad))
+	if (!linearize_address_gen(sctx_ ep, expr, &ad))
 		return VOID;
-	value = linearize_load_gen(ep, &ad);
-	finish_address_gen(ep, &ad);
+	value = linearize_load_gen(sctx_ ep, &ad);
+	finish_address_gen(sctx_ ep, &ad);
 	return value;
 }
 
 /* FIXME: FP */
-static pseudo_t linearize_inc_dec(struct entrypoint *ep, struct expression *expr, int postop)
+static pseudo_t linearize_inc_dec(SCTX_ struct entrypoint *ep, struct expression *expr, int postop)
 {
 	struct access_data ad = { NULL, };
 		pseudo_t old, new, one;
 	int op = expr->op == SPECIAL_INCREMENT ? OP_ADD_LIN : OP_SUB;
 
-	if (!linearize_address_gen(ep, expr->unop, &ad))
+	if (!linearize_address_gen(sctx_ ep, expr->unop, &ad))
 		return VOID;
 
-	old = linearize_load_gen(ep, &ad);
-	one = value_pseudo(expr->op_value);
-	new = add_binary_op(ep, expr->ctype, op, old, one);
-	linearize_store_gen(ep, new, &ad);
-	finish_address_gen(ep, &ad);
+	old = linearize_load_gen(sctx_ ep, &ad);
+	one = value_pseudo(sctx_ expr->op_value);
+	new = add_binary_op(sctx_ ep, expr->ctype, op, old, one);
+	linearize_store_gen(sctx_ ep, new, &ad);
+	finish_address_gen(sctx_ ep, &ad);
 	return postop ? old : new;
 }
 
-static pseudo_t add_uniop(struct entrypoint *ep, struct expression *expr, int op, pseudo_t src)
+static pseudo_t add_uniop(SCTX_ struct entrypoint *ep, struct expression *expr, int op, pseudo_t src)
 {
-	struct instruction *insn = alloc_typed_instruction(op, expr->ctype);
-	pseudo_t new = alloc_pseudo(insn);
+	struct instruction *insn = alloc_typed_instruction(sctx_ op, expr->ctype);
+	pseudo_t new = alloc_pseudo(sctx_ insn);
 
 	insn->target = new;
 	use_pseudo(insn, src, &insn->src1);
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 	return new;
 }
 
-static pseudo_t linearize_slice(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_slice(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
-	pseudo_t pre = linearize_expression(ep, expr->base);
-	struct instruction *insn = alloc_typed_instruction(OP_SLICE, expr->ctype);
-	pseudo_t new = alloc_pseudo(insn);
+	pseudo_t pre = linearize_expression(sctx_ ep, expr->base);
+	struct instruction *insn = alloc_typed_instruction(sctx_ OP_SLICE, expr->ctype);
+	pseudo_t new = alloc_pseudo(sctx_ insn);
 
 	insn->target = new;
 	insn->from = expr->r_bitpos;
 	insn->len = expr->r_nrbits;
 	use_pseudo(insn, pre, &insn->base);
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 	return new;
 }
 
-static pseudo_t linearize_regular_preop(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_regular_preop(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
-	pseudo_t pre = linearize_expression(ep, expr->unop);
+	pseudo_t pre = linearize_expression(sctx_ ep, expr->unop);
 	switch (expr->op) {
 	case '+':
 		return pre;
 	case '!': {
-		pseudo_t zero = value_pseudo(0);
-		return add_binary_op(ep, expr->unop->ctype, OP_SET_EQ, pre, zero);
+		pseudo_t zero = value_pseudo(sctx_ 0);
+		return add_binary_op(sctx_ ep, expr->unop->ctype, OP_SET_EQ, pre, zero);
 	}
 	case '~':
-		return add_uniop(ep, expr, OP_NOT_LIN, pre);
+		return add_uniop(sctx_ ep, expr, OP_NOT_LIN, pre);
 	case '-':
-		return add_uniop(ep, expr, OP_NEG, pre);
+		return add_uniop(sctx_ ep, expr, OP_NEG, pre);
 	}
 	return VOID;
 }
 
-static pseudo_t linearize_preop(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_preop(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	/*
 	 * '*' is an lvalue access, and is fundamentally different
@@ -1082,15 +1082,15 @@ static pseudo_t linearize_preop(struct entrypoint *ep, struct expression *expr)
 	 * expression type of its own..
 	 */
 	if (expr->op == '*')
-		return linearize_access(ep, expr);
+		return linearize_access(sctx_ ep, expr);
 	if (expr->op == SPECIAL_INCREMENT || expr->op == SPECIAL_DECREMENT)
-		return linearize_inc_dec(ep, expr, 0);
-	return linearize_regular_preop(ep, expr);
+		return linearize_inc_dec(sctx_ ep, expr, 0);
+	return linearize_regular_preop(sctx_ ep, expr);
 }
 
-static pseudo_t linearize_postop(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_postop(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
-	return linearize_inc_dec(ep, expr, 1);
+	return linearize_inc_dec(sctx_ ep, expr, 1);
 }	
 
 /*
@@ -1099,7 +1099,7 @@ static pseudo_t linearize_postop(struct entrypoint *ep, struct expression *expr)
  * case, since you can't access through it anyway without another
  * cast.
  */
-static struct instruction *alloc_cast_instruction(struct symbol *src, struct symbol *ctype)
+static struct instruction *alloc_cast_instruction(SCTX_ struct symbol *src, struct symbol *ctype)
 {
 	int opcode = OP_CAST;
 	struct symbol *base = src;
@@ -1115,10 +1115,10 @@ static struct instruction *alloc_cast_instruction(struct symbol *src, struct sym
 	}
 	if (base->ctype.base_type == &fp_type)
 		opcode = OP_FPCAST;
-	return alloc_typed_instruction(opcode, ctype);
+	return alloc_typed_instruction(sctx_ opcode, ctype);
 }
 
-static pseudo_t cast_pseudo(struct entrypoint *ep, pseudo_t src, struct symbol *from, struct symbol *to)
+static pseudo_t cast_pseudo(SCTX_ struct entrypoint *ep, pseudo_t src, struct symbol *from, struct symbol *to)
 {
 	pseudo_t result;
 	struct instruction *insn;
@@ -1129,16 +1129,16 @@ static pseudo_t cast_pseudo(struct entrypoint *ep, pseudo_t src, struct symbol *
 		return VOID;
 	if (from->bit_size < 0 || to->bit_size < 0)
 		return VOID;
-	insn = alloc_cast_instruction(from, to);
-	result = alloc_pseudo(insn);
+	insn = alloc_cast_instruction(sctx_ from, to);
+	result = alloc_pseudo(sctx_ insn);
 	insn->target = result;
 	insn->orig_type = from;
 	use_pseudo(insn, src, &insn->src);
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 	return result;
 }
 
-static int opcode_sign(int opcode, struct symbol *ctype)
+static int opcode_sign(SCTX_ int opcode, struct symbol *ctype)
 {
 	if (ctype && (ctype->ctype.modifiers & MOD_SIGNED)) {
 		switch(opcode) {
@@ -1149,18 +1149,18 @@ static int opcode_sign(int opcode, struct symbol *ctype)
 	return opcode;
 }
 
-static pseudo_t linearize_assignment(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_assignment(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	struct access_data ad = { NULL, };
 	struct expression *target = expr->left;
 	struct expression *src = expr->right;
 	pseudo_t value;
 
-	value = linearize_expression(ep, src);
-	if (!target || !linearize_address_gen(ep, target, &ad))
+	value = linearize_expression(sctx_ ep, src);
+	if (!target || !linearize_address_gen(sctx_ ep, target, &ad))
 		return value;
 	if (expr->op != '=') {
-		pseudo_t oldvalue = linearize_load_gen(ep, &ad);
+		pseudo_t oldvalue = linearize_load_gen(sctx_ ep, &ad);
 		pseudo_t dst;
 		static const int op_trans[] = {
 			[SPECIAL_ADD_ASSIGN - SPECIAL_BASE] = OP_ADD_LIN,
@@ -1179,32 +1179,32 @@ static pseudo_t linearize_assignment(struct entrypoint *ep, struct expression *e
 		if (!src)
 			return VOID;
 
-		oldvalue = cast_pseudo(ep, oldvalue, src->ctype, expr->ctype);
-		opcode = opcode_sign(op_trans[expr->op - SPECIAL_BASE], src->ctype);
-		dst = add_binary_op(ep, src->ctype, opcode, oldvalue, value);
-		value = cast_pseudo(ep, dst, expr->ctype, src->ctype);
+		oldvalue = cast_pseudo(sctx_ ep, oldvalue, src->ctype, expr->ctype);
+		opcode = opcode_sign(sctx_ op_trans[expr->op - SPECIAL_BASE], src->ctype);
+		dst = add_binary_op(sctx_ ep, src->ctype, opcode, oldvalue, value);
+		value = cast_pseudo(sctx_ ep, dst, expr->ctype, src->ctype);
 	}
-	value = linearize_store_gen(ep, value, &ad);
-	finish_address_gen(ep, &ad);
+	value = linearize_store_gen(sctx_ ep, value, &ad);
+	finish_address_gen(sctx_ ep, &ad);
 	return value;
 }
 
-static pseudo_t linearize_call_expression(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_call_expression(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	struct expression *arg, *fn;
-	struct instruction *insn = alloc_typed_instruction(OP_CALL, expr->ctype);
+	struct instruction *insn = alloc_typed_instruction(sctx_ OP_CALL, expr->ctype);
 	pseudo_t retval, call;
 	struct ctype *ctype = NULL;
 	struct symbol *fntype;
 	struct sym_context *context;
 
 	if (!expr->ctype) {
-		warning(expr->pos->pos, "call with no type!");
+		warning(sctx_ expr->pos->pos, "call with no type!");
 		return VOID;
 	}
 
 	FOR_EACH_PTR(expr->args, arg) {
-		pseudo_t new = linearize_expression(ep, arg);
+		pseudo_t new = linearize_expression(sctx_ ep, arg);
 		use_pseudo(insn, new, add_pseudo(&insn->arguments, new));
 	} END_FOR_EACH_PTR(arg);
 
@@ -1228,16 +1228,16 @@ static pseudo_t linearize_call_expression(struct entrypoint *ep, struct expressi
 		}
 	}
 	if (fn->type == EXPR_SYMBOL) {
-		call = symbol_pseudo(ep, fn->symbol);
+		call = symbol_pseudo(sctx_ ep, fn->symbol);
 	} else {
-		call = linearize_expression(ep, fn);
+		call = linearize_expression(sctx_ ep, fn);
 	}
 	use_pseudo(insn, call, &insn->func);
 	retval = VOID;
 	if (expr->ctype != &void_ctype)
-		retval = alloc_pseudo(insn);
+		retval = alloc_pseudo(sctx_ insn);
 	insn->target = retval;
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 
 	if (ctype) {
 		FOR_EACH_PTR(ctype->contexts, context) {
@@ -1255,11 +1255,11 @@ static pseudo_t linearize_call_expression(struct entrypoint *ep, struct expressi
 			}
 			context_diff = out - in;
 			if (check || context_diff) {
-				insn = alloc_instruction(OP_CONTEXT, 0);
+				insn = alloc_instruction(sctx_ OP_CONTEXT, 0);
 				insn->increment = context_diff;
 				insn->check = check;
 				insn->context_expr = context->context;
-				add_one_insn(ep, insn);
+				add_one_insn(sctx_ ep, insn);
 			}
 		} END_FOR_EACH_PTR(context);
 	}
@@ -1267,7 +1267,7 @@ static pseudo_t linearize_call_expression(struct entrypoint *ep, struct expressi
 	return retval;
 }
 
-static pseudo_t linearize_binop(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_binop(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	pseudo_t src1, src2, dst;
 	static const int opcode[] = {
@@ -1282,40 +1282,40 @@ static pseudo_t linearize_binop(struct entrypoint *ep, struct expression *expr)
 	};
 	int op;
 
-	src1 = linearize_expression(ep, expr->left);
-	src2 = linearize_expression(ep, expr->right);
-	op = opcode_sign(opcode[expr->op], expr->ctype);
-	dst = add_binary_op(ep, expr->ctype, op, src1, src2);
+	src1 = linearize_expression(sctx_ ep, expr->left);
+	src2 = linearize_expression(sctx_ ep, expr->right);
+	op = opcode_sign(sctx_ opcode[expr->op], expr->ctype);
+	dst = add_binary_op(sctx_ ep, expr->ctype, op, src1, src2);
 	return dst;
 }
 
-static pseudo_t linearize_logical_branch(struct entrypoint *ep, struct expression *expr, struct basic_block *bb_true, struct basic_block *bb_false);
+static pseudo_t linearize_logical_branch(SCTX_ struct entrypoint *ep, struct expression *expr, struct basic_block *bb_true, struct basic_block *bb_false);
 
 pseudo_t linearize_cond_branch(struct entrypoint *ep, struct expression *expr, struct basic_block *bb_true, struct basic_block *bb_false);
 
-static pseudo_t linearize_select(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_select(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	pseudo_t cond, true_sim, false_sim, res;
 	struct instruction *insn;
 
-	true_sim = linearize_expression(ep, expr->cond_true);
-	false_sim = linearize_expression(ep, expr->cond_false);
-	cond = linearize_expression(ep, expr->conditional);
+	true_sim = linearize_expression(sctx_ ep, expr->cond_true);
+	false_sim = linearize_expression(sctx_ ep, expr->cond_false);
+	cond = linearize_expression(sctx_ ep, expr->conditional);
 
-	insn = alloc_typed_instruction(OP_SEL, expr->ctype);
+	insn = alloc_typed_instruction(sctx_ OP_SEL, expr->ctype);
 	if (!expr->cond_true)
 		true_sim = cond;
 	use_pseudo(insn, cond, &insn->src1);
 	use_pseudo(insn, true_sim, &insn->src2);
 	use_pseudo(insn, false_sim, &insn->src3);
 
-	res = alloc_pseudo(insn);
+	res = alloc_pseudo(sctx_ insn);
 	insn->target = res;
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 	return res;
 }
 
-static pseudo_t add_join_conditional(struct entrypoint *ep, struct expression *expr,
+static pseudo_t add_join_conditional(SCTX_ struct entrypoint *ep, struct expression *expr,
 				     pseudo_t phi1, pseudo_t phi2)
 {
 	pseudo_t target;
@@ -1326,41 +1326,41 @@ static pseudo_t add_join_conditional(struct entrypoint *ep, struct expression *e
 	if (phi2 == VOID)
 		return phi1;
 
-	phi_node = alloc_typed_instruction(OP_PHI, expr->ctype);
+	phi_node = alloc_typed_instruction(sctx_ OP_PHI, expr->ctype);
 	use_pseudo(phi_node, phi1, add_pseudo(&phi_node->phi_list, phi1));
 	use_pseudo(phi_node, phi2, add_pseudo(&phi_node->phi_list, phi2));
-	phi_node->target = target = alloc_pseudo(phi_node);
-	add_one_insn(ep, phi_node);
+	phi_node->target = target = alloc_pseudo(sctx_ phi_node);
+	add_one_insn(sctx_ ep, phi_node);
 	return target;
 }	
 
-static pseudo_t linearize_short_conditional(struct entrypoint *ep, struct expression *expr,
+static pseudo_t linearize_short_conditional(SCTX_ struct entrypoint *ep, struct expression *expr,
 					    struct expression *cond,
 					    struct expression *expr_false)
 {
 	pseudo_t src1, src2;
 	struct basic_block *bb_false;
-	struct basic_block *merge = alloc_basic_block(ep, expr->pos);
+	struct basic_block *merge = alloc_basic_block(sctx_ ep, expr->pos);
 	pseudo_t phi1, phi2;
 	int size = type_size(expr->ctype);
 
 	if (!expr_false || !ep->active)
 		return VOID;
 
-	bb_false = alloc_basic_block(ep, expr_false->pos);
-	src1 = linearize_expression(ep, cond);
-	phi1 = alloc_phi(ep->active, src1, size);
-	add_branch(ep, expr, src1, merge, bb_false);
+	bb_false = alloc_basic_block(sctx_ ep, expr_false->pos);
+	src1 = linearize_expression(sctx_ ep, cond);
+	phi1 = alloc_phi(sctx_ ep->active, src1, size);
+	add_branch(sctx_ ep, expr, src1, merge, bb_false);
 
-	set_activeblock(ep, bb_false);
-	src2 = linearize_expression(ep, expr_false);
-	phi2 = alloc_phi(ep->active, src2, size);
-	set_activeblock(ep, merge);
+	set_activeblock(sctx_ ep, bb_false);
+	src2 = linearize_expression(sctx_ ep, expr_false);
+	phi2 = alloc_phi(sctx_ ep->active, src2, size);
+	set_activeblock(sctx_ ep, merge);
 
-	return add_join_conditional(ep, expr, phi1, phi2);
+	return add_join_conditional(sctx_ ep, expr, phi1, phi2);
 }
 
-static pseudo_t linearize_conditional(struct entrypoint *ep, struct expression *expr,
+static pseudo_t linearize_conditional(SCTX_ struct entrypoint *ep, struct expression *expr,
 				      struct expression *cond,
 				      struct expression *expr_true,
 				      struct expression *expr_false)
@@ -1372,37 +1372,37 @@ static pseudo_t linearize_conditional(struct entrypoint *ep, struct expression *
 
 	if (!cond || !expr_true || !expr_false || !ep->active)
 		return VOID;
-	bb_true = alloc_basic_block(ep, expr_true->pos);
-	bb_false = alloc_basic_block(ep, expr_false->pos);
-	merge = alloc_basic_block(ep, expr->pos);
+	bb_true = alloc_basic_block(sctx_ ep, expr_true->pos);
+	bb_false = alloc_basic_block(sctx_ ep, expr_false->pos);
+	merge = alloc_basic_block(sctx_ ep, expr->pos);
 
-	linearize_cond_branch(ep, cond, bb_true, bb_false);
+	linearize_cond_branch(sctx_ ep, cond, bb_true, bb_false);
 
-	set_activeblock(ep, bb_true);
-	src1 = linearize_expression(ep, expr_true);
-	phi1 = alloc_phi(ep->active, src1, size);
-	add_goto(ep, merge); 
+	set_activeblock(sctx_ ep, bb_true);
+	src1 = linearize_expression(sctx_ ep, expr_true);
+	phi1 = alloc_phi(sctx_ ep->active, src1, size);
+	add_goto(sctx_ ep, merge); 
 
-	set_activeblock(ep, bb_false);
-	src2 = linearize_expression(ep, expr_false);
-	phi2 = alloc_phi(ep->active, src2, size);
-	set_activeblock(ep, merge);
+	set_activeblock(sctx_ ep, bb_false);
+	src2 = linearize_expression(sctx_ ep, expr_false);
+	phi2 = alloc_phi(sctx_ ep->active, src2, size);
+	set_activeblock(sctx_ ep, merge);
 
-	return add_join_conditional(ep, expr, phi1, phi2);
+	return add_join_conditional(sctx_ ep, expr, phi1, phi2);
 }
 
-static pseudo_t linearize_logical(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_logical(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	struct expression *shortcut;
 
 	shortcut = alloc_const_expression(expr->tok, expr->op == SPECIAL_LOGICAL_OR);
 	shortcut->ctype = expr->ctype;
 	if (expr->op == SPECIAL_LOGICAL_OR)
-		return linearize_conditional(ep, expr, expr->left, shortcut, expr->right);
-	return linearize_conditional(ep, expr, expr->left, expr->right, shortcut);
+		return linearize_conditional(sctx_ ep, expr, expr->left, shortcut, expr->right);
+	return linearize_conditional(sctx_ ep, expr, expr->left, expr->right, shortcut);
 }
 
-static pseudo_t linearize_compare(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_compare(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	static const int cmpop[] = {
 		['>'] = OP_SET_GT, ['<'] = OP_SET_LT,
@@ -1416,14 +1416,14 @@ static pseudo_t linearize_compare(struct entrypoint *ep, struct expression *expr
 		[SPECIAL_UNSIGNED_GTE] = OP_SET_AE,
 	};
 
-	pseudo_t src1 = linearize_expression(ep, expr->left);
-	pseudo_t src2 = linearize_expression(ep, expr->right);
-	pseudo_t dst = add_binary_op(ep, expr->left->ctype, cmpop[expr->op], src1, src2);
+	pseudo_t src1 = linearize_expression(sctx_ ep, expr->left);
+	pseudo_t src2 = linearize_expression(sctx_ ep, expr->right);
+	pseudo_t dst = add_binary_op(sctx_ ep, expr->left->ctype, cmpop[expr->op], src1, src2);
 	return dst;
 }
 
 
-pseudo_t linearize_cond_branch(struct entrypoint *ep, struct expression *expr, struct basic_block *bb_true, struct basic_block *bb_false)
+pseudo_t linearize_cond_branch(SCTX_ struct entrypoint *ep, struct expression *expr, struct basic_block *bb_true, struct basic_block *bb_false)
 {
 	pseudo_t cond;
 
@@ -1434,29 +1434,29 @@ pseudo_t linearize_cond_branch(struct entrypoint *ep, struct expression *expr, s
 
 	case EXPR_STRING:
 	case EXPR_VALUE:
-		add_goto(ep, expr->value ? bb_true : bb_false);
+		add_goto(sctx_ ep, expr->value ? bb_true : bb_false);
 		return VOID;
 
 	case EXPR_FVALUE:
-		add_goto(ep, expr->fvalue ? bb_true : bb_false);
+		add_goto(sctx_ ep, expr->fvalue ? bb_true : bb_false);
 		return VOID;
 		
 	case EXPR_LOGICAL:
-		linearize_logical_branch(ep, expr, bb_true, bb_false);
+		linearize_logical_branch(sctx_ ep, expr, bb_true, bb_false);
 		return VOID;
 
 	case EXPR_COMPARE:
-		cond = linearize_compare(ep, expr);
-		add_branch(ep, expr, cond, bb_true, bb_false);
+		cond = linearize_compare(sctx_ ep, expr);
+		add_branch(sctx_ ep, expr, cond, bb_true, bb_false);
 		break;
 		
 	case EXPR_PREOP:
 		if (expr->op == '!')
-			return linearize_cond_branch(ep, expr->unop, bb_false, bb_true);
+			return linearize_cond_branch(sctx_ ep, expr->unop, bb_false, bb_true);
 		/* fall through */
 	default: {
-		cond = linearize_expression(ep, expr);
-		add_branch(ep, expr, cond, bb_true, bb_false);
+		cond = linearize_expression(sctx_ ep, expr);
+		add_branch(sctx_ ep, expr, cond, bb_true, bb_false);
 
 		return VOID;
 	}
@@ -1466,20 +1466,20 @@ pseudo_t linearize_cond_branch(struct entrypoint *ep, struct expression *expr, s
 
 
 	
-static pseudo_t linearize_logical_branch(struct entrypoint *ep, struct expression *expr, struct basic_block *bb_true, struct basic_block *bb_false)
+static pseudo_t linearize_logical_branch(SCTX_ struct entrypoint *ep, struct expression *expr, struct basic_block *bb_true, struct basic_block *bb_false)
 {
-	struct basic_block *next = alloc_basic_block(ep, expr->pos);
+	struct basic_block *next = alloc_basic_block(sctx_ ep, expr->pos);
 
 	if (expr->op == SPECIAL_LOGICAL_OR)
-		linearize_cond_branch(ep, expr->left, bb_true, next);
+		linearize_cond_branch(sctx_ ep, expr->left, bb_true, next);
 	else
-		linearize_cond_branch(ep, expr->left, next, bb_false);
-	set_activeblock(ep, next);
-	linearize_cond_branch(ep, expr->right, bb_true, bb_false);
+		linearize_cond_branch(sctx_ ep, expr->left, next, bb_false);
+	set_activeblock(sctx_ ep, next);
+	linearize_cond_branch(sctx_ ep, expr->right, bb_true, bb_false);
 	return VOID;
 }
 
-static pseudo_t linearize_cast(struct entrypoint *ep, struct expression *expr)
+static pseudo_t linearize_cast(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	pseudo_t src;
 	struct expression *orig = expr->cast_expression;
@@ -1487,38 +1487,38 @@ static pseudo_t linearize_cast(struct entrypoint *ep, struct expression *expr)
 	if (!orig)
 		return VOID;
 
-	src = linearize_expression(ep, orig);
-	return cast_pseudo(ep, src, orig->ctype, expr->ctype);
+	src = linearize_expression(sctx_ ep, orig);
+	return cast_pseudo(sctx_ ep, src, orig->ctype, expr->ctype);
 }
 
-static pseudo_t linearize_position(struct entrypoint *ep, struct expression *pos, struct access_data *ad)
+static pseudo_t linearize_position(SCTX_ struct entrypoint *ep, struct expression *pos, struct access_data *ad)
 {
 	struct expression *init_expr = pos->init_expr;
 
 	ad->offset = pos->init_offset;
-	ad->source_type = base_type_lin(init_expr->ctype);
+	ad->source_type = base_type_lin(sctx_ init_expr->ctype);
 	ad->result_type = init_expr->ctype;
-	return linearize_initializer(ep, init_expr, ad);
+	return linearize_initializer(sctx_ ep, init_expr, ad);
 }
 
-static pseudo_t linearize_initializer(struct entrypoint *ep, struct expression *initializer, struct access_data *ad)
+static pseudo_t linearize_initializer(SCTX_ struct entrypoint *ep, struct expression *initializer, struct access_data *ad)
 {
 	switch (initializer->type) {
 	case EXPR_INITIALIZER: {
 		struct expression *expr;
 		FOR_EACH_PTR(initializer->expr_list, expr) {
-			linearize_initializer(ep, expr, ad);
+			linearize_initializer(sctx_ ep, expr, ad);
 		} END_FOR_EACH_PTR(expr);
 		break;
 	}
 	case EXPR_POS:
-		linearize_position(ep, initializer, ad);
+		linearize_position(sctx_ ep, initializer, ad);
 		break;
 	default: {
-		pseudo_t value = linearize_expression(ep, initializer);
-		ad->source_type = base_type_lin(initializer->ctype);
+		pseudo_t value = linearize_expression(sctx_ ep, initializer);
+		ad->source_type = base_type_lin(sctx_ initializer->ctype);
 		ad->result_type = initializer->ctype;
-		linearize_store_gen(ep, value, ad);
+		linearize_store_gen(sctx_ ep, value, ad);
 		return value;
 	}
 	}
@@ -1526,18 +1526,18 @@ static pseudo_t linearize_initializer(struct entrypoint *ep, struct expression *
 	return VOID;
 }
 
-static void linearize_argument(struct entrypoint *ep, struct symbol *arg, int nr)
+static void linearize_argument(SCTX_ struct entrypoint *ep, struct symbol *arg, int nr)
 {
 	struct access_data ad = { NULL, };
 
 	ad.source_type = arg;
 	ad.result_type = arg;
-	ad.address = symbol_pseudo(ep, arg);
-	linearize_store_gen(ep, argument_pseudo(ep, nr), &ad);
-	finish_address_gen(ep, &ad);
+	ad.address = symbol_pseudo(sctx_ ep, arg);
+	linearize_store_gen(sctx_ ep, argument_pseudo(sctx_ ep, nr), &ad);
+	finish_address_gen(sctx_ ep, &ad);
 }
 
-pseudo_t linearize_expression(struct entrypoint *ep, struct expression *expr)
+pseudo_t linearize_expression(SCTX_ struct entrypoint *ep, struct expression *expr)
 {
 	if (!expr)
 		return VOID;
@@ -1545,73 +1545,73 @@ pseudo_t linearize_expression(struct entrypoint *ep, struct expression *expr)
 	current_pos = expr->pos->pos;
 	switch (expr->type) {
 	case EXPR_SYMBOL:
-		linearize_one_symbol(ep, expr->symbol);
-		return add_symbol_address(ep, expr->symbol);
+		linearize_one_symbol(sctx_ ep, expr->symbol);
+		return add_symbol_address(sctx_ ep, expr->symbol);
 
 	case EXPR_VALUE:
-		return value_pseudo(expr->value);
+		return value_pseudo(sctx_ expr->value);
 
 	case EXPR_STRING: case EXPR_FVALUE: case EXPR_LABEL:
-		return add_setval(ep, expr->ctype, expr);
+		return add_setval(sctx_ ep, expr->ctype, expr);
 
 	case EXPR_STATEMENT:
-		return linearize_statement(ep, expr->statement);
+		return linearize_statement(sctx_ ep, expr->statement);
 
 	case EXPR_CALL:
-		return linearize_call_expression(ep, expr);
+		return linearize_call_expression(sctx_ ep, expr);
 
 	case EXPR_BINOP:
-		return linearize_binop(ep, expr);
+		return linearize_binop(sctx_ ep, expr);
 
 	case EXPR_LOGICAL:
-		return linearize_logical(ep, expr);
+		return linearize_logical(sctx_ ep, expr);
 
 	case EXPR_COMPARE:
-		return  linearize_compare(ep, expr);
+		return  linearize_compare(sctx_ ep, expr);
 
 	case EXPR_SELECT:
-		return	linearize_select(ep, expr);
+		return	linearize_select(sctx_ ep, expr);
 
 	case EXPR_CONDITIONAL:
 		if (!expr->cond_true)
-			return linearize_short_conditional(ep, expr, expr->conditional, expr->cond_false);
+			return linearize_short_conditional(sctx_ ep, expr, expr->conditional, expr->cond_false);
 
-		return  linearize_conditional(ep, expr, expr->conditional,
+		return  linearize_conditional(sctx_ ep, expr, expr->conditional,
 					      expr->cond_true, expr->cond_false);
 
 	case EXPR_COMMA:
-		linearize_expression(ep, expr->left);
-		return linearize_expression(ep, expr->right);
+		linearize_expression(sctx_ ep, expr->left);
+		return linearize_expression(sctx_ ep, expr->right);
 
 	case EXPR_ASSIGNMENT:
-		return linearize_assignment(ep, expr);
+		return linearize_assignment(sctx_ ep, expr);
 
 	case EXPR_PREOP:
-		return linearize_preop(ep, expr);
+		return linearize_preop(sctx_ ep, expr);
 
 	case EXPR_POSTOP:
-		return linearize_postop(ep, expr);
+		return linearize_postop(sctx_ ep, expr);
 
 	case EXPR_CAST:
 	case EXPR_FORCE_CAST:
 	case EXPR_IMPLIED_CAST:
-		return linearize_cast(ep, expr);
+		return linearize_cast(sctx_ ep, expr);
 	
 	case EXPR_SLICE:
-		return linearize_slice(ep, expr);
+		return linearize_slice(sctx_ ep, expr);
 
 	case EXPR_INITIALIZER:
 	case EXPR_POS:
-		warning(expr->pos->pos, "unexpected initializer expression (%d %d)", expr->type, expr->op);
+		warning(sctx_ expr->pos->pos, "unexpected initializer expression (%d %d)", expr->type, expr->op);
 		return VOID;
 	default: 
-		warning(expr->pos->pos, "unknown expression (%d %d)", expr->type, expr->op);
+		warning(sctx_ expr->pos->pos, "unknown expression (%d %d)", expr->type, expr->op);
 		return VOID;
 	}
 	return VOID;
 }
 
-static pseudo_t linearize_one_symbol(struct entrypoint *ep, struct symbol *sym)
+static pseudo_t linearize_one_symbol(SCTX_ struct entrypoint *ep, struct symbol *sym)
 {
 	struct access_data ad = { NULL, };
 	pseudo_t value;
@@ -1624,13 +1624,13 @@ static pseudo_t linearize_one_symbol(struct entrypoint *ep, struct symbol *sym)
 		return VOID;
 
 	sym->initialized = 1;
-	ad.address = symbol_pseudo(ep, sym);
-	value = linearize_initializer(ep, sym->initializer, &ad);
-	finish_address_gen(ep, &ad);
+	ad.address = symbol_pseudo(sctx_ ep, sym);
+	value = linearize_initializer(sctx_ ep, sym->initializer, &ad);
+	finish_address_gen(sctx_ ep, &ad);
 	return value;
 }
 
-static pseudo_t linearize_compound_statement(struct entrypoint *ep, struct statement *stmt)
+static pseudo_t linearize_compound_statement(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
 	pseudo_t pseudo;
 	struct statement *s;
@@ -1638,11 +1638,11 @@ static pseudo_t linearize_compound_statement(struct entrypoint *ep, struct state
 
 	pseudo = VOID;
 	FOR_EACH_PTR(stmt->stmts, s) {
-		pseudo = linearize_statement(ep, s);
+		pseudo = linearize_statement(sctx_ ep, s);
 	} END_FOR_EACH_PTR(s);
 
 	if (ret) {
-		struct basic_block *bb = add_label(ep, ret);
+		struct basic_block *bb = add_label(sctx_ ep, ret);
 		struct instruction *phi_node = first_instruction(bb->insns);
 
 		if (!phi_node)
@@ -1659,9 +1659,9 @@ static pseudo_t linearize_compound_statement(struct entrypoint *ep, struct state
 	return pseudo;
 }
 
-static pseudo_t linearize_inlined_call(struct entrypoint *ep, struct statement *stmt)
+static pseudo_t linearize_inlined_call(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
-	struct instruction *insn = alloc_instruction(OP_INLINED_CALL, 0);
+	struct instruction *insn = alloc_instruction(sctx_ OP_INLINED_CALL, 0);
 	struct statement *args = stmt->args;
 	struct basic_block *bb;
 	pseudo_t pseudo;
@@ -1671,23 +1671,23 @@ static pseudo_t linearize_inlined_call(struct entrypoint *ep, struct statement *
 
 		concat_symbol_list(args->declaration, &ep->syms);
 		FOR_EACH_PTR(args->declaration, sym) {
-			pseudo_t value = linearize_one_symbol(ep, sym);
+			pseudo_t value = linearize_one_symbol(sctx_ ep, sym);
 			use_pseudo(insn, value, add_pseudo(&insn->arguments, value));
 		} END_FOR_EACH_PTR(sym);
 	}
 
-	insn->target = pseudo = linearize_compound_statement(ep, stmt);
-	use_pseudo(insn, symbol_pseudo(ep, stmt->inline_fn), &insn->func);
+	insn->target = pseudo = linearize_compound_statement(sctx_ ep, stmt);
+	use_pseudo(insn, symbol_pseudo(sctx_ ep, stmt->inline_fn), &insn->func);
 	bb = ep->active;
 	if (bb && !bb->insns)
 		bb->pos = stmt->pos;
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 	return pseudo;
 }
 
-static pseudo_t linearize_context(struct entrypoint *ep, struct statement *stmt)
+static pseudo_t linearize_context(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
-	struct instruction *insn = alloc_instruction(OP_CONTEXT, 0);
+	struct instruction *insn = alloc_instruction(sctx_ OP_CONTEXT, 0);
 	struct expression *expr = stmt->expression;
 	int value = 0;
 
@@ -1696,29 +1696,29 @@ static pseudo_t linearize_context(struct entrypoint *ep, struct statement *stmt)
 
 	insn->increment = value;
 	insn->context_expr = stmt->context;
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 	return VOID;
 }
 
-static pseudo_t linearize_range(struct entrypoint *ep, struct statement *stmt)
+static pseudo_t linearize_range(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
-	struct instruction *insn = alloc_instruction(OP_RANGE_LIN, 0);
+	struct instruction *insn = alloc_instruction(sctx_ OP_RANGE_LIN, 0);
 
-	use_pseudo(insn, linearize_expression(ep, stmt->range_expression), &insn->src1);
-	use_pseudo(insn, linearize_expression(ep, stmt->range_low), &insn->src2);
-	use_pseudo(insn, linearize_expression(ep, stmt->range_high), &insn->src3);
-	add_one_insn(ep, insn);
+	use_pseudo(insn, linearize_expression(sctx_ ep, stmt->range_expression), &insn->src1);
+	use_pseudo(insn, linearize_expression(sctx_ ep, stmt->range_low), &insn->src2);
+	use_pseudo(insn, linearize_expression(sctx_ ep, stmt->range_high), &insn->src3);
+	add_one_insn(sctx_ ep, insn);
 	return VOID;
 }
 
 ALLOCATOR(asm_rules, "asm rules", 0);
 ALLOCATOR(asm_constraint, "asm constraints", 0);
 
-static void add_asm_input(struct entrypoint *ep, struct instruction *insn, struct expression *expr,
+static void add_asm_input(SCTX_ struct entrypoint *ep, struct instruction *insn, struct expression *expr,
 	const char *constraint, const struct ident *ident)
 {
-	pseudo_t pseudo = linearize_expression(ep, expr);
-	struct asm_constraint *rule = __alloc_asm_constraint(0);
+	pseudo_t pseudo = linearize_expression(sctx_ ep, expr);
+	struct asm_constraint *rule = __alloc_asm_constraint(sctx_ 0);
 
 	rule->ident = ident;
 	rule->constraint = constraint;
@@ -1726,25 +1726,25 @@ static void add_asm_input(struct entrypoint *ep, struct instruction *insn, struc
 	add_ptr_list(&insn->asm_rules->inputs, rule);
 }
 
-static void add_asm_output(struct entrypoint *ep, struct instruction *insn, struct expression *expr,
+static void add_asm_output(SCTX_ struct entrypoint *ep, struct instruction *insn, struct expression *expr,
 	const char *constraint, const struct ident *ident)
 {
 	struct access_data ad = { NULL, };
-	pseudo_t pseudo = alloc_pseudo(insn);
+	pseudo_t pseudo = alloc_pseudo(sctx_ insn);
 	struct asm_constraint *rule;
 
-	if (!expr || !linearize_address_gen(ep, expr, &ad))
+	if (!expr || !linearize_address_gen(sctx_ ep, expr, &ad))
 		return;
-	linearize_store_gen(ep, pseudo, &ad);
-	finish_address_gen(ep, &ad);
-	rule = __alloc_asm_constraint(0);
+	linearize_store_gen(sctx_ ep, pseudo, &ad);
+	finish_address_gen(sctx_ ep, &ad);
+	rule = __alloc_asm_constraint(sctx_ 0);
 	rule->ident = ident;
 	rule->constraint = constraint;
 	use_pseudo(insn, pseudo, &rule->pseudo);
 	add_ptr_list(&insn->asm_rules->outputs, rule);
 }
 
-static pseudo_t linearize_asm_statement(struct entrypoint *ep, struct statement *stmt)
+static pseudo_t linearize_asm_statement(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
 	int state;
 	struct expression *expr;
@@ -1753,15 +1753,15 @@ static pseudo_t linearize_asm_statement(struct entrypoint *ep, struct statement 
 	const char *constraint;
 	struct ident *ident;
 
-	insn = alloc_instruction(OP_ASM, 0);
+	insn = alloc_instruction(sctx_ OP_ASM, 0);
 	expr = stmt->asm_string;
 	if (!expr || expr->type != EXPR_STRING) {
-		warning(stmt->pos->pos, "expected string in inline asm");
+		warning(sctx_ stmt->pos->pos, "expected string in inline asm");
 		return VOID;
 	}
 	insn->string = expr->string->data;
 
-	rules = __alloc_asm_rules(0);
+	rules = __alloc_asm_rules(sctx_ 0);
 	insn->asm_rules = rules;
 
 	/* Gather the inputs.. */
@@ -1782,11 +1782,11 @@ static pseudo_t linearize_asm_statement(struct entrypoint *ep, struct statement 
 
 		case 2:	/* Expression */
 			state = 0;
-			add_asm_input(ep, insn, expr, constraint, ident);
+			add_asm_input(sctx_ ep, insn, expr, constraint, ident);
 		}
 	} END_FOR_EACH_PTR(expr);
 
-	add_one_insn(ep, insn);
+	add_one_insn(sctx_ ep, insn);
 
 	/* Assign the outputs */
 	state = 0;
@@ -1806,14 +1806,14 @@ static pseudo_t linearize_asm_statement(struct entrypoint *ep, struct statement 
 
 		case 2:
 			state = 0;
-			add_asm_output(ep, insn, expr, constraint, ident);
+			add_asm_output(sctx_ ep, insn, expr, constraint, ident);
 		}
 	} END_FOR_EACH_PTR(expr);
 
 	return VOID;
 }
 
-static int multijmp_cmp(const void *_a, const void *_b)
+static int multijmp_cmp(SCTX_ const void *_a, const void *_b)
 {
 	const struct multijmp *a = _a;
 	const struct multijmp *b = _b;
@@ -1834,71 +1834,71 @@ static int multijmp_cmp(const void *_a, const void *_b)
 	return a->begin < b->begin ? -1 : 1;
 }
 
-static void sort_switch_cases(struct instruction *insn)
+static void sort_switch_cases(SCTX_ struct instruction *insn)
 {
-	sort_list((struct ptr_list **)&insn->multijmp_list, multijmp_cmp);
+	sort_list(sctx_ (struct ptr_list **)&insn->multijmp_list, multijmp_cmp);
 }
 
-static pseudo_t linearize_declaration(struct entrypoint *ep, struct statement *stmt)
+static pseudo_t linearize_declaration(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
 	struct symbol *sym;
 
 	concat_symbol_list(stmt->declaration, &ep->syms);
 
 	FOR_EACH_PTR(stmt->declaration, sym) {
-		linearize_one_symbol(ep, sym);
+		linearize_one_symbol(sctx_ ep, sym);
 	} END_FOR_EACH_PTR(sym);
 	return VOID;
 }
 
-static pseudo_t linearize_return(struct entrypoint *ep, struct statement *stmt)
+static pseudo_t linearize_return(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
 	struct expression *expr = stmt->expression;
-	struct basic_block *bb_return = get_bound_block(ep, stmt->ret_target);
+	struct basic_block *bb_return = get_bound_block(sctx_ ep, stmt->ret_target);
 	struct basic_block *active;
-	pseudo_t src = linearize_expression(ep, expr);
+	pseudo_t src = linearize_expression(sctx_ ep, expr);
 	active = ep->active;
 	if (active && src != &void_pseudo) {
 		struct instruction *phi_node = first_instruction(bb_return->insns);
 		pseudo_t phi;
 		if (!phi_node) {
-			phi_node = alloc_typed_instruction(OP_PHI, expr->ctype);
-			phi_node->target = alloc_pseudo(phi_node);
+			phi_node = alloc_typed_instruction(sctx_ OP_PHI, expr->ctype);
+			phi_node->target = alloc_pseudo(sctx_ phi_node);
 			phi_node->bb = bb_return;
 			add_instruction(&bb_return->insns, phi_node);
 		}
-		phi = alloc_phi(active, src, type_size(expr->ctype));
+		phi = alloc_phi(sctx_ active, src, type_size(expr->ctype));
 		phi->ident = &return_ident;
 		use_pseudo(phi_node, phi, add_pseudo(&phi_node->phi_list, phi));
 	}
-	add_goto(ep, bb_return);
+	add_goto(sctx_ ep, bb_return);
 	return VOID;
 }
 
-static pseudo_t linearize_switch(struct entrypoint *ep, struct statement *stmt)
+static pseudo_t linearize_switch(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
 	struct symbol *sym;
 	struct instruction *switch_ins;
-	struct basic_block *switch_end = alloc_basic_block(ep, stmt->pos);
+	struct basic_block *switch_end = alloc_basic_block(sctx_ ep, stmt->pos);
 	struct basic_block *active, *default_case;
 	struct multijmp *jmp;
 	pseudo_t pseudo;
 
-	pseudo = linearize_expression(ep, stmt->switch_expression);
+	pseudo = linearize_expression(sctx_ ep, stmt->switch_expression);
 
 	active = ep->active;
 	if (!bb_reachable(active))
 		return VOID;
 
-	switch_ins = alloc_instruction(OP_SWITCH, 0);
+	switch_ins = alloc_instruction(sctx_ OP_SWITCH, 0);
 	use_pseudo(switch_ins, pseudo, &switch_ins->cond);
-	add_one_insn(ep, switch_ins);
-	finish_block(ep);
+	add_one_insn(sctx_ ep, switch_ins);
+	finish_block(sctx_ ep);
 
 	default_case = NULL;
 	FOR_EACH_PTR(stmt->switch_case->symbol_list, sym) {
 		struct statement *case_stmt = sym->stmt;
-		struct basic_block *bb_case = get_bound_block(ep, sym);
+		struct basic_block *bb_case = get_bound_block(sctx_ ep, sym);
 
 		if (!case_stmt->case_expression) {
 			default_case = bb_case;
@@ -1910,9 +1910,9 @@ static pseudo_t linearize_switch(struct entrypoint *ep, struct statement *stmt)
 			if (case_stmt->case_to)
 				end = case_stmt->case_to->value;
 			if (begin > end)
-				jmp = alloc_multijmp(bb_case, end, begin);
+				jmp = alloc_multijmp(sctx_ bb_case, end, begin);
 			else
-				jmp = alloc_multijmp(bb_case, begin, end);
+				jmp = alloc_multijmp(sctx_ bb_case, begin, end);
 
 		}
 		add_multijmp(&switch_ins->multijmp_list, jmp);
@@ -1920,25 +1920,25 @@ static pseudo_t linearize_switch(struct entrypoint *ep, struct statement *stmt)
 		add_bb(&active->children, bb_case);
 	} END_FOR_EACH_PTR(sym);
 
-	bind_label(stmt->switch_break, switch_end, stmt->pos->pos);
+	bind_label(sctx_ stmt->switch_break, switch_end, stmt->pos->pos);
 
 	/* And linearize the actual statement */
-	linearize_statement(ep, stmt->switch_statement);
-	set_activeblock(ep, switch_end);
+	linearize_statement(sctx_ ep, stmt->switch_statement);
+	set_activeblock(sctx_ ep, switch_end);
 
 	if (!default_case)
 		default_case = switch_end;
 
-	jmp = alloc_multijmp(default_case, 1, 0);
+	jmp = alloc_multijmp(sctx_ default_case, 1, 0);
 	add_multijmp(&switch_ins->multijmp_list, jmp);
 	add_bb(&default_case->parents, active);
 	add_bb(&active->children, default_case);
-	sort_switch_cases(switch_ins);
+	sort_switch_cases(sctx_ switch_ins);
 
 	return VOID;
 }
 
-static pseudo_t linearize_iterator(struct entrypoint *ep, struct statement *stmt)
+static pseudo_t linearize_iterator(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
 	struct statement  *pre_statement = stmt->iterator_pre_statement;
 	struct expression *pre_condition = stmt->iterator_pre_condition;
@@ -1948,40 +1948,40 @@ static pseudo_t linearize_iterator(struct entrypoint *ep, struct statement *stmt
 	struct basic_block *loop_top, *loop_body, *loop_continue, *loop_end;
 
 	concat_symbol_list(stmt->iterator_syms, &ep->syms);
-	linearize_statement(ep, pre_statement);
+	linearize_statement(sctx_ ep, pre_statement);
 
-	loop_body = loop_top = alloc_basic_block(ep, stmt->pos);
-	loop_continue = alloc_basic_block(ep, stmt->pos);
-	loop_end = alloc_basic_block(ep, stmt->pos);
+	loop_body = loop_top = alloc_basic_block(sctx_ ep, stmt->pos);
+	loop_continue = alloc_basic_block(sctx_ ep, stmt->pos);
+	loop_end = alloc_basic_block(sctx_ ep, stmt->pos);
 
 	/* An empty post-condition means that it's the same as the pre-condition */
 	if (!post_condition) {
-		loop_top = alloc_basic_block(ep, stmt->pos);
-		set_activeblock(ep, loop_top);
+		loop_top = alloc_basic_block(sctx_ ep, stmt->pos);
+		set_activeblock(sctx_ ep, loop_top);
 	}
 
 	if (pre_condition)
-			linearize_cond_branch(ep, pre_condition, loop_body, loop_end);
+			linearize_cond_branch(sctx_ ep, pre_condition, loop_body, loop_end);
 
-	bind_label(stmt->iterator_continue, loop_continue, stmt->pos->pos);
-	bind_label(stmt->iterator_break, loop_end, stmt->pos->pos);
+	bind_label(sctx_ stmt->iterator_continue, loop_continue, stmt->pos->pos);
+	bind_label(sctx_ stmt->iterator_break, loop_end, stmt->pos->pos);
 
-	set_activeblock(ep, loop_body);
-	linearize_statement(ep, statement);
-	add_goto(ep, loop_continue);
+	set_activeblock(sctx_ ep, loop_body);
+	linearize_statement(sctx_ ep, statement);
+	add_goto(sctx_ ep, loop_continue);
 
-	set_activeblock(ep, loop_continue);
-	linearize_statement(ep, post_statement);
+	set_activeblock(sctx_ ep, loop_continue);
+	linearize_statement(sctx_ ep, post_statement);
 	if (!post_condition)
-		add_goto(ep, loop_top);
+		add_goto(sctx_ ep, loop_top);
 	else
-		linearize_cond_branch(ep, post_condition, loop_top, loop_end);
-	set_activeblock(ep, loop_end);
+		linearize_cond_branch(sctx_ ep, post_condition, loop_top, loop_end);
+	set_activeblock(sctx_ ep, loop_end);
 
 	return VOID;
 }
 
-pseudo_t linearize_statement(struct entrypoint *ep, struct statement *stmt)
+pseudo_t linearize_statement(SCTX_ struct entrypoint *ep, struct statement *stmt)
 {
 	struct basic_block *bb;
 
@@ -1998,26 +1998,26 @@ pseudo_t linearize_statement(struct entrypoint *ep, struct statement *stmt)
 		break;
 
 	case STMT_DECLARATION:
-		return linearize_declaration(ep, stmt);
+		return linearize_declaration(sctx_ ep, stmt);
 
 	case STMT_CONTEXT:
-		return linearize_context(ep, stmt);
+		return linearize_context(sctx_ ep, stmt);
 
 	case STMT_RANGE:
-		return linearize_range(ep, stmt);
+		return linearize_range(sctx_ ep, stmt);
 
 	case STMT_EXPRESSION:
-		return linearize_expression(ep, stmt->expression);
+		return linearize_expression(sctx_ ep, stmt->expression);
 
 	case STMT_ASM:
-		return linearize_asm_statement(ep, stmt);
+		return linearize_asm_statement(sctx_ ep, stmt);
 
 	case STMT_RETURN:
-		return linearize_return(ep, stmt);
+		return linearize_return(sctx_ ep, stmt);
 
 	case STMT_CASE: {
-		add_label(ep, stmt->case_label);
-		linearize_statement(ep, stmt->case_statement);
+		add_label(sctx_ ep, stmt->case_label);
+		linearize_statement(sctx_ ep, stmt->case_statement);
 		break;
 	}
 
@@ -2025,8 +2025,8 @@ pseudo_t linearize_statement(struct entrypoint *ep, struct statement *stmt)
 		struct symbol *label = stmt->label_identifier;
 
 		if (label->used) {
-			add_label(ep, label);
-			linearize_statement(ep, stmt->label_statement);
+			add_label(sctx_ ep, label);
+			linearize_statement(sctx_ ep, stmt->label_statement);
 		}
 		break;
 	}
@@ -2043,7 +2043,7 @@ pseudo_t linearize_statement(struct entrypoint *ep, struct statement *stmt)
 			break;
 
 		if (stmt->goto_label) {
-			add_goto(ep, get_bound_block(ep, stmt->goto_label));
+			add_goto(sctx_ ep, get_bound_block(sctx_ ep, stmt->goto_label));
 			break;
 		}
 
@@ -2053,31 +2053,31 @@ pseudo_t linearize_statement(struct entrypoint *ep, struct statement *stmt)
 
 		/* This can happen as part of simplification */
 		if (expr->type == EXPR_LABEL) {
-			add_goto(ep, get_bound_block(ep, expr->label_symbol));
+			add_goto(sctx_ ep, get_bound_block(sctx_ ep, expr->label_symbol));
 			break;
 		}
 
-		pseudo = linearize_expression(ep, expr);
-		goto_ins = alloc_instruction(OP_COMPUTEDGOTO, 0);
+		pseudo = linearize_expression(sctx_ ep, expr);
+		goto_ins = alloc_instruction(sctx_ OP_COMPUTEDGOTO, 0);
 		use_pseudo(goto_ins, pseudo, &goto_ins->target);
-		add_one_insn(ep, goto_ins);
+		add_one_insn(sctx_ ep, goto_ins);
 
 		FOR_EACH_PTR(stmt->target_list, sym) {
-			struct basic_block *bb_computed = get_bound_block(ep, sym);
-			struct multijmp *jmp = alloc_multijmp(bb_computed, 1, 0);
+			struct basic_block *bb_computed = get_bound_block(sctx_ ep, sym);
+			struct multijmp *jmp = alloc_multijmp(sctx_ bb_computed, 1, 0);
 			add_multijmp(&goto_ins->multijmp_list, jmp);
 			add_bb(&bb_computed->parents, ep->active);
 			add_bb(&active->children, bb_computed);
 		} END_FOR_EACH_PTR(sym);
 
-		finish_block(ep);
+		finish_block(sctx_ ep);
 		break;
 	}
 
 	case STMT_COMPOUND:
 		if (stmt->inline_fn)
-			return linearize_inlined_call(ep, stmt);
-		return linearize_compound_statement(ep, stmt);
+			return linearize_inlined_call(sctx_ ep, stmt);
+		return linearize_compound_statement(sctx_ ep, stmt);
 
 	/*
 	 * This could take 'likely/unlikely' into account, and
@@ -2087,29 +2087,29 @@ pseudo_t linearize_statement(struct entrypoint *ep, struct statement *stmt)
 		struct basic_block *bb_true, *bb_false, *endif;
  		struct expression *cond = stmt->if_conditional;
 
-		bb_true = alloc_basic_block(ep, stmt->pos);
-		bb_false = endif = alloc_basic_block(ep, stmt->pos);
+		bb_true = alloc_basic_block(sctx_ ep, stmt->pos);
+		bb_false = endif = alloc_basic_block(sctx_ ep, stmt->pos);
 
- 		linearize_cond_branch(ep, cond, bb_true, bb_false);
+ 		linearize_cond_branch(sctx_ ep, cond, bb_true, bb_false);
 
-		set_activeblock(ep, bb_true);
- 		linearize_statement(ep, stmt->if_true);
+		set_activeblock(sctx_ ep, bb_true);
+ 		linearize_statement(sctx_ ep, stmt->if_true);
  
  		if (stmt->if_false) {
-			endif = alloc_basic_block(ep, stmt->pos);
-			add_goto(ep, endif);
-			set_activeblock(ep, bb_false);
- 			linearize_statement(ep, stmt->if_false);
+			endif = alloc_basic_block(sctx_ ep, stmt->pos);
+			add_goto(sctx_ ep, endif);
+			set_activeblock(sctx_ ep, bb_false);
+ 			linearize_statement(sctx_ ep, stmt->if_false);
 		}
-		set_activeblock(ep, endif);
+		set_activeblock(sctx_ ep, endif);
 		break;
 	}
 
 	case STMT_SWITCH:
-		return linearize_switch(ep, stmt);
+		return linearize_switch(sctx_ ep, stmt);
 
 	case STMT_ITERATOR:
-		return linearize_iterator(ep, stmt);
+		return linearize_iterator(sctx_ ep, stmt);
 
 	default:
 		break;
@@ -2117,7 +2117,7 @@ pseudo_t linearize_statement(struct entrypoint *ep, struct statement *stmt)
 	return VOID;
 }
 
-static struct entrypoint *linearize_fn(struct symbol *sym, struct symbol *base_type)
+static struct entrypoint *linearize_fn(SCTX_ struct symbol *sym, struct symbol *base_type)
 {
 	struct entrypoint *ep;
 	struct basic_block *bb;
@@ -2129,15 +2129,15 @@ static struct entrypoint *linearize_fn(struct symbol *sym, struct symbol *base_t
 	if (!base_type->stmt)
 		return NULL;
 
-	ep = alloc_entrypoint();
-	bb = alloc_basic_block(ep, sym->pos);
+	ep = alloc_entrypoint(sctx_ );
+	bb = alloc_basic_block(sctx_ ep, sym->pos);
 	
 	ep->name = sym;
 	sym->ep = ep;
-	set_activeblock(ep, bb);
+	set_activeblock(sctx_ ep, bb);
 
-	entry = alloc_instruction(OP_ENTRY, 0);
-	add_one_insn(ep, entry);
+	entry = alloc_instruction(sctx_ OP_ENTRY, 0);
+	add_one_insn(sctx_ ep, entry);
 	ep->entry = entry;
 
 	concat_symbol_list(base_type->arguments, &ep->syms);
@@ -2145,29 +2145,29 @@ static struct entrypoint *linearize_fn(struct symbol *sym, struct symbol *base_t
 	/* FIXME!! We should do something else about varargs.. */
 	i = 0;
 	FOR_EACH_PTR(base_type->arguments, arg) {
-		linearize_argument(ep, arg, ++i);
+		linearize_argument(sctx_ ep, arg, ++i);
 	} END_FOR_EACH_PTR(arg);
 
-	result = linearize_statement(ep, base_type->stmt);
+	result = linearize_statement(sctx_ ep, base_type->stmt);
 	if (bb_reachable(ep->active) && !bb_terminated(ep->active)) {
 		struct symbol *ret_type = base_type->ctype.base_type;
-		struct instruction *insn = alloc_typed_instruction(OP_RET, ret_type);
+		struct instruction *insn = alloc_typed_instruction(sctx_ OP_RET, ret_type);
 
 		if (type_size(ret_type) > 0)
 			use_pseudo(insn, result, &insn->src);
-		add_one_insn(ep, insn);
+		add_one_insn(sctx_ ep, insn);
 	}
 
 	/*
 	 * Do trivial flow simplification - branches to
 	 * branches, kill dead basicblocks etc
 	 */
-	kill_unreachable_bbs(ep);
+	kill_unreachable_bbs(sctx_ ep);
 
 	/*
 	 * Turn symbols into pseudos
 	 */
-	simplify_symbol_usage(ep);
+	simplify_symbol_usage(sctx_ ep);
 
 repeat:
 	/*
@@ -2175,18 +2175,18 @@ repeat:
 	 * the rest.
 	 */
 	do {
-		cleanup_and_cse(ep);
-		pack_basic_blocks(ep);
+		cleanup_and_cse(sctx_ ep);
+		pack_basic_blocks(sctx_ ep);
 	} while (repeat_phase & REPEAT_CSE);
 
-	kill_unreachable_bbs(ep);
-	vrfy_flow(ep);
+	kill_unreachable_bbs(sctx_ ep);
+	vrfy_flow(sctx_ ep);
 
 	/* Cleanup */
-	clear_symbol_pseudos(ep);
+	clear_symbol_pseudos(sctx_ ep);
 
 	/* And track pseudo register usage */
-	track_pseudo_liveness(ep);
+	track_pseudo_liveness(sctx_ ep);
 
 	/*
 	 * Some flow optimizations can only effectively
@@ -2194,19 +2194,19 @@ repeat:
 	 * if they trigger, we need to start all over
 	 * again
 	 */
-	if (simplify_flow(ep)) {
-		clear_liveness(ep);
+	if (simplify_flow(sctx_ ep)) {
+		clear_liveness(sctx_ ep);
 		goto repeat;
 	}
 
 	/* Finally, add deathnotes to pseudos now that we have them */
 	if (dbg_dead)
-		track_pseudo_death(ep);
+		track_pseudo_death(sctx_ ep);
 
 	return ep;
 }
 
-struct entrypoint *linearize_symbol(struct symbol *sym)
+struct entrypoint *linearize_symbol(SCTX_ struct symbol *sym)
 {
 	struct symbol *base_type;
 
@@ -2217,6 +2217,6 @@ struct entrypoint *linearize_symbol(struct symbol *sym)
 	if (!base_type)
 		return NULL;
 	if (base_type->type == SYM_FN)
-		return linearize_fn(sym, base_type);
+		return linearize_fn(sctx_ sym, base_type);
 	return NULL;
 }

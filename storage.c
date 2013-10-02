@@ -28,7 +28,7 @@ static inline unsigned int storage_hash(struct basic_block *bb, pseudo_t pseudo,
 	return hash & (MAX_STORAGE_HASH-1);
 }
 
-static int hash_list_cmp(const void *_a, const void *_b)
+static int hash_list_cmp(SCTX_ const void *_a, const void *_b)
 {
 	const struct storage_hash *a = _a;
 	const struct storage_hash *b = _b;
@@ -37,12 +37,12 @@ static int hash_list_cmp(const void *_a, const void *_b)
 	return 0;
 }
 
-static void sort_hash_list(struct storage_hash_list **listp)
+static void sort_hash_list(SCTX_ struct storage_hash_list **listp)
 {
-	sort_list((struct ptr_list **)listp, hash_list_cmp);
+	sort_list(sctx_ (struct ptr_list **)listp, hash_list_cmp);
 }
 
-struct storage_hash_list *gather_storage(struct basic_block *bb, enum inout_enum inout)
+struct storage_hash_list *gather_storage(SCTX_ struct basic_block *bb, enum inout_enum inout)
 {
 	int i;
 	struct storage_hash *entry, *prev;
@@ -55,7 +55,7 @@ struct storage_hash_list *gather_storage(struct basic_block *bb, enum inout_enum
 				add_ptr_list(&list, hash);
 		} END_FOR_EACH_PTR(hash);
 	}
-	sort_hash_list(&list);
+	sort_hash_list(sctx_ &list);
 
 	prev = NULL;
 	FOR_EACH_PTR(list, entry) {
@@ -69,7 +69,7 @@ struct storage_hash_list *gather_storage(struct basic_block *bb, enum inout_enum
 	return list;
 }
 
-static void name_storage(void)
+static void name_storage(SCTX_ void)
 {
 	int i;
 	int name = 0;
@@ -85,7 +85,7 @@ static void name_storage(void)
 	}
 }
 
-struct storage *lookup_storage(struct basic_block *bb, pseudo_t pseudo, enum inout_enum inout)
+struct storage *lookup_storage(SCTX_ struct basic_block *bb, pseudo_t pseudo, enum inout_enum inout)
 {
 	struct storage_hash_list *list = storage_hash_table[storage_hash(bb,pseudo,inout)];
 	struct storage_hash *hash;
@@ -97,7 +97,7 @@ struct storage *lookup_storage(struct basic_block *bb, pseudo_t pseudo, enum ino
 	return NULL;
 }
 
-void add_storage(struct storage *storage, struct basic_block *bb, pseudo_t pseudo, enum inout_enum inout)
+void add_storage(SCTX_ struct storage *storage, struct basic_block *bb, pseudo_t pseudo, enum inout_enum inout)
 {
 	struct storage_hash_list **listp = storage_hash_table + storage_hash(bb,pseudo,inout);
 	struct storage_hash *hash = alloc_storage_hash(storage);
@@ -110,7 +110,7 @@ void add_storage(struct storage *storage, struct basic_block *bb, pseudo_t pseud
 }
 
 
-static int storage_hash_cmp(const void *_a, const void *_b)
+static int storage_hash_cmp(SCTX_ const void *_a, const void *_b)
 {
 	const struct storage_hash *a = _a;
 	const struct storage_hash *b = _b;
@@ -128,11 +128,11 @@ static int storage_hash_cmp(const void *_a, const void *_b)
 	return 0;
 }
 
-static void vrfy_storage(struct storage_hash_list **listp)
+static void vrfy_storage(SCTX_ struct storage_hash_list **listp)
 {
 	struct storage_hash *entry, *last;
 
-	sort_list((struct ptr_list **)listp, storage_hash_cmp);
+	sort_list(sctx_ (struct ptr_list **)listp, storage_hash_cmp);
 	last = NULL;
 	FOR_EACH_PTR(*listp, entry) {
 		if (last) {
@@ -148,26 +148,26 @@ static void vrfy_storage(struct storage_hash_list **listp)
 				printf("\t BAD: same storage as %s in %p: %s (%s and %s)\n",
 					last->inout == STOR_IN ? "input" : "output",
 					last->bb,
-					show_storage(a),
-					show_pseudo(last->pseudo),
-					show_pseudo(entry->pseudo));
+					show_storage(sctx_ a),
+					show_pseudo(sctx_ last->pseudo),
+					show_pseudo(sctx_ entry->pseudo));
 			}
 		}
 		last = entry;
 	} END_FOR_EACH_PTR(entry);
 }
 
-void free_storage(void)
+void free_storage(SCTX_ void)
 {
 	int i;
 
 	for (i = 0; i < MAX_STORAGE_HASH; i++) {
-		vrfy_storage(storage_hash_table + i);
+		vrfy_storage(sctx_ storage_hash_table + i);
 		free_ptr_list(storage_hash_table + i);
 	}
 }
 
-const char *show_storage(struct storage *s)
+const char *show_storage(SCTX_ struct storage *s)
 {
 	static char buffer[1024];
 	if (!s)
@@ -195,7 +195,7 @@ const char *show_storage(struct storage *s)
  * We just randomly pick one over the other, and replace
  * the other uses.
  */
-static struct storage * combine_storage(struct storage *src, struct storage *dst)
+static struct storage * combine_storage(SCTX_ struct storage *src, struct storage *dst)
 {
 	struct storage **usep;
 
@@ -212,7 +212,7 @@ static struct storage * combine_storage(struct storage *src, struct storage *dst
 	return dst;
 }
 
-static void set_up_bb_storage(struct basic_block *bb)
+static void set_up_bb_storage(SCTX_ struct basic_block *bb)
 {
 	struct basic_block *child;
 
@@ -221,31 +221,31 @@ static void set_up_bb_storage(struct basic_block *bb)
 		FOR_EACH_PTR(child->needs, pseudo) {
 			struct storage *child_in, *parent_out;
 
-			parent_out = lookup_storage(bb, pseudo, STOR_OUT);
-			child_in = lookup_storage(child, pseudo, STOR_IN);
+			parent_out = lookup_storage(sctx_ bb, pseudo, STOR_OUT);
+			child_in = lookup_storage(sctx_ child, pseudo, STOR_IN);
 
 			if (parent_out) {
 				if (!child_in) {
-					add_storage(parent_out, child, pseudo, STOR_IN);
+					add_storage(sctx_ parent_out, child, pseudo, STOR_IN);
 					continue;
 				}
 				if (parent_out == child_in)
 					continue;
-				combine_storage(parent_out, child_in);
+				combine_storage(sctx_ parent_out, child_in);
 				continue;
 			}
 			if (child_in) {
-				add_storage(child_in, bb, pseudo, STOR_OUT);
+				add_storage(sctx_ child_in, bb, pseudo, STOR_OUT);
 				continue;
 			}
 			parent_out = alloc_storage();
-			add_storage(parent_out, bb, pseudo, STOR_OUT);
-			add_storage(parent_out, child, pseudo, STOR_IN);
+			add_storage(sctx_ parent_out, bb, pseudo, STOR_OUT);
+			add_storage(sctx_ parent_out, child, pseudo, STOR_IN);
 		} END_FOR_EACH_PTR(pseudo);
 	} END_FOR_EACH_PTR(child);
 }
 
-static void set_up_argument_storage(struct entrypoint *ep, struct basic_block *bb)
+static void set_up_argument_storage(SCTX_ struct entrypoint *ep, struct basic_block *bb)
 {
 	pseudo_t arg;
 
@@ -257,7 +257,7 @@ static void set_up_argument_storage(struct entrypoint *ep, struct basic_block *b
 			storage->type = REG_ARG;
 			storage->regno = arg->nr;
 		}
-		add_storage(storage, bb, arg, STOR_IN);
+		add_storage(sctx_ storage, bb, arg, STOR_IN);
 	} END_FOR_EACH_PTR(arg);
 }
 
@@ -266,7 +266,7 @@ static void set_up_argument_storage(struct entrypoint *ep, struct basic_block *b
  * the storage output for this bb into one entry to reduce
  * storage pressure.
  */
-static void combine_phi_storage(struct basic_block *bb)
+static void combine_phi_storage(SCTX_ struct basic_block *bb)
 {
 	struct instruction *insn;
 	FOR_EACH_PTR(bb->insns, insn) {
@@ -277,31 +277,31 @@ static void combine_phi_storage(struct basic_block *bb)
 			continue;
 		last = NULL;
 		FOR_EACH_PTR(insn->phi_users, phi) {
-			struct storage *storage = lookup_storage(bb, phi->target, STOR_OUT);
+			struct storage *storage = lookup_storage(sctx_ bb, phi->target, STOR_OUT);
 			if (!storage) {
 				DELETE_CURRENT_PTR(phi);
 				continue;
 			}
 			if (last && storage != last)
-				storage = combine_storage(storage, last);
+				storage = combine_storage(sctx_ storage, last);
 			last = storage;
 		} END_FOR_EACH_PTR(phi);
 		PACK_PTR_LIST(&insn->phi_users);
 	} END_FOR_EACH_PTR(insn);
 }
 
-void set_up_storage(struct entrypoint *ep)
+void set_up_storage(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 
 	/* First set up storage for the incoming arguments */
-	set_up_argument_storage(ep, ep->entry->bb);
+	set_up_argument_storage(sctx_ ep, ep->entry->bb);
 
 	/* Then do a list of all the inter-bb storage */
 	FOR_EACH_PTR(ep->bbs, bb) {
-		set_up_bb_storage(bb);
-		combine_phi_storage(bb);
+		set_up_bb_storage(sctx_ bb);
+		combine_phi_storage(sctx_ bb);
 	} END_FOR_EACH_PTR(bb);
 
-	name_storage();
+	name_storage(sctx_ );
 }

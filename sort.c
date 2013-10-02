@@ -45,7 +45,7 @@ static unsigned char been_there[256];
 //
 // I would use libc qsort for this, but its comparison function
 // gets a pointer indirection extra.
-static void array_sort(void **ptr, int nr, int (*cmp)(const void *, const void *))
+static void array_sort(SCTX_ void **ptr, int nr, int (*cmp)(const void *, const void *))
 {
 	int i;
 	for (i = 1; i < nr; i++) {
@@ -116,7 +116,7 @@ static void verify_seq_sorted (struct ptr_list *l, int n,
 // Since we may be moving blocks around, we return the new head
 // of the merged list.
 static struct ptr_list *
-merge_block_seqs (struct ptr_list *b1, int n,
+merge_block_seqs (SCTX_ struct ptr_list *b1, int n,
 		  struct ptr_list *b2, int m,
 		  int (*cmp)(const void *, const void *))
 {
@@ -224,7 +224,7 @@ merge_block_seqs (struct ptr_list *b1, int n,
 }
 
 
-void sort_list(struct ptr_list **plist, int (*cmp)(const void *, const void *))
+void sort_list(SCTX_ struct ptr_list **plist, int (*cmp)(const void *, const void *))
 {
 	struct ptr_list *head = *plist, *list = head;
 	int blocks = 1;
@@ -234,7 +234,7 @@ void sort_list(struct ptr_list **plist, int (*cmp)(const void *, const void *))
 
 	// Sort all the sub-lists
 	do {
-		array_sort(list->list, list->nr, cmp);
+		array_sort(sctx_ list->list, list->nr, cmp);
 #ifdef PARANOIA
 		verify_seq_sorted (list, 1, cmp);
 #endif
@@ -274,7 +274,7 @@ void sort_list(struct ptr_list **plist, int (*cmp)(const void *, const void *))
 				BEEN_THERE('D');
 			}
 
-			newhead = merge_block_seqs (block1, blocks,
+			newhead = merge_block_seqs (sctx_ block1, blocks,
 						    block2, i,
 						    cmp);
 #ifdef PARANOIA

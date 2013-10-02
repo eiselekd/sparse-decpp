@@ -30,7 +30,7 @@
 #include <assert.h>
 
 
-static void remove_phisrc_defines(struct instruction *phisrc)
+static void remove_phisrc_defines(SCTX_ struct instruction *phisrc)
 {
 	struct instruction *phi;
 	struct basic_block *bb = phisrc->bb;
@@ -40,11 +40,11 @@ static void remove_phisrc_defines(struct instruction *phisrc)
 	} END_FOR_EACH_PTR(phi);
 }
 
-static void replace_phi_node(struct instruction *phi)
+static void replace_phi_node(SCTX_ struct instruction *phi)
 {
 	pseudo_t tmp;
 
-	tmp = alloc_pseudo(NULL);
+	tmp = alloc_pseudo(sctx_ NULL);
 	tmp->type = phi->target->type;
 	tmp->ident = phi->target->ident;
 	tmp->def = NULL;		// defined by all the phisrc
@@ -52,7 +52,7 @@ static void replace_phi_node(struct instruction *phi)
 	// update the current liveness
 	remove_pseudo(&phi->bb->needs, phi->target);
 	add_pseudo(&phi->bb->needs, tmp);
-	track_phi_uses(phi);
+	track_phi_uses(sctx_ phi);
 
 	phi->opcode = OP_COPY;
 	use_pseudo(phi, tmp, &phi->src);
@@ -60,7 +60,7 @@ static void replace_phi_node(struct instruction *phi)
 	// FIXME: free phi->phi_list;
 }
 
-static void rewrite_phi_bb(struct basic_block *bb)
+static void rewrite_phi_bb(SCTX_ struct basic_block *bb)
 {
 	struct instruction *insn;
 
@@ -72,11 +72,11 @@ static void rewrite_phi_bb(struct basic_block *bb)
 			continue;
 		if (insn->opcode != OP_PHI)
 			continue;
-		replace_phi_node(insn);
+		replace_phi_node(sctx_ insn);
 	} END_FOR_EACH_PTR(insn);
 }
 
-static void rewrite_phisrc_bb(struct basic_block *bb)
+static void rewrite_phisrc_bb(SCTX_ struct basic_block *bb)
 {
 	struct instruction *insn;
 
@@ -101,7 +101,7 @@ static void rewrite_phisrc_bb(struct basic_block *bb)
 				insn->target = tmp;
 				insn->src = src;
 			} else {
-				struct instruction *copy = __alloc_instruction(0);
+				struct instruction *copy = __alloc_instruction(sctx_ 0);
 
 				copy->bb = bb;
 				copy->opcode = OP_COPY;
@@ -113,7 +113,7 @@ static void rewrite_phisrc_bb(struct basic_block *bb)
 				INSERT_CURRENT(copy, insn);
 			}
 			// update the liveness info
-			remove_phisrc_defines(insn);
+			remove_phisrc_defines(sctx_ insn);
 			// FIXME: should really something like add_pseudo_exclusive()
 			add_pseudo(&bb->defines, tmp);
 
@@ -123,16 +123,16 @@ static void rewrite_phisrc_bb(struct basic_block *bb)
 	} END_FOR_EACH_PTR_REVERSE(insn);
 }
 
-int unssa(struct entrypoint *ep)
+int unssa(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 
 	FOR_EACH_PTR(ep->bbs, bb) {
-		rewrite_phi_bb(bb);
+		rewrite_phi_bb(sctx_ bb);
 	} END_FOR_EACH_PTR(bb);
 
 	FOR_EACH_PTR(ep->bbs, bb) {
-		rewrite_phisrc_bb(bb);
+		rewrite_phisrc_bb(sctx_ bb);
 	} END_FOR_EACH_PTR(bb);
 
 	return 0;

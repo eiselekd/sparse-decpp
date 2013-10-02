@@ -25,7 +25,7 @@ unsigned long bb_generation;
  * branch on that phi-node, we should damn well be able to
  * do something about the source. Maybe.
  */
-static int rewrite_branch(struct basic_block *bb,
+static int rewrite_branch(SCTX_ struct basic_block *bb,
 	struct basic_block **ptr,
 	struct basic_block *old,
 	struct basic_block *new)
@@ -46,7 +46,7 @@ static int rewrite_branch(struct basic_block *bb,
  * Return the known truth value of a pseudo, or -1 if
  * it's not known.
  */
-static int pseudo_truth_value(pseudo_t pseudo)
+static int pseudo_truth_value(SCTX_ pseudo_t pseudo)
 {
 	switch (pseudo->type) {
 	case PSEUDO_VAL:
@@ -68,12 +68,12 @@ static int pseudo_truth_value(pseudo_t pseudo)
 /*
  * Does a basic block depend on the pseudos that "src" defines?
  */
-static int bb_depends_on(struct basic_block *target, struct basic_block *src)
+static int bb_depends_on(SCTX_ struct basic_block *target, struct basic_block *src)
 {
 	pseudo_t pseudo;
 
 	FOR_EACH_PTR(src->defines, pseudo) {
-		if (pseudo_in_list(target->needs, pseudo))
+		if (pseudo_in_list(sctx_ target->needs, pseudo))
 			return 1;
 	} END_FOR_EACH_PTR(pseudo);
 	return 0;
@@ -90,7 +90,7 @@ static int bb_depends_on(struct basic_block *target, struct basic_block *src)
  * We need to check if any of the _sources_ of the phi-node
  * may be constant, and not actually need this block at all.
  */
-static int try_to_simplify_bb(struct basic_block *bb, struct instruction *first, struct instruction *second)
+static int try_to_simplify_bb(SCTX_ struct basic_block *bb, struct instruction *first, struct instruction *second)
 {
 	int changed = 0;
 	pseudo_t phi;
@@ -113,19 +113,19 @@ static int try_to_simplify_bb(struct basic_block *bb, struct instruction *first,
 			continue;
 		if (br->opcode != OP_BR)
 			continue;
-		true_sim = pseudo_truth_value(pseudo);
+		true_sim = pseudo_truth_value(sctx_ pseudo);
 		if (true_sim < 0)
 			continue;
 		target = true_sim ? second->bb_true : second->bb_false;
-		if (bb_depends_on(target, bb))
+		if (bb_depends_on(sctx_ target, bb))
 			continue;
-		changed |= rewrite_branch(source, &br->bb_true, bb, target);
-		changed |= rewrite_branch(source, &br->bb_false, bb, target);
+		changed |= rewrite_branch(sctx_ source, &br->bb_true, bb, target);
+		changed |= rewrite_branch(sctx_ source, &br->bb_false, bb, target);
 	} END_FOR_EACH_PTR(phi);
 	return changed;
 }
 
-static int bb_has_side_effects(struct basic_block *bb)
+static int bb_has_side_effects(SCTX_ struct basic_block *bb)
 {
 	struct instruction *insn;
 	FOR_EACH_PTR(bb->insns, insn) {
@@ -149,7 +149,7 @@ static int bb_has_side_effects(struct basic_block *bb)
 	return 0;
 }
 
-static int simplify_phi_branch(struct basic_block *bb, struct instruction *br)
+static int simplify_phi_branch(SCTX_ struct basic_block *bb, struct instruction *br)
 {
 	pseudo_t cond = br->cond;
 	struct instruction *def;
@@ -159,12 +159,12 @@ static int simplify_phi_branch(struct basic_block *bb, struct instruction *br)
 	def = cond->def;
 	if (def->bb != bb || def->opcode != OP_PHI)
 		return 0;
-	if (bb_has_side_effects(bb))
+	if (bb_has_side_effects(sctx_ bb))
 		return 0;
-	return try_to_simplify_bb(bb, def, br);
+	return try_to_simplify_bb(sctx_ bb, def, br);
 }
 
-static int simplify_branch_branch(struct basic_block *bb, struct instruction *br,
+static int simplify_branch_branch(SCTX_ struct basic_block *bb, struct instruction *br,
 	struct basic_block **target_p, int true_sim)
 {
 	struct basic_block *target = *target_p, *final;
@@ -182,11 +182,11 @@ static int simplify_branch_branch(struct basic_block *bb, struct instruction *br
 	 */
 	retval = 0;
 	final = true_sim ? insn->bb_true : insn->bb_false;
-	if (bb_has_side_effects(target))
+	if (bb_has_side_effects(sctx_ target))
 		goto try_to_rewrite_target;
-	if (bb_depends_on(final, target))
+	if (bb_depends_on(sctx_ final, target))
 		goto try_to_rewrite_target;
-	return rewrite_branch(bb, target_p, target, final);
+	return rewrite_branch(sctx_ bb, target_p, target, final);
 
 try_to_rewrite_target:
 	/*
@@ -195,20 +195,20 @@ try_to_rewrite_target:
 	 */
 	if (bb_list_size(target->parents) != 1)
 		return retval;
-	insert_branch(target, insn, final);
-	kill_instruction(insn);
+	insert_branch(sctx_ target, insn, final);
+	kill_instruction(sctx_ insn);
 	return 1;
 }
 
-static int simplify_one_branch(struct basic_block *bb, struct instruction *br)
+static int simplify_one_branch(SCTX_ struct basic_block *bb, struct instruction *br)
 {
-	if (simplify_phi_branch(bb, br))
+	if (simplify_phi_branch(sctx_ bb, br))
 		return 1;
-	return simplify_branch_branch(bb, br, &br->bb_true, 1) |
-	       simplify_branch_branch(bb, br, &br->bb_false, 0);
+	return simplify_branch_branch(sctx_ bb, br, &br->bb_true, 1) |
+	       simplify_branch_branch(sctx_ bb, br, &br->bb_false, 0);
 }
 
-static int simplify_branch_nodes(struct entrypoint *ep)
+static int simplify_branch_nodes(SCTX_ struct entrypoint *ep)
 {
 	int changed = 0;
 	struct basic_block *bb;
@@ -218,7 +218,7 @@ static int simplify_branch_nodes(struct entrypoint *ep)
 
 		if (!br || br->opcode != OP_BR || !br->bb_false)
 			continue;
-		changed |= simplify_one_branch(bb, br);
+		changed |= simplify_one_branch(sctx_ bb, br);
 	} END_FOR_EACH_PTR(bb);
 	return changed;
 }
@@ -226,9 +226,9 @@ static int simplify_branch_nodes(struct entrypoint *ep)
 /*
  * This is called late - when we have intra-bb liveness information..
  */
-int simplify_flow(struct entrypoint *ep)
+int simplify_flow(SCTX_ struct entrypoint *ep)
 {
-	return simplify_branch_nodes(ep);
+	return simplify_branch_nodes(sctx_ ep);
 }
 
 static inline void concat_user_list(struct pseudo_user_list *src, struct pseudo_user_list **dst)
@@ -236,7 +236,7 @@ static inline void concat_user_list(struct pseudo_user_list *src, struct pseudo_
 	concat_ptr_list((struct ptr_list *)src, (struct ptr_list **)dst);
 }
 
-void convert_instruction_target(struct instruction *insn, pseudo_t src)
+void convert_instruction_target(SCTX_ struct instruction *insn, pseudo_t src)
 {
 	pseudo_t target;
 	struct pseudo_user *pu;
@@ -256,15 +256,15 @@ void convert_instruction_target(struct instruction *insn, pseudo_t src)
 	target->users = NULL;
 }
 
-void convert_load_instruction(struct instruction *insn, pseudo_t src)
+void convert_load_instruction(SCTX_ struct instruction *insn, pseudo_t src)
 {
-	convert_instruction_target(insn, src);
+	convert_instruction_target(sctx_ insn, src);
 	/* Turn the load into a no-op */
 	insn->opcode = OP_LNOP;
 	insn->bb = NULL;
 }
 
-static int overlapping_memop(struct instruction *a, struct instruction *b)
+static int overlapping_memop(SCTX_ struct instruction *a, struct instruction *b)
 {
 	unsigned int a_start = bytes_to_bits(a->offset);
 	unsigned int b_start = bytes_to_bits(b->offset);
@@ -289,7 +289,7 @@ static inline int same_memop(struct instruction *a, struct instruction *b)
  *
  * Return 0 if it doesn't, and -1 if you don't know.
  */
-int dominates(pseudo_t pseudo, struct instruction *insn, struct instruction *dom, int local)
+int dominates(SCTX_ pseudo_t pseudo, struct instruction *insn, struct instruction *dom, int local)
 {
 	int opcode = dom->opcode;
 
@@ -309,14 +309,14 @@ int dominates(pseudo_t pseudo, struct instruction *insn, struct instruction *dom
 	if (!same_memop(insn, dom)) {
 		if (dom->opcode == OP_LOAD)
 			return 0;
-		if (!overlapping_memop(insn, dom))
+		if (!overlapping_memop(sctx_ insn, dom))
 			return 0;
 		return -1;
 	}
 	return 1;
 }
 
-static int find_dominating_parents(pseudo_t pseudo, struct instruction *insn,
+static int find_dominating_parents(SCTX_ pseudo_t pseudo, struct instruction *insn,
 	struct basic_block *bb, unsigned long generation, struct pseudo_list **dominators,
 	int local, int loads)
 {
@@ -336,7 +336,7 @@ static int find_dominating_parents(pseudo_t pseudo, struct instruction *insn,
 			int dominance;
 			if (one == insn)
 				goto no_dominance;
-			dominance = dominates(pseudo, insn, one, local);
+			dominance = dominates(sctx_ pseudo, insn, one, local);
 			if (dominance < 0) {
 				if (one->opcode == OP_LOAD)
 					continue;
@@ -353,13 +353,13 @@ no_dominance:
 			continue;
 		parent->generation = generation;
 
-		if (!find_dominating_parents(pseudo, insn, parent, generation, dominators, local, loads))
+		if (!find_dominating_parents(sctx_ pseudo, insn, parent, generation, dominators, local, loads))
 			return 0;
 		continue;
 
 found_dominator:
 		br = delete_last_instruction(&parent->insns);
-		phi = alloc_phi(parent, one->target, one->size);
+		phi = alloc_phi(sctx_ parent, one->target, one->size);
 		phi->ident = phi->ident ? : pseudo->ident;
 		add_instruction(&parent->insns, br);
 		use_pseudo(insn, phi, add_pseudo(dominators, phi));
@@ -371,7 +371,7 @@ found_dominator:
  * We should probably sort the phi list just to make it easier to compare
  * later for equality. 
  */
-void rewrite_load_instruction(struct instruction *insn, struct pseudo_list *dominators)
+void rewrite_load_instruction(SCTX_ struct instruction *insn, struct pseudo_list *dominators)
 {
 	pseudo_t new, phi;
 
@@ -394,18 +394,18 @@ void rewrite_load_instruction(struct instruction *insn, struct pseudo_list *domi
 	FOR_EACH_PTR(dominators, phi) {
 		phi->def->bb = NULL;
 	} END_FOR_EACH_PTR(phi);
-	convert_load_instruction(insn, new);
+	convert_load_instruction(sctx_ insn, new);
 	return;
 
 complex_phi:
 	/* We leave symbol pseudos with a bogus usage list here */
 	if (insn->src->type != PSEUDO_SYM)
-		kill_use(&insn->src);
+		kill_use(sctx_ &insn->src);
 	insn->opcode = OP_PHI;
 	insn->phi_list = dominators;
 }
 
-static int find_dominating_stores(pseudo_t pseudo, struct instruction *insn,
+static int find_dominating_stores(SCTX_ pseudo_t pseudo, struct instruction *insn,
 	unsigned long generation, int local)
 {
 	struct basic_block *bb = insn->bb;
@@ -424,7 +424,7 @@ static int find_dominating_stores(pseudo_t pseudo, struct instruction *insn,
 		int dominance;
 		if (one == insn)
 			goto found;
-		dominance = dominates(pseudo, insn, one, local);
+		dominance = dominates(sctx_ pseudo, insn, one, local);
 		if (dominance < 0) {
 			/* Ignore partial load dominators */
 			if (one->opcode == OP_LOAD)
@@ -439,14 +439,14 @@ static int find_dominating_stores(pseudo_t pseudo, struct instruction *insn,
 		partial = 0;
 	} END_FOR_EACH_PTR(one);
 	/* Whaa? */
-	warning(pseudo->sym->pos->pos, "unable to find symbol read");
+	warning(sctx_ pseudo->sym->pos->pos, "unable to find symbol read");
 	return 0;
 found:
 	if (partial)
 		return 0;
 
 	if (dom) {
-		convert_load_instruction(insn, dom->target);
+		convert_load_instruction(sctx_ insn, dom->target);
 		return 1;
 	}
 
@@ -454,15 +454,15 @@ found:
 	bb->generation = generation;
 
 	dominators = NULL;
-	if (!find_dominating_parents(pseudo, insn, bb, generation, &dominators, local, 1))
+	if (!find_dominating_parents(sctx_ pseudo, insn, bb, generation, &dominators, local, 1))
 		return 0;
 
 	/* This happens with initial assignments to structures etc.. */
 	if (!dominators) {
 		if (!local)
 			return 0;
-		check_access(insn);
-		convert_load_instruction(insn, value_pseudo(0));
+		check_access(sctx_ insn);
+		convert_load_instruction(sctx_ insn, value_pseudo(sctx_ 0));
 		return 1;
 	}
 
@@ -472,21 +472,21 @@ found:
 	 * have to turn the load into a phi-node of the
 	 * dominators.
 	 */
-	rewrite_load_instruction(insn, dominators);
+	rewrite_load_instruction(sctx_ insn, dominators);
 	return 1;
 }
 
-static void kill_store(struct instruction *insn)
+static void kill_store(SCTX_ struct instruction *insn)
 {
 	if (insn) {
 		insn->bb = NULL;
 		insn->opcode = OP_SNOP;
-		kill_use(&insn->target);
+		kill_use(sctx_ &insn->target);
 	}
 }
 
 /* Kill a pseudo that is dead on exit from the bb */
-static void kill_dead_stores(pseudo_t pseudo, unsigned long generation, struct basic_block *bb, int local)
+static void kill_dead_stores(SCTX_ pseudo_t pseudo, unsigned long generation, struct basic_block *bb, int local)
 {
 	struct instruction *insn;
 	struct basic_block *parent;
@@ -507,7 +507,7 @@ static void kill_dead_stores(pseudo_t pseudo, unsigned long generation, struct b
 		if (insn->src == pseudo) {
 			if (opcode == OP_LOAD)
 				return;
-			kill_store(insn);
+			kill_store(sctx_ insn);
 			continue;
 		}
 		if (local)
@@ -522,7 +522,7 @@ static void kill_dead_stores(pseudo_t pseudo, unsigned long generation, struct b
 			if (child && child != bb)
 				return;
 		} END_FOR_EACH_PTR(child);
-		kill_dead_stores(pseudo, generation, parent, local);
+		kill_dead_stores(sctx_ pseudo, generation, parent, local);
 	} END_FOR_EACH_PTR(parent);
 }
 
@@ -530,7 +530,7 @@ static void kill_dead_stores(pseudo_t pseudo, unsigned long generation, struct b
  * This should see if the "insn" trivially dominates some previous store, and kill the
  * store if unnecessary.
  */
-static void kill_dominated_stores(pseudo_t pseudo, struct instruction *insn, 
+static void kill_dominated_stores(SCTX_ pseudo_t pseudo, struct instruction *insn, 
 	unsigned long generation, struct basic_block *bb, int local, int found)
 {
 	struct instruction *one;
@@ -538,7 +538,7 @@ static void kill_dominated_stores(pseudo_t pseudo, struct instruction *insn,
 
 	/* Unreachable store? Undo it */
 	if (!bb) {
-		kill_store(insn);
+		kill_store(sctx_ insn);
 		return;
 	}
 	if (bb->generation == generation)
@@ -552,18 +552,18 @@ static void kill_dominated_stores(pseudo_t pseudo, struct instruction *insn,
 			found = 1;
 			continue;
 		}
-		dominance = dominates(pseudo, insn, one, local);
+		dominance = dominates(sctx_ pseudo, insn, one, local);
 		if (!dominance)
 			continue;
 		if (dominance < 0)
 			return;
 		if (one->opcode == OP_LOAD)
 			return;
-		kill_store(one);
+		kill_store(sctx_ one);
 	} END_FOR_EACH_PTR_REVERSE(one);
 
 	if (!found) {
-		warning(bb->pos->pos, "Unable to find instruction");
+		warning(sctx_ bb->pos->pos, "Unable to find instruction");
 		return;
 	}
 
@@ -573,11 +573,11 @@ static void kill_dominated_stores(pseudo_t pseudo, struct instruction *insn,
 			if (child && child != bb)
 				return;
 		} END_FOR_EACH_PTR(child);
-		kill_dominated_stores(pseudo, insn, generation, parent, local, found);
+		kill_dominated_stores(sctx_ pseudo, insn, generation, parent, local, found);
 	} END_FOR_EACH_PTR(parent);
 }
 
-void check_access(struct instruction *insn)
+void check_access(SCTX_ struct instruction *insn)
 {
 	pseudo_t pseudo = insn->src;
 
@@ -586,14 +586,14 @@ void check_access(struct instruction *insn)
 		struct symbol *sym = pseudo->sym;
 
 		if (sym->bit_size > 0 && (offset < 0 || bit > sym->bit_size))
-			warning(insn->pos, "invalid access %s '%s' (%d %d)",
+			warning(sctx_ insn->pos, "invalid access %s '%s' (%d %d)",
 				offset < 0 ? "below" : "past the end of",
-				show_ident(sym->ident), offset,
+				show_ident(sctx_ sym->ident), offset,
 				bits_to_bytes(sym->bit_size));
 	}
 }
 
-static void simplify_one_symbol(struct entrypoint *ep, struct symbol *sym)
+static void simplify_one_symbol(SCTX_ struct entrypoint *ep, struct symbol *sym)
 {
 	pseudo_t pseudo, src;
 	struct pseudo_user *pu;
@@ -640,7 +640,7 @@ static void simplify_one_symbol(struct entrypoint *ep, struct symbol *sym)
 		case OP_PHI:
 			continue;
 		default:
-			warning(sym->pos->pos, "symbol '%s' pseudo used in unexpected way", show_ident(sym->ident));
+			warning(sctx_ sym->pos->pos, "symbol '%s' pseudo used in unexpected way", show_ident(sctx_ sym->ident));
 		}
 		complex |= insn->offset;
 	} END_FOR_EACH_PTR(pu);
@@ -662,13 +662,13 @@ static void simplify_one_symbol(struct entrypoint *ep, struct symbol *sym)
 	FOR_EACH_PTR(pseudo->users, pu) {
 		struct instruction *insn = pu->insn;
 		if (insn->opcode == OP_LOAD) {
-			check_access(insn);
-			convert_load_instruction(insn, src);
+			check_access(sctx_ insn);
+			convert_load_instruction(sctx_ insn, src);
 		}
 	} END_FOR_EACH_PTR(pu);
 
 	/* Turn the store into a no-op */
-	kill_store(def);
+	kill_store(sctx_ def);
 	return;
 
 multi_def:
@@ -678,7 +678,7 @@ external_visibility:
 	FOR_EACH_PTR_REVERSE(pseudo->users, pu) {
 		struct instruction *insn = pu->insn;
 		if (insn->opcode == OP_LOAD)
-			all &= find_dominating_stores(pseudo, insn, ++bb_generation, !mod);
+			all &= find_dominating_stores(sctx_ pseudo, insn, ++bb_generation, !mod);
 	} END_FOR_EACH_PTR_REVERSE(pu);
 
 	/* If we converted all the loads, remove the stores. They are dead */
@@ -686,7 +686,7 @@ external_visibility:
 		FOR_EACH_PTR(pseudo->users, pu) {
 			struct instruction *insn = pu->insn;
 			if (insn->opcode == OP_STORE)
-				kill_store(insn);
+				kill_store(sctx_ insn);
 		} END_FOR_EACH_PTR(pu);
 	} else {
 		/*
@@ -696,14 +696,14 @@ external_visibility:
 		FOR_EACH_PTR(pseudo->users, pu) {
 			struct instruction *insn = pu->insn;
 			if (insn->opcode == OP_STORE)
-				kill_dominated_stores(pseudo, insn, ++bb_generation, insn->bb, !mod, 0);
+				kill_dominated_stores(sctx_ pseudo, insn, ++bb_generation, insn->bb, !mod, 0);
 		} END_FOR_EACH_PTR(pu);
 
 		if (!(mod & (MOD_NONLOCAL | MOD_STATIC))) {
 			struct basic_block *bb;
 			FOR_EACH_PTR(ep->bbs, bb) {
 				if (!bb->children)
-					kill_dead_stores(pseudo, ++bb_generation, bb, !mod);
+					kill_dead_stores(sctx_ pseudo, ++bb_generation, bb, !mod);
 			} END_FOR_EACH_PTR(bb);
 		}
 	}
@@ -711,16 +711,16 @@ external_visibility:
 	return;
 }
 
-void simplify_symbol_usage(struct entrypoint *ep)
+void simplify_symbol_usage(SCTX_ struct entrypoint *ep)
 {
 	pseudo_t pseudo;
 
 	FOR_EACH_PTR(ep->accesses, pseudo) {
-		simplify_one_symbol(ep, pseudo->sym);
+		simplify_one_symbol(sctx_ ep, pseudo->sym);
 	} END_FOR_EACH_PTR(pseudo);
 }
 
-static void mark_bb_reachable(struct basic_block *bb, unsigned long generation)
+static void mark_bb_reachable(SCTX_ struct basic_block *bb, unsigned long generation)
 {
 	struct basic_block *child;
 
@@ -728,11 +728,11 @@ static void mark_bb_reachable(struct basic_block *bb, unsigned long generation)
 		return;
 	bb->generation = generation;
 	FOR_EACH_PTR(bb->children, child) {
-		mark_bb_reachable(child, generation);
+		mark_bb_reachable(sctx_ child, generation);
 	} END_FOR_EACH_PTR(child);
 }
 
-static void kill_defs(struct instruction *insn)
+static void kill_defs(SCTX_ struct instruction *insn)
 {
 	pseudo_t target = insn->target;
 
@@ -741,17 +741,17 @@ static void kill_defs(struct instruction *insn)
 	if (target->def != insn)
 		return;
 
-	convert_instruction_target(insn, VOID);
+	convert_instruction_target(sctx_ insn, VOID);
 }
 
-void kill_bb(struct basic_block *bb)
+void kill_bb(SCTX_ struct basic_block *bb)
 {
 	struct instruction *insn;
 	struct basic_block *child, *parent;
 
 	FOR_EACH_PTR(bb->insns, insn) {
-		kill_instruction(insn);
-		kill_defs(insn);
+		kill_instruction(sctx_ insn);
+		kill_defs(sctx_ insn);
 		/*
 		 * We kill unreachable instructions even if they
 		 * otherwise aren't "killable" (e.g. volatile loads)
@@ -771,24 +771,24 @@ void kill_bb(struct basic_block *bb)
 	bb->parents = NULL;
 }
 
-void kill_unreachable_bbs(struct entrypoint *ep)
+void kill_unreachable_bbs(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 	unsigned long generation = ++bb_generation;
 
-	mark_bb_reachable(ep->entry->bb, generation);
+	mark_bb_reachable(sctx_ ep->entry->bb, generation);
 	FOR_EACH_PTR(ep->bbs, bb) {
 		if (bb->generation == generation)
 			continue;
 		/* Mark it as being dead */
-		kill_bb(bb);
+		kill_bb(sctx_ bb);
 		bb->ep = NULL;
 		DELETE_CURRENT_PTR(bb);
 	} END_FOR_EACH_PTR(bb);
 	PACK_PTR_LIST(&ep->bbs);
 }
 
-static int rewrite_parent_branch(struct basic_block *bb, struct basic_block *old, struct basic_block *new)
+static int rewrite_parent_branch(SCTX_ struct basic_block *bb, struct basic_block *old, struct basic_block *new)
 {
 	int changed = 0;
 	struct instruction *insn = last_instruction(bb->insns);
@@ -802,14 +802,14 @@ static int rewrite_parent_branch(struct basic_block *bb, struct basic_block *old
 
 	switch (insn->opcode) {
 	case OP_BR:
-		changed |= rewrite_branch(bb, &insn->bb_true, old, new);
-		changed |= rewrite_branch(bb, &insn->bb_false, old, new);
+		changed |= rewrite_branch(sctx_ bb, &insn->bb_true, old, new);
+		changed |= rewrite_branch(sctx_ bb, &insn->bb_false, old, new);
 		assert(changed);
 		return changed;
 	case OP_SWITCH: {
 		struct multijmp *jmp;
 		FOR_EACH_PTR(insn->multijmp_list, jmp) {
-			changed |= rewrite_branch(bb, &jmp->target, old, new);
+			changed |= rewrite_branch(sctx_ bb, &jmp->target, old, new);
 		} END_FOR_EACH_PTR(jmp);
 		assert(changed);
 		return changed;
@@ -819,7 +819,7 @@ static int rewrite_parent_branch(struct basic_block *bb, struct basic_block *old
 	}
 }
 
-static struct basic_block * rewrite_branch_bb(struct basic_block *bb, struct instruction *br)
+static struct basic_block * rewrite_branch_bb(SCTX_ struct basic_block *bb, struct instruction *br)
 {
 	struct basic_block *parent;
 	struct basic_block *target = br->bb_true;
@@ -837,13 +837,13 @@ static struct basic_block * rewrite_branch_bb(struct basic_block *bb, struct ins
 	 * may change when we rewrite the parent.
 	 */
 	while ((parent = first_basic_block(bb->parents)) != NULL) {
-		if (!rewrite_parent_branch(parent, bb, target))
+		if (!rewrite_parent_branch(sctx_ parent, bb, target))
 			return NULL;
 	}
 	return target;
 }
 
-static void vrfy_bb_in_list(struct basic_block *bb, struct basic_block_list *list)
+static void vrfy_bb_in_list(SCTX_ struct basic_block *bb, struct basic_block_list *list)
 {
 	if (bb) {
 		struct basic_block *tmp;
@@ -857,15 +857,15 @@ static void vrfy_bb_in_list(struct basic_block *bb, struct basic_block_list *lis
 	}
 }
 
-static void vrfy_parents(struct basic_block *bb)
+static void vrfy_parents(SCTX_ struct basic_block *bb)
 {
 	struct basic_block *tmp;
 	FOR_EACH_PTR(bb->parents, tmp) {
-		vrfy_bb_in_list(bb, tmp->children);
+		vrfy_bb_in_list(sctx_ bb, tmp->children);
 	} END_FOR_EACH_PTR(tmp);
 }
 
-static void vrfy_children(struct basic_block *bb)
+static void vrfy_children(SCTX_ struct basic_block *bb)
 {
 	struct basic_block *tmp;
 	struct instruction *br = last_instruction(bb->insns);
@@ -877,13 +877,13 @@ static void vrfy_children(struct basic_block *bb)
 	switch (br->opcode) {
 		struct multijmp *jmp;
 	case OP_BR:
-		vrfy_bb_in_list(br->bb_true, bb->children);
-		vrfy_bb_in_list(br->bb_false, bb->children);
+		vrfy_bb_in_list(sctx_ br->bb_true, bb->children);
+		vrfy_bb_in_list(sctx_ br->bb_false, bb->children);
 		break;
 	case OP_SWITCH:
 	case OP_COMPUTEDGOTO:
 		FOR_EACH_PTR(br->multijmp_list, jmp) {
-			vrfy_bb_in_list(jmp->target, bb->children);
+			vrfy_bb_in_list(sctx_ jmp->target, bb->children);
 		} END_FOR_EACH_PTR(jmp);
 		break;
 	default:
@@ -891,17 +891,17 @@ static void vrfy_children(struct basic_block *bb)
 	}
 		
 	FOR_EACH_PTR(bb->children, tmp) {
-		vrfy_bb_in_list(bb, tmp->parents);
+		vrfy_bb_in_list(sctx_ bb, tmp->parents);
 	} END_FOR_EACH_PTR(tmp);
 }
 
-static void vrfy_bb_flow(struct basic_block *bb)
+static void vrfy_bb_flow(SCTX_ struct basic_block *bb)
 {
-	vrfy_children(bb);
-	vrfy_parents(bb);
+	vrfy_children(sctx_ bb);
+	vrfy_parents(sctx_ bb);
 }
 
-void vrfy_flow(struct entrypoint *ep)
+void vrfy_flow(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 	struct basic_block *entry = ep->entry->bb;
@@ -909,12 +909,12 @@ void vrfy_flow(struct entrypoint *ep)
 	FOR_EACH_PTR(ep->bbs, bb) {
 		if (bb == entry)
 			entry = NULL;
-		vrfy_bb_flow(bb);
+		vrfy_bb_flow(sctx_ bb);
 	} END_FOR_EACH_PTR(bb);
 	assert(!entry);
 }
 
-void pack_basic_blocks(struct entrypoint *ep)
+void pack_basic_blocks(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 
@@ -937,9 +937,9 @@ void pack_basic_blocks(struct entrypoint *ep)
 				continue;
 			case OP_BR: {
 				struct basic_block *replace;
-				replace = rewrite_branch_bb(bb, first);
+				replace = rewrite_branch_bb(sctx_ bb, first);
 				if (replace) {
-					kill_bb(bb);
+					kill_bb(sctx_ bb);
 					goto no_merge;
 				}
 			}
@@ -988,7 +988,7 @@ out:
 			replace_bb_in_list(&child->parents, bb, parent, 0);
 		} END_FOR_EACH_PTR(child);
 
-		kill_instruction(delete_last_instruction(&parent->insns));
+		kill_instruction(sctx_ delete_last_instruction(&parent->insns));
 		FOR_EACH_PTR(bb->insns, insn) {
 			if (insn->bb) {
 				assert(insn->bb == bb);
@@ -1002,5 +1002,3 @@ out:
 		/* nothing to do */;
 	} END_FOR_EACH_PTR(bb);
 }
-
-

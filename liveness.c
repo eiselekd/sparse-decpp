@@ -12,7 +12,7 @@
 #include "linearize.h"
 #include "flow.h"
 
-static void phi_defines(struct instruction * phi_node, pseudo_t target,
+static void phi_defines(SCTX_ struct instruction * phi_node, pseudo_t target,
 	void (*defines)(struct basic_block *, struct instruction *, pseudo_t))
 {
 	pseudo_t phi;
@@ -24,14 +24,14 @@ static void phi_defines(struct instruction * phi_node, pseudo_t target,
 		if (!def || !def->bb)
 			continue;
 		if (def->opcode == OP_PHI) {
-			phi_defines(def, target, defines);
+			phi_defines(sctx_ def, target, defines);
 			continue;
 		}
 		defines(def->bb, phi->def, target);
 	} END_FOR_EACH_PTR(phi);
 }
 
-static void asm_liveness(struct basic_block *bb, struct instruction *insn,
+static void asm_liveness(SCTX_ struct basic_block *bb, struct instruction *insn,
 	void (*def)(struct basic_block *, struct instruction *, pseudo_t),
 	void (*use)(struct basic_block *, struct instruction *, pseudo_t))
 {
@@ -46,7 +46,7 @@ static void asm_liveness(struct basic_block *bb, struct instruction *insn,
 	} END_FOR_EACH_PTR(entry);
 }
 
-static void track_instruction_usage(struct basic_block *bb, struct instruction *insn,
+static void track_instruction_usage(SCTX_ struct basic_block *bb, struct instruction *insn,
 	void (*def)(struct basic_block *, struct instruction *, pseudo_t),
 	void (*use)(struct basic_block *, struct instruction *, pseudo_t))
 {
@@ -103,7 +103,7 @@ static void track_instruction_usage(struct basic_block *bb, struct instruction *
 	/* Other */
 	case OP_PHI:
 		/* Phi-nodes are "backwards" nodes. Their def doesn't matter */
-		phi_defines(insn, insn->target, def);
+		phi_defines(sctx_ insn, insn->target, def);
 		break;
 
 	case OP_PHISOURCE:
@@ -135,7 +135,7 @@ static void track_instruction_usage(struct basic_block *bb, struct instruction *
 		break;
 
 	case OP_ASM:
-		asm_liveness(bb, insn, def, use);
+		asm_liveness(sctx_ bb, insn, def, use);
 		break;
 
 	case OP_RANGE_LIN:
@@ -159,7 +159,7 @@ static void track_instruction_usage(struct basic_block *bb, struct instruction *
 	}
 }
 
-int pseudo_in_list(struct pseudo_list *list, pseudo_t pseudo)
+int pseudo_in_list(SCTX_ struct pseudo_list *list, pseudo_t pseudo)
 {
 	pseudo_t old;
 	FOR_EACH_PTR(list,old) {
@@ -171,9 +171,9 @@ int pseudo_in_list(struct pseudo_list *list, pseudo_t pseudo)
 
 static int liveness_changed;
 
-static void add_pseudo_exclusive(struct pseudo_list **list, pseudo_t pseudo)
+static void add_pseudo_exclusive(SCTX_ struct pseudo_list **list, pseudo_t pseudo)
 {
-	if (!pseudo_in_list(*list, pseudo)) {
+	if (!pseudo_in_list(sctx_ *list, pseudo)) {
 		liveness_changed = 1;
 		add_pseudo(list, pseudo);
 	}
@@ -184,30 +184,30 @@ static inline int trackable_pseudo(pseudo_t pseudo)
 	return pseudo && (pseudo->type == PSEUDO_REG || pseudo->type == PSEUDO_ARG);
 }
 
-static void insn_uses(struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
+static void insn_uses(SCTX_ struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
 {
 	if (trackable_pseudo(pseudo)) {
 		struct instruction *def = pseudo->def;
 		if (pseudo->type != PSEUDO_REG || def->bb != bb || def->opcode == OP_PHI)
-			add_pseudo_exclusive(&bb->needs, pseudo);
+			add_pseudo_exclusive(sctx_ &bb->needs, pseudo);
 	}
 }
 
-static void insn_defines(struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
+static void insn_defines(SCTX_ struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
 {
 	assert(trackable_pseudo(pseudo));
 	add_pseudo(&bb->defines, pseudo);
 }
 
-static void track_bb_liveness(struct basic_block *bb)
+static void track_bb_liveness(SCTX_ struct basic_block *bb)
 {
 	pseudo_t needs;
 
 	FOR_EACH_PTR(bb->needs, needs) {
 		struct basic_block *parent;
 		FOR_EACH_PTR(bb->parents, parent) {
-			if (!pseudo_in_list(parent->defines, needs)) {
-				add_pseudo_exclusive(&parent->needs, needs);
+			if (!pseudo_in_list(sctx_ parent->defines, needs)) {
+				add_pseudo_exclusive(sctx_ &parent->needs, needs);
 			}
 		} END_FOR_EACH_PTR(parent);
 	} END_FOR_EACH_PTR(needs);
@@ -217,7 +217,7 @@ static void track_bb_liveness(struct basic_block *bb)
  * We need to clear the liveness information if we 
  * are going to re-run it.
  */
-void clear_liveness(struct entrypoint *ep)
+void clear_liveness(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 
@@ -231,7 +231,7 @@ void clear_liveness(struct entrypoint *ep)
  * Track inter-bb pseudo liveness. The intra-bb case
  * is purely local information.
  */
-void track_pseudo_liveness(struct entrypoint *ep)
+void track_pseudo_liveness(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 
@@ -242,7 +242,7 @@ void track_pseudo_liveness(struct entrypoint *ep)
 			if (!insn->bb)
 				continue;
 			assert(insn->bb == bb);
-			track_instruction_usage(bb, insn, insn_defines, insn_uses);
+			track_instruction_usage(sctx_ bb, insn, insn_defines, insn_uses);
 		} END_FOR_EACH_PTR(insn);
 	} END_FOR_EACH_PTR(bb);
 
@@ -250,7 +250,7 @@ void track_pseudo_liveness(struct entrypoint *ep)
 	do {
 		liveness_changed = 0;
 		FOR_EACH_PTR_REVERSE(ep->bbs, bb) {
-			track_bb_liveness(bb);
+			track_bb_liveness(sctx_ bb);
 		} END_FOR_EACH_PTR_REVERSE(bb);
 	} while (liveness_changed);
 
@@ -260,7 +260,7 @@ void track_pseudo_liveness(struct entrypoint *ep)
 		FOR_EACH_PTR(bb->defines, def) {
 			struct basic_block *child;
 			FOR_EACH_PTR(bb->children, child) {
-				if (pseudo_in_list(child->needs, def))
+				if (pseudo_in_list(sctx_ child->needs, def))
 					goto is_used;
 			} END_FOR_EACH_PTR(child);
 			DELETE_CURRENT_PTR(def);
@@ -271,15 +271,15 @@ is_used:
 	} END_FOR_EACH_PTR(bb);
 }
 
-static void merge_pseudo_list(struct pseudo_list *src, struct pseudo_list **dest)
+static void merge_pseudo_list(SCTX_ struct pseudo_list *src, struct pseudo_list **dest)
 {
 	pseudo_t pseudo;
 	FOR_EACH_PTR(src, pseudo) {
-		add_pseudo_exclusive(dest, pseudo);
+		add_pseudo_exclusive(sctx_ dest, pseudo);
 	} END_FOR_EACH_PTR(pseudo);
 }
 
-void track_phi_uses(struct instruction *insn)
+void track_phi_uses(SCTX_ struct instruction *insn)
 {
 	pseudo_t phi;
 	FOR_EACH_PTR(insn->phi_list, phi) {
@@ -292,38 +292,38 @@ void track_phi_uses(struct instruction *insn)
 	} END_FOR_EACH_PTR(phi);
 }
 
-static void track_bb_phi_uses(struct basic_block *bb)
+static void track_bb_phi_uses(SCTX_ struct basic_block *bb)
 {
 	struct instruction *insn;
 	FOR_EACH_PTR(bb->insns, insn) {
 		if (insn->bb && insn->opcode == OP_PHI)
-			track_phi_uses(insn);
+			track_phi_uses(sctx_ insn);
 	} END_FOR_EACH_PTR(insn);
 }
 
 static struct pseudo_list **live_list;
 static struct pseudo_list *dead_list;
 
-static void death_def(struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
+static void death_def(SCTX_ struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
 {
 }
 
-static void death_use(struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
+static void death_use(SCTX_ struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
 {
-	if (trackable_pseudo(pseudo) && !pseudo_in_list(*live_list, pseudo)) {
+	if (trackable_pseudo(pseudo) && !pseudo_in_list(sctx_ *live_list, pseudo)) {
 		add_pseudo(&dead_list, pseudo);
 		add_pseudo(live_list, pseudo);
 	}
 }
 
-static void track_pseudo_death_bb(struct basic_block *bb)
+static void track_pseudo_death_bb(SCTX_ struct basic_block *bb)
 {
 	struct pseudo_list *live = NULL;
 	struct basic_block *child;
 	struct instruction *insn;
 
 	FOR_EACH_PTR(bb->children, child) {
-		merge_pseudo_list(child->needs, &live);
+		merge_pseudo_list(sctx_ child->needs, &live);
 	} END_FOR_EACH_PTR(child);
 
 	live_list = &live;
@@ -332,11 +332,11 @@ static void track_pseudo_death_bb(struct basic_block *bb)
 			continue;
 
 		dead_list = NULL;
-		track_instruction_usage(bb, insn, death_def, death_use);
+		track_instruction_usage(sctx_ bb, insn, death_def, death_use);
 		if (dead_list) {
 			pseudo_t dead;
 			FOR_EACH_PTR(dead_list, dead) {
-				struct instruction *deathnote = __alloc_instruction(0);
+				struct instruction *deathnote = __alloc_instruction(sctx_ 0);
 				deathnote->bb = bb;
 				deathnote->opcode = OP_DEATHNOTE;
 				deathnote->target = dead;
@@ -348,15 +348,15 @@ static void track_pseudo_death_bb(struct basic_block *bb)
 	free_ptr_list(&live);
 }
 
-void track_pseudo_death(struct entrypoint *ep)
+void track_pseudo_death(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 
 	FOR_EACH_PTR(ep->bbs, bb) {
-		track_bb_phi_uses(bb);
+		track_bb_phi_uses(sctx_ bb);
 	} END_FOR_EACH_PTR(bb);
 
 	FOR_EACH_PTR(ep->bbs, bb) {
-		track_pseudo_death_bb(bb);
+		track_pseudo_death_bb(sctx_ bb);
 	} END_FOR_EACH_PTR(bb);
 }

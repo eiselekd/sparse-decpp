@@ -74,9 +74,9 @@ static const char **dirafter_includepath = includepath + 3;
 		stream->protect = NULL;	\
 	} while(0)
 
-static struct token *alloc_token(struct position *pos)
+static struct token *alloc_token(SCTX_ struct position *pos)
 {
-	struct token *token = __alloc_token(0);
+	struct token *token = __alloc_token(sctx_ 0);
 
 	token->pos.stream = pos->stream;
 	token->pos.line = pos->line;
@@ -86,12 +86,12 @@ static struct token *alloc_token(struct position *pos)
 }
 
 /* Expand symbol 'sym' at '*list' */
-static int expand(struct token **, struct symbol *, struct token *);
+static int expand(SCTX_ struct token **, struct symbol *, struct token *);
 
-static void replace_with_string(struct token *token, const char *str)
+static void replace_with_string(SCTX_ struct token *token, const char *str)
 {
 	int size = strlen(str) + 1;
-	struct string *s = __alloc_string(size);
+	struct string *s = __alloc_string(sctx_ size);
 
 	s->length = size;
 	memcpy(s->data, str, size);
@@ -99,26 +99,26 @@ static void replace_with_string(struct token *token, const char *str)
 	token->string = s;
 }
 
-static void replace_with_integer(struct token *token, unsigned int val)
+static void replace_with_integer(SCTX_ struct token *token, unsigned int val)
 {
-	char *buf = __alloc_bytes(11);
+	char *buf = __alloc_bytes(sctx_ 11);
 	sprintf(buf, "%u", val);
 	token_type(token) = TOKEN_NUMBER;
 	token->number = buf;
 }
 
-static struct symbol *lookup_macro(struct ident *ident)
+static struct symbol *lookup_macro(SCTX_ struct ident *ident)
 {
-	struct symbol *sym = lookup_symbol(ident, NS_MACRO | NS_UNDEF);
+	struct symbol *sym = lookup_symbol(sctx_ ident, NS_MACRO | NS_UNDEF);
 	if (sym && sym->namespace != NS_MACRO)
 		sym = NULL;
 	return sym;
 }
 
-static int token_defined(struct token *token)
+static int token_defined(SCTX_ struct token *token)
 {
 	if (token_type(token) == TOKEN_IDENT) {
-		struct symbol *sym = lookup_macro(token->ident);
+		struct symbol *sym = lookup_macro(sctx_ token->ident);
 		if (sym) {
 			sym->used_in = file_scope;
 			return 1;
@@ -126,20 +126,20 @@ static int token_defined(struct token *token)
 		return 0;
 	}
 
-	sparse_error(token->pos, "expected preprocessor identifier");
+	sparse_error(sctx_ token->pos, "expected preprocessor identifier");
 	return 0;
 }
 
-static void replace_with_defined(struct token *token)
+static void replace_with_defined(SCTX_ struct token *token)
 {
 	static const char *string[] = { "0", "1" };
-	int defined = token_defined(token);
+	int defined = token_defined(sctx_ token);
 
 	token_type(token) = TOKEN_NUMBER;
 	token->number = string[defined];
 }
 
-static int expand_one_symbol(struct token **list)
+static int expand_one_symbol(SCTX_ struct token **list)
 {
 	struct token *token = *list;
 	struct symbol *sym;
@@ -149,25 +149,25 @@ static int expand_one_symbol(struct token **list)
 	if (token->pos.noexpand)
 		return 1;
 
-	sym = lookup_macro(token->ident);
+	sym = lookup_macro(sctx_ token->ident);
 	if (sym) {
 		sym->used_in = file_scope;
-		return expand(list, sym, token);
+		return expand(sctx_ list, sym, token);
 	}
 	if (token->ident == &__LINE___ident) {
-		replace_with_integer(token, token->pos.line);
+		replace_with_integer(sctx_ token, token->pos.line);
 	} else if (token->ident == &__FILE___ident) {
-		replace_with_string(token, stream_name(token->pos.stream));
+		replace_with_string(sctx_ token, stream_name(sctx_ token->pos.stream));
 	} else if (token->ident == &__DATE___ident) {
 		if (!t)
 			time(&t);
 		strftime(buffer, 12, "%b %e %Y", localtime(&t));
-		replace_with_string(token, buffer);
+		replace_with_string(sctx_ token, buffer);
 	} else if (token->ident == &__TIME___ident) {
 		if (!t)
 			time(&t);
 		strftime(buffer, 9, "%T", localtime(&t));
-		replace_with_string(token, buffer);
+		replace_with_string(sctx_ token, buffer);
 	}
 	return 1;
 }
@@ -185,18 +185,18 @@ static inline struct token *scan_next(struct token **where)
 	return token;
 }
 
-static void expand_list(struct token **list )
+static void expand_list(SCTX_ struct token **list )
 {
 	struct token *next;
 	while (!eof_token(next = scan_next(list))) {
-		if (token_type(next) != TOKEN_IDENT || expand_one_symbol(list))
+		if (token_type(next) != TOKEN_IDENT || expand_one_symbol(sctx_ list))
 			list = &next->next;
 	}
 }
 
-static void preprocessor_line(struct stream *stream, struct token **line);
+static void preprocessor_line(SCTX_ struct stream *stream, struct token **line);
 
-static struct token *collect_arg(struct token *prev, int vararg, struct position *pos)
+static struct token *collect_arg(SCTX_ struct token *prev, int vararg, struct position *pos)
 {
 	struct stream *stream = input_streams + prev->pos.stream;
 	struct token **p = &prev->next;
@@ -206,10 +206,10 @@ static struct token *collect_arg(struct token *prev, int vararg, struct position
 	while (!eof_token(next = scan_next(p))) {
 		if (next->pos.newline && match_op(next, '#')) {
 			if (!next->pos.noexpand) {
-				sparse_error(next->pos,
+				sparse_error(sctx_ next->pos,
 					     "directive in argument list");
-				preprocessor_line(stream, p);
-				__free_token(next);	/* Free the '#' token */
+				preprocessor_line(sctx_ stream, p);
+				__free_token(sctx_ next);	/* Free the '#' token */
 				continue;
 			}
 		}
@@ -221,7 +221,7 @@ static struct token *collect_arg(struct token *prev, int vararg, struct position
 		}
 		if (false_nesting) {
 			*p = next->next;
-			__free_token(next);
+			__free_token(sctx_ next);
 			continue;
 		}
 		if (match_op(next, '(')) {
@@ -254,7 +254,7 @@ struct arg {
 	int n_str;
 };
 
-static int collect_arguments(struct token *start, struct token *arglist, struct arg *args, struct token *what)
+static int collect_arguments(SCTX_ struct token *start, struct token *arglist, struct arg *args, struct token *what)
 {
 	int wanted = arglist->count.normal;
 	struct token *next = NULL;
@@ -263,7 +263,7 @@ static int collect_arguments(struct token *start, struct token *arglist, struct 
 	arglist = arglist->next;	/* skip counter */
 
 	if (!wanted) {
-		next = collect_arg(start, 0, &what->pos);
+		next = collect_arg(sctx_ start, 0, &what->pos);
 		if (eof_token(next))
 			goto Eclosing;
 		if (!eof_token(start->next) || !match_op(next, ')')) {
@@ -273,7 +273,7 @@ static int collect_arguments(struct token *start, struct token *arglist, struct 
 	} else {
 		for (count = 0; count < wanted; count++) {
 			struct argcount *p = &arglist->next->count;
-			next = collect_arg(start, p->vararg, &what->pos);
+			next = collect_arg(sctx_ start, p->vararg, &what->pos);
 			arglist = arglist->next->next;
 			if (eof_token(next))
 				goto Eclosing;
@@ -305,41 +305,41 @@ static int collect_arguments(struct token *start, struct token *arglist, struct 
 	return 1;
 
 Efew:
-	sparse_error(what->pos, "macro \"%s\" requires %d arguments, but only %d given",
-		show_token(what), wanted, count);
+	sparse_error(sctx_ what->pos, "macro \"%s\" requires %d arguments, but only %d given",
+		show_token(sctx_ what), wanted, count);
 	goto out;
 Emany:
 	while (match_op(next, ',')) {
-		next = collect_arg(next, 0, &what->pos);
+		next = collect_arg(sctx_ next, 0, &what->pos);
 		count++;
 	}
 	if (eof_token(next))
 		goto Eclosing;
-	sparse_error(what->pos, "macro \"%s\" passed %d arguments, but takes just %d",
-		show_token(what), count, wanted);
+	sparse_error(sctx_ what->pos, "macro \"%s\" passed %d arguments, but takes just %d",
+		show_token(sctx_ what), count, wanted);
 	goto out;
 Eclosing:
-	sparse_error(what->pos, "unterminated argument list invoking macro \"%s\"",
-		show_token(what));
+	sparse_error(sctx_ what->pos, "unterminated argument list invoking macro \"%s\"",
+		show_token(sctx_ what));
 out:
 	what->next = next->next;
 	return 0;
 }
 
-static struct token *dup_one(struct token *tok)
+static struct token *dup_one(SCTX_ struct token *tok)
 {
-	struct token *newtok = __alloc_token(0);
+	struct token *newtok = __alloc_token(sctx_ 0);
 	*newtok = *tok;
 	return newtok;
 }
 
-static struct token *dup_list(struct token *list)
+static struct token *dup_list(SCTX_ struct token *list)
 {
 	struct token *res = NULL;
 	struct token **p = &res;
 
 	while (!eof_token(list)) {
-		struct token *newtok = __alloc_token(0);
+		struct token *newtok = __alloc_token(sctx_ 0);
 		*newtok = *list;
 		*p = newtok;
 		p = &newtok->next;
@@ -348,12 +348,12 @@ static struct token *dup_list(struct token *list)
 	return res;
 }
 
-static struct token *dup_list_e(struct token *list, struct expansion *e)
+static struct token *dup_list_e(SCTX_ struct token *list, struct expansion *e)
 {
-	return list_e(dup_list(list), e);
+	return list_e(dup_list(sctx_ list), e);
 }
 
-static const char *show_token_sequence(struct token *token, int quote)
+static const char *show_token_sequence(SCTX_ struct token *token, int quote)
 {
 	static char buffer[MAX_STRING];
 	char *ptr = buffer;
@@ -362,11 +362,11 @@ static const char *show_token_sequence(struct token *token, int quote)
 	if (!token && !quote)
 		return "<none>";
 	while (!eof_token(token)) {
-		const char *val = quote ? quote_token(token) : show_token(token);
+		const char *val = quote ? quote_token(sctx_ token) : show_token(sctx_ token);
 		int len = strlen(val);
 
 		if (ptr + whitespace + len >= buffer + sizeof(buffer)) {
-			sparse_error(token->pos, "too long token expansion");
+			sparse_error(sctx_ token->pos, "too long token expansion");
 			break;
 		}
 
@@ -381,12 +381,12 @@ static const char *show_token_sequence(struct token *token, int quote)
 	return buffer;
 }
 
-static struct token *stringify(struct token *arg)
+static struct token *stringify(SCTX_ struct token *arg)
 {
-	const char *s = show_token_sequence(arg, 1);
+	const char *s = show_token_sequence(sctx_ arg, 1);
 	int size = strlen(s)+1;
-	struct token *token = __alloc_token(0);
-	struct string *string = __alloc_string(size);
+	struct token *token = __alloc_token(sctx_ 0);
+	struct string *string = __alloc_string(sctx_ size);
 
 	memcpy(string->data, s, size);
 	string->length = size;
@@ -397,7 +397,7 @@ static struct token *stringify(struct token *arg)
 	return token;
 }
 
-static void expand_arguments_pp(int count, struct arg *args, struct expansion *m)
+static void expand_arguments_pp(SCTX_ int count, struct arg *args, struct expansion *m)
 {
 	int i; struct expansion *e;
 	for (i = 0; i < count; i++) {
@@ -405,7 +405,7 @@ static void expand_arguments_pp(int count, struct arg *args, struct expansion *m
 		if (!arg)
 			arg = &eof_token_entry;
 		if (args[i].n_str)
-			args[i].str = stringify(arg);
+			args[i].str = stringify(sctx_ arg);
 		if (args[i].n_normal) {
 			if (!args[i].n_quoted) {
 				args[i].expanded = arg;
@@ -413,15 +413,15 @@ static void expand_arguments_pp(int count, struct arg *args, struct expansion *m
 			} else if (eof_token(arg)) {
 				args[i].expanded = arg;
 			} else {
-				args[i].expanded = dup_list(arg);
+				args[i].expanded = dup_list(sctx_ arg);
 			}
 			
-			e = __alloc_expansion(0);
+			e = __alloc_expansion(sctx_ 0);
 			memset(e, 0, sizeof(struct expansion));
 			e->typ = EXPANSION_MACROARG;
 			e->s = arg;
 			e->mac = m;
-			expand_list(&args[i].expanded);
+			expand_list(sctx_ &args[i].expanded);
 			e->d = args[i].expanded;
 		}
 	}
@@ -440,7 +440,7 @@ static void expand_arguments_pp(int count, struct arg *args, struct expansion *m
  *  - '.' + number -> number, if number used to start with a digit.
  *  - special + special -> either special or an error.
  */
-static enum token_type combine(struct token *left, struct token *right, char *p)
+static enum token_type combine(SCTX_ struct token *left, struct token *right, char *p)
 {
 	int len;
 	enum token_type t1 = token_type(left), t2 = token_type(right);
@@ -458,8 +458,8 @@ static enum token_type combine(struct token *left, struct token *right, char *p)
 	if (t2 != TOKEN_IDENT && t2 != TOKEN_NUMBER && t2 != TOKEN_SPECIAL)
 		return TOKEN_ERROR;
 
-	strcpy(p, show_token(left));
-	strcat(p, show_token(right));
+	strcpy(p, show_token(sctx_ sctx_ left));
+	strcat(p, show_token(sctx_ sctx_ right));
 	len = strlen(p);
 
 	if (len >= 256)
@@ -494,29 +494,29 @@ static enum token_type combine(struct token *left, struct token *right, char *p)
 	return TOKEN_SPECIAL;
 }
 
-static int merge(struct token *left, struct token *right)
+static int merge(SCTX_ struct token *left, struct token *right)
 {
 	static char buffer[512];
-	enum token_type res = combine(left, right, buffer);
+	enum token_type res = combine(sctx_ left, right, buffer);
 	int n; struct token *tok;
 	struct expansion *e;
 
-	e = __alloc_expansion(0);
+	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_CONCAT;
-	e->s = dup_one(left);
-	e->s->next = tok = dup_one(right); tok->next = NULL;
+	e->s = dup_one(sctx_ left);
+	e->s->next = tok = dup_one(sctx_ right); tok->next = NULL;
 	e->d = left;
 
 	switch (res) {
 	case TOKEN_IDENT:
-		left->ident = built_in_ident(buffer);
+		left->ident = built_in_ident(sctx_ buffer);
 		left->pos.noexpand = 0;
 		left->e = e;
 		return 1;
 
 	case TOKEN_NUMBER: {
-		char *number = __alloc_bytes(strlen(buffer) + 1);
+		char *number = __alloc_bytes(sctx_ strlen(buffer) + 1);
 		memcpy(number, buffer, strlen(buffer) + 1);
 		token_type(left) = TOKEN_NUMBER;	/* could be . + num */
 		left->number = number;
@@ -554,13 +554,13 @@ static int merge(struct token *left, struct token *right)
 	default:
 		;
 	}
-	sparse_error(left->pos, "'##' failed: concatenation is not a valid token");
+	sparse_error(sctx_ left->pos, "'##' failed: concatenation is not a valid token");
 	return 0;
 }
 
-static struct token *dup_token(struct token *token, struct position *streampos)
+static struct token *dup_token(SCTX_ struct token *token, struct position *streampos)
 {
-	struct token *alloc = alloc_token(streampos);
+	struct token *alloc = alloc_token(sctx_ streampos);
 	token_type(alloc) = token_type(token);
 	alloc->pos.newline = token->pos.newline;
 	alloc->pos.whitespace = token->pos.whitespace;
@@ -569,13 +569,13 @@ static struct token *dup_token(struct token *token, struct position *streampos)
 	return alloc;	
 }
 
-static struct token **copy(struct token **where, struct token *list, int *count)
+static struct token **copy(SCTX_ struct token **where, struct token *list, int *count)
 {
 	int need_copy = --*count;
 	while (!eof_token(list)) {
 		struct token *token;
 		if (need_copy)
-			token = dup_token(list, &list->pos);
+			token = dup_token(sctx_ list, &list->pos);
 		else
 			token = list;
 		if (token_type(token) == TOKEN_IDENT && token->ident->tainted)
@@ -588,7 +588,7 @@ static struct token **copy(struct token **where, struct token *list, int *count)
 	return where;
 }
 
-static int handle_kludge(struct token **p, struct arg *args)
+static int handle_kludge(SCTX_ struct token **p, struct arg *args)
 {
 	struct token *t = (*p)->next->next;
 	while (1) {
@@ -609,7 +609,7 @@ static int handle_kludge(struct token **p, struct arg *args)
 	}
 }
 
-static struct token **substitute(struct token **list, struct token *body, struct arg *args)
+static struct token **substitute(SCTX_ struct token **list, struct token *body, struct arg *args)
 {
 	struct position *base_pos = &(*list)->pos;
 	int *count;
@@ -632,14 +632,14 @@ static struct token **substitute(struct token **list, struct token *body, struct
 			 * otherwise we act as if the kludge didn't exist.
 			 */
 			t = body;
-			if (handle_kludge(&body, args)) {
+			if (handle_kludge(sctx_ &body, args)) {
 				if (state == Concat)
 					state = Normal;
 				else
 					state = Placeholder;
 				continue;
 			}
-			added = dup_token(t, base_pos);
+			added = dup_token(sctx_ t, base_pos);
 			token_type(added) = TOKEN_SPECIAL;
 			tail = &added->next;
 			break;
@@ -669,7 +669,7 @@ static struct token **substitute(struct token **list, struct token *body, struct
 				continue;
 			}
 		copy_arg:
-			tail = copy(&added, arg, count);
+			tail = copy(sctx_ &added, arg, count);
 			added->pos.newline = body->pos.newline;
 			added->pos.whitespace = body->pos.whitespace;
 			break;
@@ -682,14 +682,14 @@ static struct token **substitute(struct token **list, struct token *body, struct
 			continue;
 
 		case TOKEN_IDENT:
-			added = dup_token(body, base_pos);
+			added = dup_token(sctx_ body, base_pos);
 			if (added->ident->tainted)
 				added->pos.noexpand = 1;
 			tail = &added->next;
 			break;
 
 		default:
-			added = dup_token(body, base_pos);
+			added = dup_token(sctx_ body, base_pos);
 			tail = &added->next;
 			break;
 		}
@@ -698,7 +698,7 @@ static struct token **substitute(struct token **list, struct token *body, struct
 		 * if we got to doing real concatenation, we already have
 		 * added something into the list, so containing_token() is OK.
 		 */
-		if (state == Concat && merge(containing_token(list), added)) {
+		if (state == Concat && merge(sctx_ containing_token(list), added)) {
 			*list = added->next;
 			if (tail != &added->next)
 				list = tail;
@@ -712,7 +712,7 @@ static struct token **substitute(struct token **list, struct token *body, struct
 	return list;
 }
 
-static int expand(struct token **list, struct symbol *sym, struct token *mtok)
+static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *mtok)
 {
 	struct expansion *e;
 	struct token *last;
@@ -730,26 +730,26 @@ static int expand(struct token **list, struct symbol *sym, struct token *mtok)
 		goto ret1;
 	}
 
-	e = __alloc_expansion(0);
+	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_MACRO;
 	e->s = sym->expansion;
-	e->d = dup_list_e(sym->expansion, e);
+	e->d = dup_list_e(sctx_ sym->expansion, e);
 	e->tok = mtok;
 	e->msym = sym;
 
 	if (sym->arglist) {
 		if (!match_op(scan_next(&token->next), '('))
 			goto ret1;
-		if (!collect_arguments(token->next, sym->arglist, args, token))
+		if (!collect_arguments(sctx_ token->next, sym->arglist, args, token))
 			goto ret1;
-		expand_arguments_pp(nargs, args, e);
+		expand_arguments_pp(sctx_ nargs, args, e);
 	}
 
 	expanding->tainted = 1;
 
 	last = token->next;
-	tail = substitute(list, sym->expansion, args);
+	tail = substitute(sctx_ list, sym->expansion, args);
 	/*
 	 * Note that it won't be eof - at least TOKEN_UNTAINT will be there.
 	 * We still can lose the newline flag if the sucker expands to nothing,
@@ -769,7 +769,7 @@ ret1:
 	return 1;
 }
 
-static const char *token_name_sequence(struct token *token, int endop, struct token *start)
+static const char *token_name_sequence(SCTX_ struct token *token, int endop, struct token *start)
 {
 	static char buffer[256];
 	char *ptr = buffer;
@@ -778,7 +778,7 @@ static const char *token_name_sequence(struct token *token, int endop, struct to
 		int len;
 		const char *val = token->string->data;
 		if (token_type(token) != TOKEN_STRING)
-			val = show_token(token);
+			val = show_token(sctx_ token);
 		len = strlen(val);
 		memcpy(ptr, val, len);
 		ptr += len;
@@ -786,15 +786,15 @@ static const char *token_name_sequence(struct token *token, int endop, struct to
 	}
 	*ptr = 0;
 	if (endop && !match_op(token, endop))
-		sparse_error(start->pos, "expected '>' at end of filename");
+		sparse_error(sctx_ start->pos, "expected '>' at end of filename");
 	return buffer;
 }
 
-static int already_tokenized(const char *path)
+static int already_tokenized(SCTX_ const char *path)
 {
 	int stream, next;
 
-	for (stream = *hash_stream(path); stream >= 0 ; stream = next) {
+	for (stream = *hash_stream(sctx_ path); stream >= 0 ; stream = next) {
 		struct stream *s = input_streams + stream;
 
 		next = s->next_stream;
@@ -807,7 +807,7 @@ static int already_tokenized(const char *path)
 			continue;
 		if (strcmp(path, s->name))
 			continue;
-		if (s->protect && !lookup_macro(s->protect))
+		if (s->protect && !lookup_macro(sctx_ s->protect))
 			continue;
 		return 1;
 	}
@@ -855,7 +855,7 @@ static int already_tokenized(const char *path)
  * -idirafter dir adds dir to the end of the list
  */
 
-static void set_stream_include_path(struct stream *stream)
+static void set_stream_include_path(SCTX_ struct stream *stream)
 {
 	const char *path = stream->path;
 	if (!path) {
@@ -874,7 +874,7 @@ static void set_stream_include_path(struct stream *stream)
 	includepath[0] = path;
 }
 
-static int try_include(const char *path, const char *filename, int flen, struct token **where, const char **next_path)
+static int try_include(SCTX_ const char *path, const char *filename, int flen, struct token **where, const char **next_path)
 {
 	int fd; struct expansion *e;
 	int plen = strlen(path);
@@ -886,13 +886,13 @@ static int try_include(const char *path, const char *filename, int flen, struct 
 		plen++;
 	}
 	memcpy(fullname+plen, filename, flen);
-	if (already_tokenized(fullname))
+	if (already_tokenized(sctx_ fullname))
 		return 1;
 	fd = open(fullname, O_RDONLY);
 	if (fd >= 0) {
-		char * streamname = __alloc_bytes(plen + flen);
+		char * streamname = __alloc_bytes(sctx_ plen + flen);
 		memcpy(streamname, fullname, plen + flen);
-		e = tokenize(streamname, fd, *where, next_path);
+		e = tokenize(sctx_ streamname, fd, *where, next_path);
 		*where = e->s;
 		close(fd);
 		return 1;
@@ -900,29 +900,29 @@ static int try_include(const char *path, const char *filename, int flen, struct 
 	return 0;
 }
 
-static int do_include_path(const char **pptr, struct token **list, struct token *token, const char *filename, int flen)
+static int do_include_path(SCTX_ const char **pptr, struct token **list, struct token *token, const char *filename, int flen)
 {
 	const char *path;
 
 	while ((path = *pptr++) != NULL) {
-		if (!try_include(path, filename, flen, list, pptr))
+		if (!try_include(sctx_ path, filename, flen, list, pptr))
 			continue;
 		return 1;
 	}
 	return 0;
 }
 
-static int free_preprocessor_line(struct token *token)
+static int free_preprocessor_line(SCTX_ struct token *token)
 {
 	while (token_type(token) != TOKEN_EOF) {
 		struct token *free = token;
 		token = token->next;
-		__free_token(free);
+		__free_token(sctx_ free);
 	};
 	return 1;
 }
 
-static int handle_include_path(struct stream *stream, struct token **list, struct token *token, int how)
+static int handle_include_path(SCTX_ struct stream *stream, struct token **list, struct token *token, int how)
 {
 	const char *filename;
 	struct token *next;
@@ -933,7 +933,7 @@ static int handle_include_path(struct stream *stream, struct token **list, struc
 	next = token->next;
 	expect = '>';
 	if (!match_op(next, '<')) {
-		expand_list(&token->next);
+		expand_list(sctx_ &token->next);
 		expect = 0;
 		next = token;
 		if (match_op(token->next, '<')) {
@@ -943,12 +943,12 @@ static int handle_include_path(struct stream *stream, struct token **list, struc
 	}
 
 	token = next->next;
-	filename = token_name_sequence(token, expect, token);
+	filename = token_name_sequence(sctx_ token, expect, token);
 	flen = strlen(filename) + 1;
 
 	/* Absolute path? */
 	if (filename[0] == '/') {
-		if (try_include("", filename, flen, list, includepath))
+		if (try_include(sctx_ "", filename, flen, list, includepath))
 			return 0;
 		goto out;
 	}
@@ -963,34 +963,34 @@ static int handle_include_path(struct stream *stream, struct token **list, struc
 		break;
 	default:
 		/* Dir of input file is first dir to search for quoted includes */
-		set_stream_include_path(stream);
+		set_stream_include_path(sctx_ stream);
 		path = expect ? angle_includepath : quote_includepath;
 		break;
 	}
 	/* Check the standard include paths.. */
-	if (do_include_path(path, list, token, filename, flen))
+	if (do_include_path(sctx_ path, list, token, filename, flen))
 		return 0;
 out:
-	error_die(token->pos, "unable to open '%s'", filename);
+	error_die(sctx_ token->pos, "unable to open '%s'", filename);
 	return 0;
 }
 
-static int handle_include(struct stream *stream, struct token **list, struct token *token)
+static int handle_include(SCTX_ struct stream *stream, struct token **list, struct token *token)
 {
-	return handle_include_path(stream, list, token, 0);
+	return handle_include_path(sctx_ stream, list, token, 0);
 }
 
-static int handle_include_next(struct stream *stream, struct token **list, struct token *token)
+static int handle_include_next(SCTX_ struct stream *stream, struct token **list, struct token *token)
 {
-	return handle_include_path(stream, list, token, 1);
+	return handle_include_path(sctx_ stream, list, token, 1);
 }
 
-static int handle_argv_include(struct stream *stream, struct token **list, struct token *token)
+static int handle_argv_include(SCTX_ struct stream *stream, struct token **list, struct token *token)
 {
-	return handle_include_path(stream, list, token, 2);
+	return handle_include_path(sctx_ stream, list, token, 2);
 }
 
-static int token_different(struct token *t1, struct token *t2)
+static int token_different(SCTX_ struct token *t1, struct token *t2)
 {
 	int different;
 
@@ -1043,14 +1043,14 @@ static int token_different(struct token *t1, struct token *t2)
 	return different;
 }
 
-static int token_list_different(struct token *list1, struct token *list2)
+static int token_list_different(SCTX_ struct token *list1, struct token *list2)
 {
 	for (;;) {
 		if (list1 == list2)
 			return 0;
 		if (!list1 || !list2)
 			return 1;
-		if (token_different(list1, list2))
+		if (token_different(sctx_ list1, list2))
 			return 1;
 		list1 = list1->next;
 		list2 = list2->next;
@@ -1064,10 +1064,10 @@ static inline void set_arg_count(struct token *token)
 	token->count.str = token->count.vararg = 0;
 }
 
-static struct token *parse_arguments(struct token **arglist)
+static struct token *parse_arguments(SCTX_ struct token **arglist)
 {
-	struct token *list = *arglist = dup_one(*arglist);
-	struct token *arg = list->next = dup_one(list->next), *next = list;
+	struct token *list = *arglist = dup_one(sctx_ *arglist);
+	struct token *arg = list->next = dup_one(sctx_ list->next), *next = list;
 	struct argcount *count = &list->count;
 
 	set_arg_count(list);
@@ -1083,11 +1083,11 @@ static struct token *parse_arguments(struct token **arglist)
 			goto Eva_args;
 		if (!++count->normal)
 			goto Eargs;
-		next = arg->next = dup_one(arg->next);
+		next = arg->next = dup_one(sctx_ arg->next);
 
 		if (match_op(next, ',')) {
 			set_arg_count(next);
-			arg = next->next = dup_one(next->next);
+			arg = next->next = dup_one(sctx_ next->next);
 			continue;
 		}
 
@@ -1122,7 +1122,7 @@ static struct token *parse_arguments(struct token **arglist)
 	}
 
 	if (match_op(arg, SPECIAL_ELLIPSIS)) {
-		next = arg->next = dup_one(arg->next);
+		next = arg->next = dup_one(sctx_ arg->next);
 		token_type(arg) = TOKEN_IDENT;
 		arg->ident = &__VA_ARGS___ident;
 		if (!match_op(next, ')'))
@@ -1147,24 +1147,24 @@ static struct token *parse_arguments(struct token **arglist)
 
 
 Emissing:
-	sparse_error(arg->pos, "parameter name missing");
+	sparse_error(sctx_ arg->pos, "parameter name missing");
 	return NULL;
 Ebadstuff:
-	sparse_error(arg->pos, "\"%s\" may not appear in macro parameter list",
-		show_token(arg));
+	sparse_error(sctx_ arg->pos, "\"%s\" may not appear in macro parameter list",
+		show_token(sctx_ arg));
 	return NULL;
 Enotclosed:
-	sparse_error(arg->pos, "missing ')' in macro parameter list");
+	sparse_error(sctx_ arg->pos, "missing ')' in macro parameter list");
 	return NULL;
 Eva_args:
-	sparse_error(arg->pos, "__VA_ARGS__ can only appear in the expansion of a C99 variadic macro");
+	sparse_error(sctx_ arg->pos, "__VA_ARGS__ can only appear in the expansion of a C99 variadic macro");
 	return NULL;
 Eargs:
-	sparse_error(arg->pos, "too many arguments in macro definition");
+	sparse_error(sctx_ arg->pos, "too many arguments in macro definition");
 	return NULL;
 }
 
-static int try_arg(struct token *token, enum token_type type, struct token *arglist)
+static int try_arg(SCTX_ struct token *token, enum token_type type, struct token *arglist)
 {
 	struct ident *ident = token->ident;
 	int nr;
@@ -1204,15 +1204,15 @@ static int try_arg(struct token *token, enum token_type type, struct token *argl
 	return 0;
 }
 
-static struct token *handle_hash(struct token **p, struct token *arglist)
+static struct token *handle_hash(SCTX_ struct token **p, struct token *arglist)
 {
 	struct token *token = *p;
 	if (arglist) {
 		struct token *next = token->next;
-		if (!try_arg(next, TOKEN_STR_ARGUMENT, arglist))
+		if (!try_arg(sctx_ next, TOKEN_STR_ARGUMENT, arglist))
 			goto Equote;
 		next->pos.whitespace = token->pos.whitespace;
-		__free_token(token);
+		__free_token(sctx_ token);
 		token = *p = next;
 	} else {
 		token->pos.noexpand = 1;
@@ -1220,18 +1220,18 @@ static struct token *handle_hash(struct token **p, struct token *arglist)
 	return token;
 
 Equote:
-	sparse_error(token->pos, "'#' is not followed by a macro parameter");
+	sparse_error(sctx_ token->pos, "'#' is not followed by a macro parameter");
 	return NULL;
 }
 
 /* token->next is ## */
-static struct token *handle_hashhash(struct token *token, struct token *arglist)
+static struct token *handle_hashhash(SCTX_ struct token *token, struct token *arglist)
 {
 	struct token *last = token;
 	struct token *concat;
 	int state = match_op(token, ',');
 	
-	try_arg(token, TOKEN_QUOTED_ARGUMENT, arglist);
+	try_arg(sctx_ token, TOKEN_QUOTED_ARGUMENT, arglist);
 
 	while (1) {
 		struct token *t;
@@ -1241,7 +1241,7 @@ static struct token *handle_hashhash(struct token *token, struct token *arglist)
 		concat = token->next;
 		while (match_op(t = concat->next, SPECIAL_HASHHASH)) {
 			token->next = t;
-			__free_token(concat);
+			__free_token(sctx_ concat);
 			concat = t;
 		}
 		token_type(concat) = TOKEN_CONCAT;
@@ -1250,12 +1250,12 @@ static struct token *handle_hashhash(struct token *token, struct token *arglist)
 			goto Econcat;
 
 		if (match_op(t, '#')) {
-			t = handle_hash(&concat->next, arglist);
+			t = handle_hash(sctx_ &concat->next, arglist);
 			if (!t)
 				return NULL;
 		}
 
-		is_arg = try_arg(t, TOKEN_QUOTED_ARGUMENT, arglist);
+		is_arg = try_arg(sctx_ t, TOKEN_QUOTED_ARGUMENT, arglist);
 
 		if (state == 1 && is_arg) {
 			state = is_arg;
@@ -1274,11 +1274,11 @@ static struct token *handle_hashhash(struct token *token, struct token *arglist)
 	return token;
 
 Econcat:
-	sparse_error(concat->pos, "'##' cannot appear at the ends of macro expansion");
+	sparse_error(sctx_ concat->pos, "'##' cannot appear at the ends of macro expansion");
 	return NULL;
 }
 
-static struct token *parse_expansion(struct token *expansion, struct token *arglist, struct ident *name)
+static struct token *parse_expansion(SCTX_ struct token *expansion, struct token *arglist, struct ident *name)
 {
 	struct token *token = expansion;
 	struct token **p;
@@ -1288,21 +1288,21 @@ static struct token *parse_expansion(struct token *expansion, struct token *argl
 
 	for (p = &expansion; !eof_token(token); p = &token->next, token = *p) {
 		if (match_op(token, '#')) {
-			token = handle_hash(p, arglist);
+			token = handle_hash(sctx_ p, arglist);
 			if (!token)
 				return NULL;
 		}
 		if (match_op(token->next, SPECIAL_HASHHASH)) {
-			token = handle_hashhash(token, arglist);
+			token = handle_hashhash(sctx_ token, arglist);
 			if (!token)
 				return NULL;
 		} else {
-			try_arg(token, TOKEN_MACRO_ARGUMENT, arglist);
+			try_arg(sctx_ token, TOKEN_MACRO_ARGUMENT, arglist);
 		}
 		if (token_type(token) == TOKEN_ERROR)
 			goto Earg;
 	}
-	token = alloc_token(&expansion->pos);
+	token = alloc_token(sctx_ &expansion->pos);
 	token_type(token) = TOKEN_UNTAINT;
 	token->ident = name;
 	token->next = *p;
@@ -1310,14 +1310,14 @@ static struct token *parse_expansion(struct token *expansion, struct token *argl
 	return expansion;
 
 Econcat:
-	sparse_error(token->pos, "'##' cannot appear at the ends of macro expansion");
+	sparse_error(sctx_ token->pos, "'##' cannot appear at the ends of macro expansion");
 	return NULL;
 Earg:
-	sparse_error(token->pos, "too many instances of argument in body");
+	sparse_error(sctx_ token->pos, "too many instances of argument in body");
 	return NULL;
 }
 
-static int do_handle_define(struct stream *stream, struct token **line, struct token *token, int attr)
+static int do_handle_define(SCTX_ struct stream *stream, struct token **line, struct token *token, int attr)
 {
 	struct token *arglist, *expansion;
 	struct token *left = token->next;
@@ -1326,7 +1326,7 @@ static int do_handle_define(struct stream *stream, struct token **line, struct t
 	int ret;
 
 	if (token_type(left) != TOKEN_IDENT) {
-		sparse_error(token->pos, "expected identifier to 'define'");
+		sparse_error(sctx_ token->pos, "expected identifier to 'define'");
 		return 1;
 	}
 
@@ -1337,21 +1337,21 @@ static int do_handle_define(struct stream *stream, struct token **line, struct t
 	if (!expansion->pos.whitespace) {
 		if (match_op(expansion, '(')) {
 			arglist = expansion;
-			expansion = parse_arguments(&arglist);
+			expansion = parse_arguments(sctx_ &arglist);
 			if (!expansion)
 				return 1;
 		} else if (!eof_token(expansion)) {
-			warning(expansion->pos,
+			warning(sctx_ expansion->pos,
 				"no whitespace before object-like macro body");
 		}
 	}
 
-	expansion = parse_expansion(expansion, arglist, name);
+	expansion = parse_expansion(sctx_ expansion, arglist, name);
 	if (!expansion)
 		return 1;
 
 	ret = 1;
-	sym = lookup_symbol(name, NS_MACRO | NS_UNDEF);
+	sym = lookup_symbol(sctx_ name, NS_MACRO | NS_UNDEF);
 	if (sym) {
 		int clean;
 
@@ -1360,29 +1360,29 @@ static int do_handle_define(struct stream *stream, struct token **line, struct t
 
 		clean = (attr == sym->attr && sym->namespace == NS_MACRO);
 
-		if (token_list_different(sym->expansion, expansion) ||
-		    token_list_different(sym->arglist, arglist)) {
+		if (token_list_different(sctx_ sym->expansion, expansion) ||
+		    token_list_different(sctx_ sym->arglist, arglist)) {
 			ret = 0;
 			if ((clean && attr == SYM_ATTR_NORMAL)
 					|| sym->used_in == file_scope) {
-				warning(left->pos, "preprocessor token %.*s redefined",
+				warning(sctx_ left->pos, "preprocessor token %.*s redefined",
 						name->len, name->name);
-				info(sym->pos->pos, "this was the original definition");
+				info(sctx_ sym->pos->pos, "this was the original definition");
 			}
 		} else if (clean)
 			goto out;
 	}
 
 	if (!sym || sym->scope != file_scope) {
-		sym = alloc_symbol(left, SYM_NODE);
-		bind_symbol(sym, name, NS_MACRO);
+		sym = alloc_symbol(sctx_ left, SYM_NODE);
+		bind_symbol(sctx_ sym, name, NS_MACRO);
 		ret = 0;
 	}
 
 	if (!ret) {
 		sym->expansion = expansion;
 		sym->arglist = arglist;
-		__free_token(token);	/* Free the "define" token, but not the rest of the line */
+		__free_token(sctx_ token);	/* Free the "define" token, but not the rest of the line */
 	}
 
 	sym->namespace = NS_MACRO;
@@ -1392,32 +1392,32 @@ out:
 	return ret;
 }
 
-static int handle_define(struct stream *stream, struct token **line, struct token *token)
+static int handle_define(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
-	return do_handle_define(stream, line, token, SYM_ATTR_NORMAL);
+	return do_handle_define(sctx_ stream, line, token, SYM_ATTR_NORMAL);
 }
 
-static int handle_weak_define(struct stream *stream, struct token **line, struct token *token)
+static int handle_weak_define(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
-	return do_handle_define(stream, line, token, SYM_ATTR_WEAK);
+	return do_handle_define(sctx_ stream, line, token, SYM_ATTR_WEAK);
 }
 
-static int handle_strong_define(struct stream *stream, struct token **line, struct token *token)
+static int handle_strong_define(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
-	return do_handle_define(stream, line, token, SYM_ATTR_STRONG);
+	return do_handle_define(sctx_ stream, line, token, SYM_ATTR_STRONG);
 }
 
-static int do_handle_undef(struct stream *stream, struct token **line, struct token *token, int attr)
+static int do_handle_undef(SCTX_ struct stream *stream, struct token **line, struct token *token, int attr)
 {
 	struct token *left = token->next;
 	struct symbol *sym;
 
 	if (token_type(left) != TOKEN_IDENT) {
-		sparse_error(token->pos, "expected identifier to 'undef'");
+		sparse_error(sctx_ token->pos, "expected identifier to 'undef'");
 		return 1;
 	}
 
-	sym = lookup_symbol(left->ident, NS_MACRO | NS_UNDEF);
+	sym = lookup_symbol(sctx_ left->ident, NS_MACRO | NS_UNDEF);
 	if (sym) {
 		if (attr < sym->attr)
 			return 1;
@@ -1427,8 +1427,8 @@ static int do_handle_undef(struct stream *stream, struct token **line, struct to
 		return 1;
 
 	if (!sym || sym->scope != file_scope) {
-		sym = alloc_symbol(left, SYM_NODE);
-		bind_symbol(sym, left->ident, NS_MACRO);
+		sym = alloc_symbol(sctx_ left, SYM_NODE);
+		bind_symbol(sctx_ sym, left->ident, NS_MACRO);
 	}
 
 	sym->namespace = NS_UNDEF;
@@ -1438,20 +1438,20 @@ static int do_handle_undef(struct stream *stream, struct token **line, struct to
 	return 1;
 }
 
-static int handle_undef(struct stream *stream, struct token **line, struct token *token)
+static int handle_undef(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
-	return do_handle_undef(stream, line, token, SYM_ATTR_NORMAL);
+	return do_handle_undef(sctx_ stream, line, token, SYM_ATTR_NORMAL);
 }
 
-static int handle_strong_undef(struct stream *stream, struct token **line, struct token *token)
+static int handle_strong_undef(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
-	return do_handle_undef(stream, line, token, SYM_ATTR_STRONG);
+	return do_handle_undef(sctx_ stream, line, token, SYM_ATTR_STRONG);
 }
 
-static int preprocessor_if(struct stream *stream, struct token *token, int true_sim)
+static int preprocessor_if(SCTX_ struct stream *stream, struct token *token, int true_sim)
 {
 	token_type(token) = false_nesting ? TOKEN_SKIP_GROUPS : TOKEN_IF;
-	free_preprocessor_line(token->next);
+	free_preprocessor_line(sctx_ token->next);
 	token->next = stream->top_if;
 	stream->top_if = token;
 	if (false_nesting || true_sim != 1)
@@ -1459,22 +1459,22 @@ static int preprocessor_if(struct stream *stream, struct token *token, int true_
 	return 0;
 }
 
-static int handle_ifdef(struct stream *stream, struct token **line, struct token *token)
+static int handle_ifdef(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	struct token *next = token->next;
 	int arg;
 	if (token_type(next) == TOKEN_IDENT) {
-		arg = token_defined(next);
+		arg = token_defined(sctx_ next);
 	} else {
 		dirty_stream(stream);
 		if (!false_nesting)
-			sparse_error(token->pos, "expected preprocessor identifier");
+			sparse_error(sctx_ token->pos, "expected preprocessor identifier");
 		arg = -1;
 	}
-	return preprocessor_if(stream, token, arg);
+	return preprocessor_if(sctx_ stream, token, arg);
 }
 
-static int handle_ifndef(struct stream *stream, struct token **line, struct token *token)
+static int handle_ifndef(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	struct token *next = token->next;
 	int arg;
@@ -1488,24 +1488,24 @@ static int handle_ifndef(struct stream *stream, struct token **line, struct toke
 				stream->dirty = 1;
 			}
 		}
-		arg = !token_defined(next);
+		arg = !token_defined(sctx_ next);
 	} else {
 		dirty_stream(stream);
 		if (!false_nesting)
-			sparse_error(token->pos, "expected preprocessor identifier");
+			sparse_error(sctx_ token->pos, "expected preprocessor identifier");
 		arg = -1;
 	}
 
-	return preprocessor_if(stream, token, arg);
+	return preprocessor_if(sctx_ stream, token, arg);
 }
 
-static const char *show_token_sequence(struct token *token, int quote);
+static const char *show_token_sequence(SCTX_ struct token *token, int quote);
 
 /*
  * Expression handling for #if and #elif; it differs from normal expansion
  * due to special treatment of "defined".
  */
-static int expression_value(struct token **where)
+static int expression_value(SCTX_ struct token **where)
 {
 	struct expression *expr;
 	struct token *p;
@@ -1523,7 +1523,7 @@ static int expression_value(struct token **where)
 				beginning = list;
 				break;
 			}
-			if (!expand_one_symbol(list))
+			if (!expand_one_symbol(sctx_ list))
 				continue;
 			if (token_type(p) != TOKEN_IDENT)
 				break;
@@ -1534,7 +1534,7 @@ static int expression_value(struct token **where)
 				state = 2;
 			} else {
 				state = 0;
-				replace_with_defined(p);
+				replace_with_defined(sctx_ p);
 				*beginning = p;
 			}
 			break;
@@ -1543,13 +1543,13 @@ static int expression_value(struct token **where)
 				state = 3;
 			else
 				state = 0;
-			replace_with_defined(p);
+			replace_with_defined(sctx_ p);
 			*beginning = p;
 			break;
 		case 3:
 			state = 0;
 			if (!match_op(p, ')'))
-				sparse_error(p->pos, "missing ')' after \"defined\"");
+				sparse_error(sctx_ p->pos, "missing ')' after \"defined\"");
 			*list = p->next;
 			continue;
 		}
@@ -1558,35 +1558,35 @@ static int expression_value(struct token **where)
 
 	p = constant_expression(*where, &expr);
 	if (!eof_token(p))
-		sparse_error(p->pos, "garbage at end: %s", show_token_sequence(p, 0));
-	value = get_expression_value(expr);
+		sparse_error(sctx_ p->pos, "garbage at end: %s", show_token_sequence(sctx_ p, 0));
+	value = get_expression_value(sctx_ expr);
 	return value != 0;
 }
 
-static int handle_if(struct stream *stream, struct token **line, struct token *token)
+static int handle_if(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	int value = 0;
 	if (!false_nesting)
-		value = expression_value(&token->next);
+		value = expression_value(sctx_ &token->next);
 
 	dirty_stream(stream);
-	return preprocessor_if(stream, token, value);
+	return preprocessor_if(sctx_ stream, token, value);
 }
 
-static int handle_elif(struct stream * stream, struct token **line, struct token *token)
+static int handle_elif(SCTX_ struct stream * stream, struct token **line, struct token *token)
 {
 	struct token *top_if = stream->top_if;
 	end_group(stream);
 
 	if (!top_if) {
 		nesting_error(stream);
-		sparse_error(token->pos, "unmatched #elif within stream");
+		sparse_error(sctx_ token->pos, "unmatched #elif within stream");
 		return 1;
 	}
 
 	if (token_type(top_if) == TOKEN_ELSE) {
 		nesting_error(stream);
-		sparse_error(token->pos, "#elif after #else");
+		sparse_error(sctx_ token->pos, "#elif after #else");
 		if (!false_nesting)
 			false_nesting = 1;
 		return 1;
@@ -1597,7 +1597,7 @@ static int handle_elif(struct stream * stream, struct token **line, struct token
 		return 1;
 	if (false_nesting) {
 		false_nesting = 0;
-		if (!expression_value(&token->next))
+		if (!expression_value(sctx_ &token->next))
 			false_nesting = 1;
 	} else {
 		false_nesting = 1;
@@ -1606,20 +1606,20 @@ static int handle_elif(struct stream * stream, struct token **line, struct token
 	return 1;
 }
 
-static int handle_else(struct stream *stream, struct token **line, struct token *token)
+static int handle_else(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	struct token *top_if = stream->top_if;
 	end_group(stream);
 
 	if (!top_if) {
 		nesting_error(stream);
-		sparse_error(token->pos, "unmatched #else within stream");
+		sparse_error(sctx_ token->pos, "unmatched #else within stream");
 		return 1;
 	}
 
 	if (token_type(top_if) == TOKEN_ELSE) {
 		nesting_error(stream);
-		sparse_error(token->pos, "#else after #else");
+		sparse_error(sctx_ token->pos, "#else after #else");
 	}
 	if (false_nesting) {
 		if (token_type(top_if) == TOKEN_IF)
@@ -1631,35 +1631,35 @@ static int handle_else(struct stream *stream, struct token **line, struct token 
 	return 1;
 }
 
-static int handle_endif(struct stream *stream, struct token **line, struct token *token)
+static int handle_endif(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	struct token *top_if = stream->top_if;
 	end_group(stream);
 	if (!top_if) {
 		nesting_error(stream);
-		sparse_error(token->pos, "unmatched #endif in stream");
+		sparse_error(sctx_ token->pos, "unmatched #endif in stream");
 		return 1;
 	}
 	if (false_nesting)
 		false_nesting--;
 	stream->top_if = top_if->next;
-	__free_token(top_if);
+	__free_token(sctx_ top_if);
 	return 1;
 }
 
-static int handle_warning(struct stream *stream, struct token **line, struct token *token)
+static int handle_warning(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
-	warning(token->pos, "%s", show_token_sequence(token->next, 0));
+	warning(sctx_ token->pos, "%s", show_token_sequence(sctx_ token->next, 0));
 	return 1;
 }
 
-static int handle_error(struct stream *stream, struct token **line, struct token *token)
+static int handle_error(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
-	sparse_error(token->pos, "%s", show_token_sequence(token->next, 0));
+	sparse_error(sctx_ token->pos, "%s", show_token_sequence(sctx_ token->next, 0));
 	return 1;
 }
 
-static int handle_nostdinc(struct stream *stream, struct token **line, struct token *token)
+static int handle_nostdinc(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	/*
 	 * Do we have any non-system includes?
@@ -1702,7 +1702,7 @@ static inline void update_inc_ptrs(const char ***where)
 
 /* Add a path before 'where' and update the pointers associated with the
  * includepath array */
-static void add_path_entry(struct token *token, const char *path,
+static void add_path_entry(SCTX_ struct token *token, const char *path,
 	const char ***where)
 {
 	const char **dst;
@@ -1710,7 +1710,7 @@ static void add_path_entry(struct token *token, const char *path,
 
 	/* Need one free entry.. */
 	if (includepath[INCLUDEPATHS-2])
-		error_die(token->pos, "too many include path entries");
+		error_die(sctx_ token->pos, "too many include path entries");
 
 	/* check that this is not a duplicate */
 	dst = includepath;
@@ -1736,56 +1736,56 @@ static void add_path_entry(struct token *token, const char *path,
 	} while (next);
 }
 
-static int handle_add_include(struct stream *stream, struct token **line, struct token *token)
+static int handle_add_include(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	for (;;) {
 		token = token->next;
 		if (eof_token(token))
 			return 1;
 		if (token_type(token) != TOKEN_STRING) {
-			warning(token->pos, "expected path string");
+			warning(sctx_ token->pos, "expected path string");
 			return 1;
 		}
-		add_path_entry(token, token->string->data, &isys_includepath);
+		add_path_entry(sctx_ token, token->string->data, &isys_includepath);
 	}
 }
 
-static int handle_add_isystem(struct stream *stream, struct token **line, struct token *token)
+static int handle_add_isystem(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	for (;;) {
 		token = token->next;
 		if (eof_token(token))
 			return 1;
 		if (token_type(token) != TOKEN_STRING) {
-			sparse_error(token->pos, "expected path string");
+			sparse_error(sctx_ token->pos, "expected path string");
 			return 1;
 		}
-		add_path_entry(token, token->string->data, &sys_includepath);
+		add_path_entry(sctx_ token, token->string->data, &sys_includepath);
 	}
 }
 
-static int handle_add_system(struct stream *stream, struct token **line, struct token *token)
+static int handle_add_system(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	for (;;) {
 		token = token->next;
 		if (eof_token(token))
 			return 1;
 		if (token_type(token) != TOKEN_STRING) {
-			sparse_error(token->pos, "expected path string");
+			sparse_error(sctx_ token->pos, "expected path string");
 			return 1;
 		}
-		add_path_entry(token, token->string->data, &dirafter_includepath);
+		add_path_entry(sctx_ token, token->string->data, &dirafter_includepath);
 	}
 }
 
 /* Add to end on includepath list - no pointer updates */
-static void add_dirafter_entry(struct token *token, const char *path)
+static void add_dirafter_entry(SCTX_ struct token *token, const char *path)
 {
 	const char **dst = includepath;
 
 	/* Need one free entry.. */
 	if (includepath[INCLUDEPATHS-2])
-		error_die(token->pos, "too many include path entries");
+		error_die(sctx_ token->pos, "too many include path entries");
 
 	/* Add to the end */
 	while (*dst)
@@ -1795,21 +1795,21 @@ static void add_dirafter_entry(struct token *token, const char *path)
 	*dst = NULL;
 }
 
-static int handle_add_dirafter(struct stream *stream, struct token **line, struct token *token)
+static int handle_add_dirafter(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	for (;;) {
 		token = token->next;
 		if (eof_token(token))
 			return 1;
 		if (token_type(token) != TOKEN_STRING) {
-			sparse_error(token->pos, "expected path string");
+			sparse_error(sctx_ token->pos, "expected path string");
 			return 1;
 		}
-		add_dirafter_entry(token, token->string->data);
+		add_dirafter_entry(sctx_ token, token->string->data);
 	}
 }
 
-static int handle_split_include(struct stream *stream, struct token **line, struct token *token)
+static int handle_split_include(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	/*
 	 * -I-
@@ -1840,7 +1840,7 @@ static int handle_split_include(struct stream *stream, struct token **line, stru
  * So eventually this will turn into some kind of extended
  * __attribute__() like thing, except called __pragma__(xxx).
  */
-static int handle_pragma(struct stream *stream, struct token **line, struct token *token)
+static int handle_pragma(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	struct token *next = *line;
 
@@ -1860,22 +1860,22 @@ static int handle_pragma(struct stream *stream, struct token **line, struct toke
 /*
  * We ignore #line for now.
  */
-static int handle_line(struct stream *stream, struct token **line, struct token *token)
+static int handle_line(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
 	return 1;
 }
 
-static int handle_nondirective(struct stream *stream, struct token **line, struct token *token)
+static int handle_nondirective(SCTX_ struct stream *stream, struct token **line, struct token *token)
 {
-	sparse_error(token->pos, "unrecognized preprocessor line '%s'", show_token_sequence(token, 0));
+	sparse_error(sctx_ token->pos, "unrecognized preprocessor line '%s'", show_token_sequence(sctx_ token, 0));
 	return 1;
 }
 
 
-static void init_preprocessor(void)
+static void init_preprocessor(SCTX_ void)
 {
 	int i;
-	int stream = init_stream("preprocessor", -1, includepath);
+	int stream = init_stream(sctx_ "preprocessor", -1, includepath);
 	static struct {
 		const char *name;
 		int (*handler)(struct stream *, struct token **, struct token *);
@@ -1911,20 +1911,20 @@ static void init_preprocessor(void)
 
 	for (i = 0; i < ARRAY_SIZE(normal); i++) {
 		struct symbol *sym;
-		sym = create_symbol(stream, normal[i].name, SYM_PREPROCESSOR, NS_PREPROCESSOR);
+		sym = create_symbol(sctx_ stream, normal[i].name, SYM_PREPROCESSOR, NS_PREPROCESSOR);
 		sym->handler = normal[i].handler;
 		sym->normal = 1;
 	}
 	for (i = 0; i < ARRAY_SIZE(special); i++) {
 		struct symbol *sym;
-		sym = create_symbol(stream, special[i].name, SYM_PREPROCESSOR, NS_PREPROCESSOR);
+		sym = create_symbol(sctx_ stream, special[i].name, SYM_PREPROCESSOR, NS_PREPROCESSOR);
 		sym->handler = special[i].handler;
 		sym->normal = 0;
 	}
 
 }
 
-static void handle_preprocessor_line(struct stream *stream, struct token **line, struct token *start)
+static void handle_preprocessor_line(SCTX_ struct stream *stream, struct token **line, struct token *start)
 {
 	int (*handler)(struct stream *, struct token **, struct token *);
 	struct token *token = start->next;
@@ -1934,14 +1934,14 @@ static void handle_preprocessor_line(struct stream *stream, struct token **line,
 	if (eof_token(token))
 		return;
 
-	e = __alloc_expansion(0);
+	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_PREPRO;
 	e->s = start;
-	e->d = dup_list_e(token,e);
+	e->d = dup_list_e(sctx_ token,e);
 
 	if (token_type(token) == TOKEN_IDENT) {
-		struct symbol *sym = lookup_symbol(token->ident, NS_PREPROCESSOR);
+		struct symbol *sym = lookup_symbol(sctx_ token->ident, NS_PREPROCESSOR);
 		if (sym) {
 			handler = sym->handler;
 			is_normal = sym->normal;
@@ -1963,10 +1963,10 @@ static void handle_preprocessor_line(struct stream *stream, struct token **line,
 		return;
 
 out:
-	free_preprocessor_line(token);
+	free_preprocessor_line(sctx_ token);
 }
 
-static void preprocessor_line(struct stream *stream, struct token **line)
+static void preprocessor_line(SCTX_ struct stream *stream, struct token **line)
 {
 	struct token *start = *line, *next;
 	struct token **tp = &start->next;
@@ -1979,10 +1979,10 @@ static void preprocessor_line(struct stream *stream, struct token **line)
 	}
 	*line = next;
 	*tp = &eof_token_entry;
-	handle_preprocessor_line(stream, line, start);
+	handle_preprocessor_line(sctx_ stream, line, start);
 }
 
-static struct token *do_preprocess(struct token **list)
+static struct token *do_preprocess(SCTX_ struct token **list)
 {
 	struct token *next; struct token *l = NULL; /*, **c = &l;*/
 
@@ -1991,8 +1991,8 @@ static struct token *do_preprocess(struct token **list)
 
 		if (next->pos.newline && match_op(next, '#')) {
 			if (!next->pos.noexpand) {
-				preprocessor_line(stream, list);
-				__free_token(next);	/* Free the '#' token */
+				preprocessor_line(sctx_ stream, list);
+				__free_token(sctx_ next);	/* Free the '#' token */
 				continue;
 			}
 		}
@@ -2001,7 +2001,7 @@ static struct token *do_preprocess(struct token **list)
 		case TOKEN_STREAMEND:
 			if (stream->top_if) {
 				nesting_error(stream);
-				sparse_error(stream->top_if->pos, "unterminated preprocessor conditional");
+				sparse_error(sctx_ stream->top_if->pos, "unterminated preprocessor conditional");
 				stream->top_if = NULL;
 				false_nesting = 0;
 			}
@@ -2017,25 +2017,25 @@ static struct token *do_preprocess(struct token **list)
 			dirty_stream(stream);
 			if (false_nesting) {
 				*list = next->next;
-				__free_token(next);
+				__free_token(sctx_ next);
 				continue;
 			}
 
 			if (token_type(next) != TOKEN_IDENT ||
-			    expand_one_symbol(list))
+			    expand_one_symbol(sctx_ list))
 				list = &next->next;
 		}
 	}
 	return l;
 }
 
-struct token * preprocess(struct expansion *e)
+struct token * preprocess(SCTX_ struct expansion *e)
 {
 	preprocessing = 1;
-	init_preprocessor();
+	init_preprocessor(sctx_ );
 
-	e->d = dup_list_e(e->s, e);
-	do_preprocess(&e->d);
+	e->d = dup_list_e(sctx_ e->s, e);
+	do_preprocess(sctx_ &e->d);
 
 	// Drop all expressions from preprocessing, they're not used any more.
 	// This is not true when we have multiple files, though ;/

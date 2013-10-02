@@ -1,4 +1,5 @@
 #include "dissect.h"
+#include "string.h"
 
 static unsigned dotc_stream;
 
@@ -38,26 +39,82 @@ static void print_usage(struct token *pos, struct symbol *sym, unsigned mode)
 		printf("\nFILE: %s\n\n", stream_name(curr_stream));
 	}
 
-	printf("%4d:%-3d %c %-5.3s",
+	printf("%s%4d:%-3d %c %-5.3s", reporter->indent ? "\t" : "",
 		pos->pos.line, pos->pos.pos, storage(sym), show_mode(mode));
+}
+
+static int isglobal(struct symbol *sym) {
+	int t = sym->type;
+	unsigned m = sym->ctype.modifiers;
+
+	if (m & MOD_INLINE || t == SYM_STRUCT || t == SYM_UNION /*|| t == SYM_ENUM*/)
+		return sym->pos->pos.stream == dotc_stream ? 0 : 1;
+
+	return (m & MOD_STATIC) ? 1 : (m & MOD_NONLOCAL) ? 1 : 0;
+}
+
+static int isfunc(struct symbol *sym) {
+	if (sym->ctype.base_type && sym->ctype.base_type->type == SYM_FN)
+		return 1;
+	return 0;
+}
+
+static const char *symbol_type_name(enum type type)
+{
+	static const char *type_name[] = {
+		[SYM_UNINITIALIZED] = "SYM_UNINITIALIZED",
+		[SYM_PREPROCESSOR] = "SYM_PREPROCESSOR",
+		[SYM_BASETYPE] = "SYM_BASETYPE",
+		[SYM_NODE] = "SYM_NODE",
+		[SYM_PTR] = "SYM_PTR",
+		[SYM_FN] = "SYM_FN",
+		[SYM_ARRAY] = "SYM_ARRAY",
+		[SYM_STRUCT] = "SYM_STRUCT",
+		[SYM_UNION] = "SYM_UNION",
+		[SYM_ENUM] = "SYM_ENUM",
+		[SYM_TYPEDEF] = "SYM_TYPEDEF",
+		[SYM_TYPEOF] = "SYM_TYPEOF",
+		[SYM_MEMBER] = "SYM_MEMBER",
+		[SYM_BITFIELD] = "SYM_BITFIELD",
+		[SYM_LABEL] = "SYM_LABEL",
+		[SYM_RESTRICT] = "SYM_RESTRICT",
+		[SYM_FOULED] = "SYM_FOULED",
+		[SYM_KEYWORD] = "SYM_KEYWORD",
+		[SYM_BAD] = "SYM_BAD",
+	};
+	return type_name[type] ?: "UNKNOWN_TYPE";
 }
 
 static void r_symbol(unsigned mode, struct token *pos, struct symbol *sym)
 {
+	char b[512];
+	
+	if ((!sym->ctype.base_type || sym->ctype.base_type->type != SYM_FN) && !isglobal(sym))
+	  return;
+	
 	print_usage(pos, sym, mode);
 
 	if (!sym->ident)
 		sym->ident = MK_IDENT("__asm__");
-
-	printf("%-32.*s %s\n",
-		sym->ident->len, sym->ident->name,
-		show_typename(sym->ctype.base_type));
+	
+	memcpy(b, sym->ident->name, sym->ident->len);
+	b[sym->ident->len] = 0;
+	if (isfunc(sym))
+		strcat(b, "()");
+	
+	printf("%s%-32.*s %s 0x%x 0x%p %s\n", reporter->indent ? "\t" : "",
+	       (int)strlen(b), b,
+	       show_typename(sym->ctype.base_type),
+	       (unsigned int )sym->ctype.modifiers, sym, symbol_type_name(sym->type));
 }
+
 
 static void r_member(unsigned mode, struct token *pos, struct symbol *sym, struct symbol *mem)
 {
 	struct ident *ni, *si, *mi;
-
+	
+	return;
+	
 	print_usage(pos, sym, mode);
 
 	ni = MK_IDENT("?");
@@ -65,14 +122,17 @@ static void r_member(unsigned mode, struct token *pos, struct symbol *sym, struc
 	/* mem == NULL means entire struct accessed */
 	mi = mem ? (mem->ident ?: ni) : MK_IDENT("*");
 
-	printf("%.*s.%-*.*s %s\n",
+	printf("%s%.*s.%-*.*s %s 0x%x 0x%p %s\n", reporter->indent ? "\t" : "",
 		si->len, si->name,
 		32-1 - si->len, mi->len, mi->name,
-		show_typename(mem ? mem->ctype.base_type : sym));
+	       show_typename(mem ? mem->ctype.base_type : sym), 
+	       (unsigned int )sym->ctype.modifiers, sym, symbol_type_name(sym->type));
 }
 
 static void r_symdef(struct symbol *sym)
 {
+	if (sym->type == SYM_STRUCT)
+		return;
 	r_symbol(-1, sym->pos, sym);
 }
 

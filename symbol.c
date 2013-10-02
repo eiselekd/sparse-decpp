@@ -29,7 +29,7 @@ struct symbol_list *translation_unit_used_list = NULL;
 /*
  * If the symbol is an inline symbol, add it to the list of symbols to parse
  */
-void access_symbol(struct symbol *sym)
+void access_symbol(SCTX_ struct symbol *sym)
 {
 	if (sym->ctype.modifiers & MOD_INLINE) {
 		if (!(sym->ctype.modifiers & MOD_ACCESSED)) {
@@ -39,7 +39,7 @@ void access_symbol(struct symbol *sym)
 	}
 }
 
-struct symbol *lookup_symbol(struct ident *ident, enum namespace ns)
+struct symbol *lookup_symbol(SCTX_ struct ident *ident, enum namespace ns)
 {
 	struct symbol *sym;
 
@@ -52,14 +52,14 @@ struct symbol *lookup_symbol(struct ident *ident, enum namespace ns)
 	return NULL;
 }
 
-struct sym_context *alloc_context(void)
+struct sym_context *alloc_context(SCTX_ void)
 {
-	return __alloc_sym_context(0);
+	return __alloc_sym_context(sctx_ 0);
 }
 
-struct symbol *alloc_symbol(struct token *tok, int type)
+struct symbol *alloc_symbol(SCTX_ struct token *tok, int type)
 {
-	struct symbol *sym = __alloc_symbol(0);
+	struct symbol *sym = __alloc_symbol(sctx_ 0);
 	sym->type = type;
 	sym->pos = tok;
 	sym->tok = tok;
@@ -76,9 +76,9 @@ struct struct_union_info {
 /*
  * Unions are fairly easy to lay out ;)
  */
-static void lay_out_union(struct symbol *sym, struct struct_union_info *info)
+static void lay_out_union(SCTX_ struct symbol *sym, struct struct_union_info *info)
 {
-	examine_symbol_type(sym);
+	examine_symbol_type(sctx_ sym);
 
 	// Unnamed bitfields do not affect alignment.
 	if (sym->ident || !is_bitfield_type(sym)) {
@@ -92,7 +92,7 @@ static void lay_out_union(struct symbol *sym, struct struct_union_info *info)
 	sym->offset = 0;
 }
 
-static int bitfield_base_size(struct symbol *sym)
+static int bitfield_base_size(SCTX_ struct symbol *sym)
 {
 	if (sym->type == SYM_NODE)
 		sym = sym->ctype.base_type;
@@ -104,12 +104,12 @@ static int bitfield_base_size(struct symbol *sym)
 /*
  * Structures are a bit more interesting to lay out
  */
-static void lay_out_struct(struct symbol *sym, struct struct_union_info *info)
+static void lay_out_struct(SCTX_ struct symbol *sym, struct struct_union_info *info)
 {
 	unsigned long bit_size, align_bit_mask;
 	int base_size;
 
-	examine_symbol_type(sym);
+	examine_symbol_type(sctx_ sym);
 
 	// Unnamed bitfields do not affect alignment.
 	if (sym->ident || !is_bitfield_type(sym)) {
@@ -136,7 +136,7 @@ static void lay_out_struct(struct symbol *sym, struct struct_union_info *info)
 	 */
 	if (is_bitfield_type (sym)) {
 		unsigned long bit_offset = bit_size & align_bit_mask;
-		int room = bitfield_base_size(sym) - bit_offset;
+		int room = bitfield_base_size(sctx_ sym) - bit_offset;
 		// Zero-width fields just fill up the unit.
 		int width = base_size ? : (bit_offset ? room : 0);
 
@@ -163,7 +163,7 @@ static void lay_out_struct(struct symbol *sym, struct struct_union_info *info)
 	// warning (sym->pos, "regular: offset=%d", sym->offset);
 }
 
-static struct symbol * examine_struct_union_type(struct symbol *sym, int advance)
+static struct symbol * examine_struct_union_type(SCTX_ struct symbol *sym, int advance)
 {
 	struct struct_union_info info = {
 		.max_align = 1,
@@ -190,17 +190,17 @@ static struct symbol * examine_struct_union_type(struct symbol *sym, int advance
 	return sym;
 }
 
-static struct symbol *examine_base_type(struct symbol *sym)
+static struct symbol *examine_base_type(SCTX_ struct symbol *sym)
 {
 	struct symbol *base_type;
 
 	/* Check the base type */
-	base_type = examine_symbol_type(sym->ctype.base_type);
+	base_type = examine_symbol_type(sctx_ sym->ctype.base_type);
 	if (!base_type || base_type->type == SYM_PTR)
 		return base_type;
 	sym->ctype.as |= base_type->ctype.as;
 	sym->ctype.modifiers |= base_type->ctype.modifiers & MOD_PTRINHERIT;
-	concat_ptr_list((struct ptr_list *)base_type->ctype.contexts,
+	concat_ptr_list(sctx_ (struct ptr_list *)base_type->ctype.contexts,
 			(struct ptr_list **)&sym->ctype.contexts);
 	if (base_type->type == SYM_NODE) {
 		base_type = base_type->ctype.base_type;
@@ -209,9 +209,9 @@ static struct symbol *examine_base_type(struct symbol *sym)
 	return base_type;
 }
 
-static struct symbol * examine_array_type(struct symbol *sym)
+static struct symbol * examine_array_type(SCTX_ struct symbol *sym)
 {
-	struct symbol *base_type = examine_base_type(sym);
+	struct symbol *base_type = examine_base_type(sctx_ sym);
 	unsigned long bit_size = -1, alignment;
 	struct expression *array_size = sym->array_size;
 
@@ -219,10 +219,10 @@ static struct symbol * examine_array_type(struct symbol *sym)
 		return sym;
 
 	if (array_size) {	
-		bit_size = base_type->bit_size * get_expression_value_silent(array_size);
+		bit_size = base_type->bit_size * get_expression_value_silent(sctx_ array_size);
 		if (array_size->type != EXPR_VALUE) {
 			if (Wvla)
-				warning(array_size->pos->pos, "Variable length array is used.");
+				warning(sctx_ array_size->pos->pos, "Variable length array is used.");
 			bit_size = -1;
 		}
 	}
@@ -233,16 +233,16 @@ static struct symbol * examine_array_type(struct symbol *sym)
 	return sym;
 }
 
-static struct symbol *examine_bitfield_type(struct symbol *sym)
+static struct symbol *examine_bitfield_type(SCTX_ struct symbol *sym)
 {
-	struct symbol *base_type = examine_base_type(sym);
+	struct symbol *base_type = examine_base_type(sctx_ sym);
 	unsigned long bit_size, alignment, modifiers;
 
 	if (!base_type)
 		return sym;
 	bit_size = base_type->bit_size;
 	if (sym->bit_size > bit_size)
-		warning(sym->pos->pos, "impossible field-width, %d, for this type",  sym->bit_size);
+		warning(sctx_ sym->pos->pos, "impossible field-width, %d, for this type",  sym->bit_size);
 
 	alignment = base_type->ctype.alignment;
 	if (!sym->ctype.alignment)
@@ -259,18 +259,18 @@ static struct symbol *examine_bitfield_type(struct symbol *sym)
 /*
  * "typeof" will have to merge the types together
  */
-void merge_type(struct symbol *sym, struct symbol *base_type)
+void merge_type(SCTX_ struct symbol *sym, struct symbol *base_type)
 {
 	sym->ctype.as |= base_type->ctype.as;
 	sym->ctype.modifiers |= (base_type->ctype.modifiers & ~MOD_STORAGE);
-	concat_ptr_list((struct ptr_list *)base_type->ctype.contexts,
+	concat_ptr_list(sctx_ (struct ptr_list *)base_type->ctype.contexts,
 	                (struct ptr_list **)&sym->ctype.contexts);
 	sym->ctype.base_type = base_type->ctype.base_type;
 	if (sym->ctype.base_type->type == SYM_NODE)
-		merge_type(sym, sym->ctype.base_type);
+		merge_type(sctx_ sym, sym->ctype.base_type);
 }
 
-static int count_array_initializer(struct symbol *t, struct expression *expr)
+static int count_array_initializer(SCTX_ struct symbol *t, struct expression *expr)
 {
 	int nr = 0;
 	int is_char = 0;
@@ -317,9 +317,9 @@ static int count_array_initializer(struct symbol *t, struct expression *expr)
 	return nr;
 }
 
-static struct symbol * examine_node_type(struct symbol *sym)
+static struct symbol * examine_node_type(SCTX_ struct symbol *sym)
 {
-	struct symbol *base_type = examine_base_type(sym);
+	struct symbol *base_type = examine_base_type(sctx_ sym);
 	int bit_size;
 	unsigned long alignment;
 
@@ -341,7 +341,7 @@ static struct symbol * examine_node_type(struct symbol *sym)
 	/* Unsized array? The size might come from the initializer.. */
 	if (bit_size < 0 && base_type->type == SYM_ARRAY && sym->initializer) {
 		struct symbol *node_type = base_type->ctype.base_type;
-		int count = count_array_initializer(node_type, sym->initializer);
+		int count = count_array_initializer(sctx_ node_type, sym->initializer);
 
 		if (node_type && node_type->bit_size >= 0)
 			bit_size = node_type->bit_size * count;
@@ -351,9 +351,9 @@ static struct symbol * examine_node_type(struct symbol *sym)
 	return sym;
 }
 
-static struct symbol *examine_enum_type(struct symbol *sym)
+static struct symbol *examine_enum_type(SCTX_ struct symbol *sym)
 {
-	struct symbol *base_type = examine_base_type(sym);
+	struct symbol *base_type = examine_base_type(sctx_ sym);
 
 	sym->ctype.modifiers |= (base_type->ctype.modifiers & MOD_SIGNEDNESS);
 	sym->bit_size = bits_in_enum;
@@ -365,7 +365,7 @@ static struct symbol *examine_enum_type(struct symbol *sym)
 	return sym;
 }
 
-static struct symbol *examine_pointer_type(struct symbol *sym)
+static struct symbol *examine_pointer_type(SCTX_ struct symbol *sym)
 {
 	/*
 	 * We need to set the pointer size first, and
@@ -384,7 +384,7 @@ static struct symbol *examine_pointer_type(struct symbol *sym)
  * Fill in type size and alignment information for
  * regular SYM_TYPE things.
  */
-struct symbol *examine_symbol_type(struct symbol * sym)
+struct symbol *examine_symbol_type(SCTX_ struct symbol * sym)
 {
 	if (!sym)
 		return sym;
@@ -397,56 +397,56 @@ struct symbol *examine_symbol_type(struct symbol * sym)
 	switch (sym->type) {
 	case SYM_FN:
 	case SYM_NODE:
-		return examine_node_type(sym);
+		return examine_node_type(sctx_ sym);
 	case SYM_ARRAY:
-		return examine_array_type(sym);
+		return examine_array_type(sctx_ sym);
 	case SYM_STRUCT:
-		return examine_struct_union_type(sym, 1);
+		return examine_struct_union_type(sctx_ sym, 1);
 	case SYM_UNION:
-		return examine_struct_union_type(sym, 0);
+		return examine_struct_union_type(sctx_ sym, 0);
 	case SYM_PTR:
-		return examine_pointer_type(sym);
+		return examine_pointer_type(sctx_ sym);
 	case SYM_ENUM:
-		return examine_enum_type(sym);
+		return examine_enum_type(sctx_ sym);
 	case SYM_BITFIELD:
-		return examine_bitfield_type(sym);
+		return examine_bitfield_type(sctx_ sym);
 	case SYM_BASETYPE:
 		/* Size and alignment had better already be set up */
 		return sym;
 	case SYM_TYPEOF: {
-		struct symbol *base = evaluate_expression(sym->initializer);
+		struct symbol *base = evaluate_expression(sctx_ sym->initializer);
 		if (base) {
 			if (is_bitfield_type(base))
-				warning(base->pos->pos, "typeof applied to bitfield type");
+				warning(sctx_ base->pos->pos, "typeof applied to bitfield type");
 			if (base->type == SYM_NODE)
 				base = base->ctype.base_type;
 			sym->type = SYM_NODE;
 			sym->ctype.modifiers = 0;
 			sym->ctype.base_type = base;
-			return examine_node_type(sym);
+			return examine_node_type(sctx_ sym);
 		}
 		break;
 	}
 	case SYM_PREPROCESSOR:
-		sparse_error(sym->pos->pos, "ctype on preprocessor command? (%s)", show_ident(sym->ident));
+		sparse_error(sctx_ sym->pos->pos, "ctype on preprocessor command? (%s)", show_ident(sctx_ sym->ident));
 		return NULL;
 	case SYM_UNINITIALIZED:
-		sparse_error(sym->pos->pos, "ctype on uninitialized symbol %p", sym);
+		sparse_error(sctx_ sym->pos->pos, "ctype on uninitialized symbol %p", sym);
 		return NULL;
 	case SYM_RESTRICT:
-		examine_base_type(sym);
+		examine_base_type(sctx_ sym);
 		return sym;
 	case SYM_FOULED:
-		examine_base_type(sym);
+		examine_base_type(sctx_ sym);
 		return sym;
 	default:
-		sparse_error(sym->pos->pos, "Examining unknown symbol type %d", sym->type);
+		sparse_error(sctx_ sym->pos->pos, "Examining unknown symbol type %d", sym->type);
 		break;
 	}
 	return sym;
 }
 
-const char* get_type_name(enum type type)
+const char* get_type_name(SCTX_ enum type type)
 {
 	const char *type_lookup[] = {
 	[SYM_UNINITIALIZED] = "uninitialized",
@@ -475,17 +475,17 @@ const char* get_type_name(enum type type)
 		return NULL;
 }
 
-struct symbol *examine_pointer_target(struct symbol *sym)
+struct symbol *examine_pointer_target(SCTX_ struct symbol *sym)
 {
-	return examine_base_type(sym);
+	return examine_base_type(sctx_ sym);
 }
 
 static struct symbol_list *restr, *fouled;
 
-void create_fouled(struct symbol *type)
+void create_fouled(SCTX_ struct symbol *type)
 {
 	if (type->bit_size < bits_in_int) {
-		struct symbol *new = alloc_symbol(type->tok, type->type);
+		struct symbol *new = alloc_symbol(sctx_ type->tok, type->type);
 		*new = *type;
 		new->bit_size = bits_in_int;
 		new->type = SYM_FOULED;
@@ -495,7 +495,7 @@ void create_fouled(struct symbol *type)
 	}
 }
 
-struct symbol *befoul(struct symbol *type)
+struct symbol *befoul(SCTX_ struct symbol *type)
 {
 	struct symbol *t1, *t2;
 	while (type->type == SYM_NODE)
@@ -515,7 +515,7 @@ struct symbol *befoul(struct symbol *type)
 	return NULL;
 }
 
-void check_declaration(struct symbol *sym)
+void check_declaration(SCTX_ struct symbol *sym)
 {
 	int warned = 0;
 	struct symbol *next = sym;
@@ -539,27 +539,27 @@ void check_declaration(struct symbol *sym)
 		if (get_sym_type(next) == SYM_FN)
 			continue;
 		warned = 1;
-		warning(sym->pos->pos, "symbol '%s' shadows an earlier one", show_ident(sym->ident));
-		info(next->pos->pos, "originally declared here");
+		warning(sctx_ sym->pos->pos, "symbol '%s' shadows an earlier one", show_ident(sctx_ sym->ident));
+		info(sctx_ next->pos->pos, "originally declared here");
 	}
 }
 
-void bind_symbol(struct symbol *sym, struct ident *ident, enum namespace ns)
+void bind_symbol(SCTX_ struct symbol *sym, struct ident *ident, enum namespace ns)
 {
 	struct scope *scope;
 	if (sym->bound) {
-		sparse_error(sym->pos->pos, "internal error: symbol type already bound");
+		sparse_error(sctx_ sym->pos->pos, "internal error: symbol type already bound");
 		return;
 	}
 	if (ident->reserved && (ns & (NS_TYPEDEF | NS_STRUCT | NS_LABEL | NS_SYMBOL))) {
-		sparse_error(sym->pos->pos, "Trying to use reserved word '%s' as identifier", show_ident(ident));
+		sparse_error(sctx_ sym->pos->pos, "Trying to use reserved word '%s' as identifier", show_ident(sctx_ ident));
 		return;
 	}
 	sym->namespace = ns;
 	sym->next_id = ident->symbols;
 	ident->symbols = sym;
 	if (sym->ident && sym->ident != ident)
-		warning(sym->pos->pos, "Symbol '%s' already bound", show_ident(sym->ident));
+		warning(sctx_ sym->pos->pos, "Symbol '%s' already bound", show_ident(sctx_ sym->ident));
 	sym->ident = ident;
 	sym->bound = 1;
 
@@ -579,55 +579,55 @@ void bind_symbol(struct symbol *sym, struct ident *ident, enum namespace ns)
 		scope = file_scope;
 	if (ns == NS_LABEL)
 		scope = function_scope;
-	bind_scope(sym, scope);
+	bind_scope(sctx_ sym, scope);
 }
 
-struct symbol *create_symbol(int stream, const char *name, int type, int namespace)
+struct symbol *create_symbol(SCTX_ int stream, const char *name, int type, int namespace)
 {
-	struct token *token = built_in_token(stream, name);
-	struct symbol *sym = alloc_symbol(token, type);
+	struct token *token = built_in_token(sctx_ stream, name);
+	struct symbol *sym = alloc_symbol(sctx_ token, type);
 
-	bind_symbol(sym, token->ident, namespace);
+	bind_symbol(sctx_ sym, token->ident, namespace);
 	return sym;
 }
 
-static int evaluate_to_integer(struct expression *expr)
+static int evaluate_to_integer(SCTX_ struct expression *expr)
 {
 	expr->ctype = &int_ctype;
 	return 1;
 }
 
-static int evaluate_expect(struct expression *expr)
+static int evaluate_expect(SCTX_ struct expression *expr)
 {
 	/* Should we evaluate it to return the type of the first argument? */
 	expr->ctype = &int_ctype;
 	return 1;
 }
 
-static int arguments_choose(struct expression *expr)
+static int arguments_choose(SCTX_ struct expression *expr)
 {
 	struct expression_list *arglist = expr->args;
 	struct expression *arg;
 	int i = 0;
 
 	FOR_EACH_PTR (arglist, arg) {
-		if (!evaluate_expression(arg))
+		if (!evaluate_expression(sctx_ arg))
 			return 0;
 		i++;
 	} END_FOR_EACH_PTR(arg);
 	if (i < 3) {
-		sparse_error(expr->pos->pos,
+		sparse_error(sctx_ expr->pos->pos,
 			     "not enough arguments for __builtin_choose_expr");
 		return 0;
 	} if (i > 3) {
-		sparse_error(expr->pos->pos,
+		sparse_error(sctx_ expr->pos->pos,
 			     "too many arguments for __builtin_choose_expr");
 		return 0;
 	}
 	return 1;
 }
 
-static int evaluate_choose(struct expression *expr)
+static int evaluate_choose(SCTX_ struct expression *expr)
 {
 	struct expression_list *list = expr->args;
 	struct expression *arg, *args[3];
@@ -638,12 +638,12 @@ static int evaluate_choose(struct expression *expr)
 		args[n++] = arg;
 	} END_FOR_EACH_PTR(arg);
 
-	*expr = get_expression_value(args[0]) ? *args[1] : *args[2];
+	*expr = get_expression_value(sctx_ args[0]) ? *args[1] : *args[2];
 
 	return 1;
 }
 
-static int expand_expect(struct expression *expr, int cost)
+static int expand_expect(SCTX_ struct expression *expr, int cost)
 {
 	struct expression *arg = first_ptr_list((struct ptr_list *) expr->args);
 
@@ -656,7 +656,7 @@ static int expand_expect(struct expression *expr, int cost)
  * __builtin_warning() has type "int" and always returns 1,
  * so that you can use it in conditionals or whatever
  */
-static int expand_warning(struct expression *expr, int cost)
+static int expand_warning(SCTX_ struct expression *expr, int cost)
 {
 	struct expression *arg;
 	struct expression_list *arglist = expr->args;
@@ -675,7 +675,7 @@ static int expand_warning(struct expression *expr, int cost)
 			struct symbol *sym = arg->symbol;
 			if (sym->initializer && sym->initializer->type == EXPR_STRING) {
 				struct string *string = sym->initializer->string;
-				warning(expr->pos->pos, "%*s", string->length-1, string->data);
+				warning(sctx_ expr->pos->pos, "%*s", string->length-1, string->data);
 			}
 			continue;
 		}
@@ -771,9 +771,9 @@ struct symbol	zero_int;
 
 #include "ident-list.h"
 
-void init_symbols(void)
+void init_symbols(SCTX_ void)
 {
-	int stream = init_stream("builtin", -1, includepath);
+	int stream = init_stream(sctx_ "builtin", -1, includepath);
 	struct sym_init *ptr;
 
 #define __IDENT(n,str,res) \
@@ -785,7 +785,7 @@ void init_symbols(void)
 	builtin_fn_type.variadic = 1;
 	for (ptr = eval_init_table; ptr->name; ptr++) {
 		struct symbol *sym;
-		sym = create_symbol(stream, ptr->name, SYM_NODE, NS_SYMBOL);
+		sym = create_symbol(sctx_ stream, ptr->name, SYM_NODE, NS_SYMBOL);
 		sym->ctype.base_type = ptr->base_type;
 		sym->ctype.modifiers = ptr->modifiers;
 		sym->op = ptr->op;
@@ -843,7 +843,7 @@ static const struct ctype_declare {
 #undef MOD_LL
 #undef MOD_ESIGNED
 
-void init_ctype(void)
+void init_ctype(SCTX_ void)
 {
 	const struct ctype_declare *ctype;
 

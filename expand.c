@@ -32,17 +32,17 @@
 #define SELECT_COST 20		/* Cut-off for turning a conditional into a select */
 #define BRANCH_COST 10		/* Cost of a conditional branch */
 
-static int expand_expression(struct expression *);
-static int expand_statement(struct statement *);
+static int expand_expression(SCTX_ struct expression *);
+static int expand_statement(SCTX_ struct statement *);
 static int conservative;
 
-static int expand_symbol_expression(struct expression *expr)
+static int expand_symbol_expression(SCTX_ struct expression *expr)
 {
 	struct symbol *sym = expr->symbol;
 
 	if (sym == &zero_int) {
 		if (Wundef)
-			warning(expr->pos->pos, "undefined preprocessor identifier '%s'", show_ident(expr->symbol_name));
+			warning(sctx_ expr->pos->pos, "undefined preprocessor identifier '%s'", show_ident(sctx_ expr->symbol_name));
 		expr->type = EXPR_VALUE;
 		expr->value = 0;
 		expr->taint = 0;
@@ -52,7 +52,7 @@ static int expand_symbol_expression(struct expression *expr)
 	return (sym->ctype.modifiers & (MOD_STATIC | MOD_EXTERN)) ? 2 : 1;
 }
 
-static long long get_longlong(struct expression *expr)
+static long long get_longlong(SCTX_ struct expression *expr)
 {
 	int no_expand = expr->ctype->ctype.modifiers & MOD_UNSIGNED;
 	long long mask = 1ULL << (expr->ctype->bit_size - 1);
@@ -68,7 +68,7 @@ static long long get_longlong(struct expression *expr)
 	return (value & andmask) | ormask;
 }
 
-void cast_value(struct expression *expr, struct symbol *newtype,
+void cast_value(SCTX_ struct expression *expr, struct symbol *newtype,
 		struct expression *old, struct symbol *oldtype)
 {
 	int old_size = oldtype->bit_size;
@@ -89,14 +89,14 @@ void cast_value(struct expression *expr, struct symbol *newtype,
 	}
 
 	// expand it to the full "long long" value
-	value = get_longlong(old);
+	value = get_longlong(sctx_ old);
 
 Int:
 	// _Bool requires a zero test rather than truncation.
 	if (is_bool_type(newtype)) {
 		expr->value = !!value;
 		if (!conservative && value != 0 && value != 1)
-			warning(old->pos->pos, "odd constant _Bool cast (%llx becomes 1)", value);
+			warning(sctx_ old->pos->pos, "odd constant _Bool cast (%llx becomes 1)", value);
 		return;
 	}
 
@@ -117,7 +117,7 @@ Int:
 	// OK if the bits were (and still are) purely sign bits
 	if (value & dropped) {
 		if (!(value & oldsignmask) || !(value & signmask) || (value & dropped) != dropped)
-			warning(old->pos->pos, "cast truncates bits from constant value (%llx becomes %llx)",
+			warning(sctx_ old->pos->pos, "cast truncates bits from constant value (%llx becomes %llx)",
 				value & oldmask,
 				value & mask);
 	}
@@ -132,7 +132,7 @@ Float:
 	}
 
 	if (!is_float_type(oldtype))
-		expr->fvalue = (long double)get_longlong(old);
+		expr->fvalue = (long double)get_longlong(sctx_ old);
 	else
 		expr->fvalue = old->fvalue;
 
@@ -146,9 +146,9 @@ Float:
 	expr->type = EXPR_FVALUE;
 }
 
-static int check_shift_count(struct expression *expr, struct symbol *ctype, unsigned int count)
+static int check_shift_count(SCTX_ struct expression *expr, struct symbol *ctype, unsigned int count)
 {
-	warning(expr->pos->pos, "shift too big (%u) for type %s", count, show_typename(ctype));
+	warning(sctx_ expr->pos->pos, "shift too big (%u) for type %s", count, show_typename(sctx_ ctype));
 	count &= ctype->bit_size-1;
 	return count;
 }
@@ -160,7 +160,7 @@ static int check_shift_count(struct expression *expr, struct symbol *ctype, unsi
 #define CONVERT(op,s)	(((op)<<1)+(s))
 #define SIGNED(op)	CONVERT(op, 1)
 #define UNSIGNED(op)	CONVERT(op, 0)
-static int simplify_int_binop(struct expression *expr, struct symbol *ctype)
+static int simplify_int_binop(SCTX_ struct expression *expr, struct symbol *ctype)
 {
 	struct expression *left = expr->left, *right = expr->right;
 	unsigned long long v, l, r, mask;
@@ -174,7 +174,7 @@ static int simplify_int_binop(struct expression *expr, struct symbol *ctype)
 		if (r >= ctype->bit_size) {
 			if (conservative)
 				return 0;
-			r = check_shift_count(expr, ctype, r);
+			r = check_shift_count(sctx_ expr, ctype, r);
 			right->value = r;
 		}
 	}
@@ -270,15 +270,15 @@ static int simplify_int_binop(struct expression *expr, struct symbol *ctype)
 	return 1;
 Div:
 	if (!conservative)
-		warning(expr->pos->pos, "division by zero");
+		warning(sctx_ expr->pos->pos, "division by zero");
 	return 0;
 Overflow:
 	if (!conservative)
-		warning(expr->pos->pos, "constant integer operation overflow");
+		warning(sctx_ expr->pos->pos, "constant integer operation overflow");
 	return 0;
 }
 
-static int simplify_cmp_binop(struct expression *expr, struct symbol *ctype)
+static int simplify_cmp_binop(SCTX_ struct expression *expr, struct symbol *ctype)
 {
 	struct expression *left = expr->left, *right = expr->right;
 	unsigned long long l, r, mask;
@@ -310,7 +310,7 @@ static int simplify_cmp_binop(struct expression *expr, struct symbol *ctype)
 	return 1;
 }
 
-static int simplify_float_binop(struct expression *expr)
+static int simplify_float_binop(SCTX_ struct expression *expr)
 {
 	struct expression *left = expr->left, *right = expr->right;
 	unsigned long mod = expr->ctype->ctype.modifiers;
@@ -355,11 +355,11 @@ static int simplify_float_binop(struct expression *expr)
 	return 1;
 Div:
 	if (!conservative)
-		warning(expr->pos->pos, "division by zero");
+		warning(sctx_ expr->pos->pos, "division by zero");
 	return 0;
 }
 
-static int simplify_float_cmp(struct expression *expr, struct symbol *ctype)
+static int simplify_float_cmp(SCTX_ struct expression *expr, struct symbol *ctype)
 {
 	struct expression *left = expr->left, *right = expr->right;
 	long double l, r;
@@ -382,27 +382,27 @@ static int simplify_float_cmp(struct expression *expr, struct symbol *ctype)
 	return 1;
 }
 
-static int expand_binop(struct expression *expr)
+static int expand_binop(SCTX_ struct expression *expr)
 {
 	int cost;
 
-	cost = expand_expression(expr->left);
-	cost += expand_expression(expr->right);
-	if (simplify_int_binop(expr, expr->ctype))
+	cost = expand_expression(sctx_ expr->left);
+	cost += expand_expression(sctx_ expr->right);
+	if (simplify_int_binop(sctx_ expr, expr->ctype))
 		return 0;
-	if (simplify_float_binop(expr))
+	if (simplify_float_binop(sctx_ expr))
 		return 0;
 	return cost + 1;
 }
 
-static int expand_logical(struct expression *expr)
+static int expand_logical(SCTX_ struct expression *expr)
 {
 	struct expression *left = expr->left;
 	struct expression *right;
 	int cost, rcost;
 
 	/* Do immediate short-circuiting ... */
-	cost = expand_expression(left);
+	cost = expand_expression(sctx_ left);
 	if (left->type == EXPR_VALUE) {
 		if (expr->op == SPECIAL_LOGICAL_AND) {
 			if (!left->value) {
@@ -422,7 +422,7 @@ static int expand_logical(struct expression *expr)
 	}
 
 	right = expr->right;
-	rcost = expand_expression(right);
+	rcost = expand_expression(sctx_ right);
 	if (left->type == EXPR_VALUE && right->type == EXPR_VALUE) {
 		/*
 		 * We know the left value doesn't matter, since
@@ -447,12 +447,12 @@ static int expand_logical(struct expression *expr)
 	return cost + BRANCH_COST + rcost;
 }
 
-static int expand_comma(struct expression *expr)
+static int expand_comma(SCTX_ struct expression *expr)
 {
 	int cost;
 
-	cost = expand_expression(expr->left);
-	cost += expand_expression(expr->right);
+	cost = expand_expression(sctx_ expr->left);
+	cost += expand_expression(sctx_ expr->right);
 	if (expr->left->type == EXPR_VALUE || expr->left->type == EXPR_FVALUE) {
 		unsigned flags = expr->flags;
 		unsigned taint;
@@ -467,15 +467,15 @@ static int expand_comma(struct expression *expr)
 
 #define MOD_IGN (MOD_VOLATILE | MOD_CONST)
 
-static int compare_types(int op, struct symbol *left, struct symbol *right)
+static int compare_types(SCTX_ int op, struct symbol *left, struct symbol *right)
 {
 	struct ctype c1 = {.base_type = left};
 	struct ctype c2 = {.base_type = right};
 	switch (op) {
 	case SPECIAL_EQUAL:
-		return !type_difference(&c1, &c2, MOD_IGN, MOD_IGN);
+		return !type_difference(sctx_ &c1, &c2, MOD_IGN, MOD_IGN);
 	case SPECIAL_NOTEQUAL:
-		return type_difference(&c1, &c2, MOD_IGN, MOD_IGN) != NULL;
+		return type_difference(sctx_ &c1, &c2, MOD_IGN, MOD_IGN) != NULL;
 	case '<':
 		return left->bit_size < right->bit_size;
 	case '>':
@@ -488,46 +488,46 @@ static int compare_types(int op, struct symbol *left, struct symbol *right)
 	return 0;
 }
 
-static int expand_compare(struct expression *expr)
+static int expand_compare(SCTX_ struct expression *expr)
 {
 	struct expression *left = expr->left, *right = expr->right;
 	int cost;
 
-	cost = expand_expression(left);
-	cost += expand_expression(right);
+	cost = expand_expression(sctx_ left);
+	cost += expand_expression(sctx_ right);
 
 	if (left && right) {
 		/* Type comparison? */
 		if (left->type == EXPR_TYPE && right->type == EXPR_TYPE) {
 			int op = expr->op;
 			expr->type = EXPR_VALUE;
-			expr->value = compare_types(op, left->symbol, right->symbol);
+			expr->value = compare_types(sctx_ op, left->symbol, right->symbol);
 			expr->taint = 0;
 			return 0;
 		}
-		if (simplify_cmp_binop(expr, left->ctype))
+		if (simplify_cmp_binop(sctx_ expr, left->ctype))
 			return 0;
-		if (simplify_float_cmp(expr, left->ctype))
+		if (simplify_float_cmp(sctx_ expr, left->ctype))
 			return 0;
 	}
 	return cost + 1;
 }
 
-static int expand_conditional(struct expression *expr)
+static int expand_conditional(SCTX_ struct expression *expr)
 {
 	struct expression *cond = expr->conditional;
 	struct expression *true_sim = expr->cond_true;
 	struct expression *false_sim = expr->cond_false;
 	int cost, cond_cost;
 
-	cond_cost = expand_expression(cond);
+	cond_cost = expand_expression(sctx_ cond);
 	if (cond->type == EXPR_VALUE) {
 		unsigned flags = expr->flags;
 		if (!cond->value)
 			true_sim = false_sim;
 		if (!true_sim)
 			true_sim = cond;
-		cost = expand_expression(true_sim);
+		cost = expand_expression(sctx_ true_sim);
 		*expr = *true_sim;
 		expr->flags = flags;
 		if (expr->type == EXPR_VALUE)
@@ -535,8 +535,8 @@ static int expand_conditional(struct expression *expr)
 		return cost;
 	}
 
-	cost = expand_expression(true_sim);
-	cost += expand_expression(false_sim);
+	cost = expand_expression(sctx_ true_sim);
+	cost += expand_expression(sctx_ false_sim);
 
 	if (cost < SELECT_COST) {
 		expr->type = EXPR_SELECT;
@@ -546,16 +546,16 @@ static int expand_conditional(struct expression *expr)
 	return cost + cond_cost + BRANCH_COST;
 }
 		
-static int expand_assignment(struct expression *expr)
+static int expand_assignment(SCTX_ struct expression *expr)
 {
-	expand_expression(expr->left);
-	expand_expression(expr->right);
+	expand_expression(sctx_ expr->left);
+	expand_expression(sctx_ expr->right);
 	return SIDE_EFFECTS;
 }
 
-static int expand_addressof(struct expression *expr)
+static int expand_addressof(SCTX_ struct expression *expr)
 {
-	return expand_expression(expr->unop);
+	return expand_expression(sctx_ expr->unop);
 }
 
 /*
@@ -565,7 +565,7 @@ static int expand_addressof(struct expression *expr)
  *
  * FIXME!! We should check that the size is right!
  */
-static struct expression *constant_symbol_value(struct symbol *sym, int offset)
+static struct expression *constant_symbol_value(SCTX_ struct symbol *sym, int offset)
 {
 	struct expression *value;
 
@@ -593,12 +593,12 @@ static struct expression *constant_symbol_value(struct symbol *sym, int offset)
 	return value;
 }
 
-static int expand_dereference(struct expression *expr)
+static int expand_dereference(SCTX_ struct expression *expr)
 {
 	struct expression *unop = expr->unop;
 	unsigned int offset;
 
-	expand_expression(unop);
+	expand_expression(sctx_ unop);
 
 	/*
 	 * NOTE! We get a bogus warning right now for some special
@@ -609,7 +609,7 @@ static int expand_dereference(struct expression *expr)
 	 * test for me to get the type evaluation right..
 	 */
 	if (expr->ctype->ctype.modifiers & MOD_NODEREF)
-		warning(unop->pos->pos, "dereference of noderef expression");
+		warning(sctx_ unop->pos->pos, "dereference of noderef expression");
 
 	/*
 	 * Is it "symbol" or "symbol + offset"?
@@ -625,7 +625,7 @@ static int expand_dereference(struct expression *expr)
 
 	if (unop->type == EXPR_SYMBOL) {
 		struct symbol *sym = unop->symbol;
-		struct expression *value = constant_symbol_value(sym, offset);
+		struct expression *value = constant_symbol_value(sctx_ sym, offset);
 
 		/* Const symbol with a constant initializer? */
 		if (value) {
@@ -649,7 +649,7 @@ static int expand_dereference(struct expression *expr)
 	return UNSAFE;
 }
 
-static int simplify_preop(struct expression *expr)
+static int simplify_preop(SCTX_ struct expression *expr)
 {
 	struct expression *op = expr->unop;
 	unsigned long long v, mask;
@@ -678,11 +678,11 @@ static int simplify_preop(struct expression *expr)
 
 Overflow:
 	if (!conservative)
-		warning(expr->pos->pos, "constant integer operation overflow");
+		warning(sctx_ expr->pos->pos, "constant integer operation overflow");
 	return 0;
 }
 
-static int simplify_float_preop(struct expression *expr)
+static int simplify_float_preop(SCTX_ struct expression *expr)
 {
 	struct expression *op = expr->unop;
 	long double v;
@@ -703,22 +703,22 @@ static int simplify_float_preop(struct expression *expr)
 /*
  * Unary post-ops: x++ and x--
  */
-static int expand_postop(struct expression *expr)
+static int expand_postop(SCTX_ struct expression *expr)
 {
-	expand_expression(expr->unop);
+	expand_expression(sctx_ expr->unop);
 	return SIDE_EFFECTS;
 }
 
-static int expand_preop(struct expression *expr)
+static int expand_preop(SCTX_ struct expression *expr)
 {
 	int cost;
 
 	switch (expr->op) {
 	case '*':
-		return expand_dereference(expr);
+		return expand_dereference(sctx_ expr);
 
 	case '&':
-		return expand_addressof(expr);
+		return expand_addressof(sctx_ expr);
 
 	case SPECIAL_INCREMENT:
 	case SPECIAL_DECREMENT:
@@ -726,48 +726,48 @@ static int expand_preop(struct expression *expr)
 		 * From a type evaluation standpoint the preops are
 		 * the same as the postops
 		 */
-		return expand_postop(expr);
+		return expand_postop(sctx_ expr);
 
 	default:
 		break;
 	}
-	cost = expand_expression(expr->unop);
+	cost = expand_expression(sctx_ expr->unop);
 
-	if (simplify_preop(expr))
+	if (simplify_preop(sctx_ expr))
 		return 0;
-	if (simplify_float_preop(expr))
+	if (simplify_float_preop(sctx_ expr))
 		return 0;
 	return cost + 1;
 }
 
-static int expand_arguments(struct expression_list *head)
+static int expand_arguments(SCTX_ struct expression_list *head)
 {
 	int cost = 0;
 	struct expression *expr;
 
 	FOR_EACH_PTR (head, expr) {
-		cost += expand_expression(expr);
+		cost += expand_expression(sctx_ expr);
 	} END_FOR_EACH_PTR(expr);
 	return cost;
 }
 
-static int expand_cast(struct expression *expr)
+static int expand_cast(SCTX_ struct expression *expr)
 {
 	int cost;
 	struct expression *target = expr->cast_expression;
 
-	cost = expand_expression(target);
+	cost = expand_expression(sctx_ target);
 
 	/* Simplify normal integer casts.. */
 	if (target->type == EXPR_VALUE || target->type == EXPR_FVALUE) {
-		cast_value(expr, expr->ctype, target, target->ctype);
+		cast_value(sctx_ expr, expr->ctype, target, target->ctype);
 		return 0;
 	}
 	return cost + 1;
 }
 
 /* The arguments are constant if the cost of all of them is zero */
-int expand_constant_p(struct expression *expr, int cost)
+int expand_constant_p(SCTX_ struct expression *expr, int cost)
 {
 	expr->type = EXPR_VALUE;
 	expr->value = !cost;
@@ -776,7 +776,7 @@ int expand_constant_p(struct expression *expr, int cost)
 }
 
 /* The arguments are safe, if their cost is less than SIDE_EFFECTS */
-int expand_safe_p(struct expression *expr, int cost)
+int expand_safe_p(SCTX_ struct expression *expr, int cost)
 {
 	expr->type = EXPR_VALUE;
 	expr->value = (cost < SIDE_EFFECTS);
@@ -788,7 +788,7 @@ int expand_safe_p(struct expression *expr, int cost)
  * expand a call expression with a symbol. This
  * should expand builtins.
  */
-static int expand_symbol_call(struct expression *expr, int cost)
+static int expand_symbol_call(SCTX_ struct expression *expr, int cost)
 {
 	struct expression *fn = expr->fn;
 	struct symbol *ctype = fn->ctype;
@@ -805,31 +805,31 @@ static int expand_symbol_call(struct expression *expr, int cost)
 	return SIDE_EFFECTS;
 }
 
-static int expand_call(struct expression *expr)
+static int expand_call(SCTX_ struct expression *expr)
 {
 	int cost;
 	struct symbol *sym;
 	struct expression *fn = expr->fn;
 
-	cost = expand_arguments(expr->args);
+	cost = expand_arguments(sctx_ expr->args);
 	sym = fn->ctype;
 	if (!sym) {
-		expression_error(expr, "function has no type");
+		expression_error(sctx_ expr, "function has no type");
 		return SIDE_EFFECTS;
 	}
 	if (sym->type == SYM_NODE)
-		return expand_symbol_call(expr, cost);
+		return expand_symbol_call(sctx_ expr, cost);
 
 	return SIDE_EFFECTS;
 }
 
-static int expand_expression_list(struct expression_list *list)
+static int expand_expression_list(SCTX_ struct expression_list *list)
 {
 	int cost = 0;
 	struct expression *expr;
 
 	FOR_EACH_PTR(list, expr) {
-		cost += expand_expression(expr);
+		cost += expand_expression(sctx_ expr);
 	} END_FOR_EACH_PTR(expr);
 	return cost;
 }
@@ -838,7 +838,7 @@ static int expand_expression_list(struct expression_list *list)
  * We can simplify nested position expressions if
  * this is a simple (single) positional expression.
  */
-static int expand_pos_expression(struct expression *expr)
+static int expand_pos_expression(SCTX_ struct expression *expr)
 {
 	struct expression *nested = expr->init_expr;
 	unsigned long offset = expr->init_offset;
@@ -885,10 +885,10 @@ static int expand_pos_expression(struct expression *expr)
 			break;
 		}
 	}
-	return expand_expression(nested);
+	return expand_expression(sctx_ nested);
 }
 
-static unsigned long bit_offset(const struct expression *expr)
+static unsigned long bit_offset(SCTX_ const struct expression *expr)
 {
 	unsigned long offset = 0;
 	while (expr->type == EXPR_POS) {
@@ -900,22 +900,22 @@ static unsigned long bit_offset(const struct expression *expr)
 	return offset;
 }
 
-static int compare_expressions(const void *_a, const void *_b)
+static int compare_expressions(SCTX_ const void *_a, const void *_b)
 {
 	const struct expression *a = _a;
 	const struct expression *b = _b;
-	unsigned long a_pos = bit_offset(a);
-	unsigned long b_pos = bit_offset(b);
+	unsigned long a_pos = bit_offset(sctx_ a);
+	unsigned long b_pos = bit_offset(sctx_ b);
 
 	return (a_pos < b_pos) ? -1 : (a_pos == b_pos) ? 0 : 1;
 }
 
-static void sort_expression_list(struct expression_list **list)
+static void sort_expression_list(SCTX_ struct expression_list **list)
 {
-	sort_list((struct ptr_list **)list, compare_expressions);
+	sort_list(sctx_ (struct ptr_list **)list, compare_expressions);
 }
 
-static void verify_nonoverlapping(struct expression_list **list)
+static void verify_nonoverlapping(SCTX_ struct expression_list **list)
 {
 	struct expression *a = NULL;
 	struct expression *b;
@@ -923,16 +923,16 @@ static void verify_nonoverlapping(struct expression_list **list)
 	FOR_EACH_PTR(*list, b) {
 		if (!b->ctype || !b->ctype->bit_size)
 			continue;
-		if (a && bit_offset(a) == bit_offset(b)) {
-			warning(a->pos->pos, "Initializer entry defined twice");
-			info(b->pos->pos, "  also defined here");
+		if (a && bit_offset(sctx_ sctx_ a) == bit_offset(b)) {
+			warning(sctx_ a->pos->pos, "Initializer entry defined twice");
+			info(sctx_ b->pos->pos, "  also defined here");
 			return;
 		}
 		a = b;
 	} END_FOR_EACH_PTR(b);
 }
 
-static int expand_expression(struct expression *expr)
+static int expand_expression(SCTX_ struct expression *expr)
 {
 	if (!expr)
 		return 0;
@@ -946,47 +946,47 @@ static int expand_expression(struct expression *expr)
 		return 0;
 	case EXPR_TYPE:
 	case EXPR_SYMBOL:
-		return expand_symbol_expression(expr);
+		return expand_symbol_expression(sctx_ expr);
 	case EXPR_BINOP:
-		return expand_binop(expr);
+		return expand_binop(sctx_ expr);
 
 	case EXPR_LOGICAL:
-		return expand_logical(expr);
+		return expand_logical(sctx_ expr);
 
 	case EXPR_COMMA:
-		return expand_comma(expr);
+		return expand_comma(sctx_ expr);
 
 	case EXPR_COMPARE:
-		return expand_compare(expr);
+		return expand_compare(sctx_ expr);
 
 	case EXPR_ASSIGNMENT:
-		return expand_assignment(expr);
+		return expand_assignment(sctx_ expr);
 
 	case EXPR_PREOP:
-		return expand_preop(expr);
+		return expand_preop(sctx_ expr);
 
 	case EXPR_POSTOP:
-		return expand_postop(expr);
+		return expand_postop(sctx_ expr);
 
 	case EXPR_CAST:
 	case EXPR_FORCE_CAST:
 	case EXPR_IMPLIED_CAST:
-		return expand_cast(expr);
+		return expand_cast(sctx_ expr);
 
 	case EXPR_CALL:
-		return expand_call(expr);
+		return expand_call(sctx_ expr);
 
 	case EXPR_DEREF:
-		warning(expr->pos->pos, "we should not have an EXPR_DEREF left at expansion time");
+		warning(sctx_ expr->pos->pos, "we should not have an EXPR_DEREF left at expansion time");
 		return UNSAFE;
 
 	case EXPR_SELECT:
 	case EXPR_CONDITIONAL:
-		return expand_conditional(expr);
+		return expand_conditional(sctx_ expr);
 
 	case EXPR_STATEMENT: {
 		struct statement *stmt = expr->statement;
-		int cost = expand_statement(stmt);
+		int cost = expand_statement(sctx_ stmt);
 
 		if (stmt->type == STMT_EXPRESSION && stmt->expression)
 			*expr = *stmt->expression;
@@ -997,9 +997,9 @@ static int expand_expression(struct expression *expr)
 		return 0;
 
 	case EXPR_INITIALIZER:
-		sort_expression_list(&expr->expr_list);
-		verify_nonoverlapping(&expr->expr_list);
-		return expand_expression_list(expr->expr_list);
+		sort_expression_list(sctx_ &expr->expr_list);
+		verify_nonoverlapping(sctx_ &expr->expr_list);
+		return expand_expression_list(sctx_ expr->expr_list);
 
 	case EXPR_IDENTIFIER:
 		return UNSAFE;
@@ -1008,31 +1008,31 @@ static int expand_expression(struct expression *expr)
 		return UNSAFE;
 
 	case EXPR_SLICE:
-		return expand_expression(expr->base) + 1;
+		return expand_expression(sctx_ expr->base) + 1;
 
 	case EXPR_POS:
-		return expand_pos_expression(expr);
+		return expand_pos_expression(sctx_ expr);
 
 	case EXPR_SIZEOF:
 	case EXPR_PTRSIZEOF:
 	case EXPR_ALIGNOF:
 	case EXPR_OFFSETOF:
-		expression_error(expr, "internal front-end error: sizeof in expansion?");
+		expression_error(sctx_ expr, "internal front-end error: sizeof in expansion?");
 		return UNSAFE;
 	}
 	return SIDE_EFFECTS;
 }
 
-static void expand_const_expression(struct expression *expr, const char *where)
+static void expand_const_expression(SCTX_ struct expression *expr, const char *where)
 {
 	if (expr) {
-		expand_expression(expr);
+		expand_expression(sctx_ expr);
 		if (expr->type != EXPR_VALUE)
-			expression_error(expr, "Expected constant expression in %s", where);
+			expression_error(sctx_ expr, "Expected constant expression in %s", where);
 	}
 }
 
-int expand_symbol(struct symbol *sym)
+int expand_symbol(SCTX_ struct symbol *sym)
 {
 	int retval;
 	struct symbol *base_type;
@@ -1043,28 +1043,28 @@ int expand_symbol(struct symbol *sym)
 	if (!base_type)
 		return 0;
 
-	retval = expand_expression(sym->initializer);
+	retval = expand_expression(sctx_ sym->initializer);
 	/* expand the body of the symbol */
 	if (base_type->type == SYM_FN) {
 		if (base_type->stmt)
-			expand_statement(base_type->stmt);
+			expand_statement(sctx_ base_type->stmt);
 	}
 	return retval;
 }
 
-static void expand_return_expression(struct statement *stmt)
+static void expand_return_expression(SCTX_ struct statement *stmt)
 {
-	expand_expression(stmt->expression);
+	expand_expression(sctx_ stmt->expression);
 }
 
-static int expand_if_statement(struct statement *stmt)
+static int expand_if_statement(SCTX_ struct statement *stmt)
 {
 	struct expression *expr = stmt->if_conditional;
 
 	if (!expr || !expr->ctype || expr->ctype == &bad_ctype)
 		return UNSAFE;
 
-	expand_expression(expr);
+	expand_expression(sctx_ expr);
 
 /* This is only valid if nobody jumps into the "dead" side */
 #if 0
@@ -1083,8 +1083,8 @@ static int expand_if_statement(struct statement *stmt)
 		return SIDE_EFFECTS;
 	}
 #endif
-	expand_statement(stmt->if_true);
-	expand_statement(stmt->if_false);
+	expand_statement(sctx_ stmt->if_true);
+	expand_statement(sctx_ stmt->if_false);
 	return SIDE_EFFECTS;
 }
 
@@ -1098,21 +1098,21 @@ static int expand_if_statement(struct statement *stmt)
  * except we would have to check the "return"
  * symbol usage. Next time.
  */
-static int expand_compound(struct statement *stmt)
+static int expand_compound(SCTX_ struct statement *stmt)
 {
 	struct statement *s, *last;
 	int cost, statements;
 
 	if (stmt->ret)
-		expand_symbol(stmt->ret);
+		expand_symbol(sctx_ stmt->ret);
 
 	last = stmt->args;
-	cost = expand_statement(last);
+	cost = expand_statement(sctx_ last);
 	statements = last != NULL;
 	FOR_EACH_PTR(stmt->stmts, s) {
 		statements++;
 		last = s;
-		cost += expand_statement(s);
+		cost += expand_statement(sctx_ s);
 	} END_FOR_EACH_PTR(s);
 
 	if (statements == 1 && !stmt->ret)
@@ -1121,7 +1121,7 @@ static int expand_compound(struct statement *stmt)
 	return cost;
 }
 
-static int expand_statement(struct statement *stmt)
+static int expand_statement(SCTX_ struct statement *stmt)
 {
 	if (!stmt)
 		return 0;
@@ -1130,49 +1130,49 @@ static int expand_statement(struct statement *stmt)
 	case STMT_DECLARATION: {
 		struct symbol *sym;
 		FOR_EACH_PTR(stmt->declaration, sym) {
-			expand_symbol(sym);
+			expand_symbol(sctx_ sym);
 		} END_FOR_EACH_PTR(sym);
 		return SIDE_EFFECTS;
 	}
 
 	case STMT_RETURN:
-		expand_return_expression(stmt);
+		expand_return_expression(sctx_ stmt);
 		return SIDE_EFFECTS;
 
 	case STMT_EXPRESSION:
-		return expand_expression(stmt->expression);
+		return expand_expression(sctx_ stmt->expression);
 
 	case STMT_COMPOUND:
-		return expand_compound(stmt);
+		return expand_compound(sctx_ stmt);
 
 	case STMT_IF:
-		return expand_if_statement(stmt);
+		return expand_if_statement(sctx_ stmt);
 
 	case STMT_ITERATOR:
-		expand_expression(stmt->iterator_pre_condition);
-		expand_expression(stmt->iterator_post_condition);
-		expand_statement(stmt->iterator_pre_statement);
-		expand_statement(stmt->iterator_statement);
-		expand_statement(stmt->iterator_post_statement);
+		expand_expression(sctx_ stmt->iterator_pre_condition);
+		expand_expression(sctx_ stmt->iterator_post_condition);
+		expand_statement(sctx_ stmt->iterator_pre_statement);
+		expand_statement(sctx_ stmt->iterator_statement);
+		expand_statement(sctx_ stmt->iterator_post_statement);
 		return SIDE_EFFECTS;
 
 	case STMT_SWITCH:
-		expand_expression(stmt->switch_expression);
-		expand_statement(stmt->switch_statement);
+		expand_expression(sctx_ stmt->switch_expression);
+		expand_statement(sctx_ stmt->switch_statement);
 		return SIDE_EFFECTS;
 
 	case STMT_CASE:
-		expand_const_expression(stmt->case_expression, "case statement");
-		expand_const_expression(stmt->case_to, "case statement");
-		expand_statement(stmt->case_statement);
+		expand_const_expression(sctx_ stmt->case_expression, "case statement");
+		expand_const_expression(sctx_ stmt->case_to, "case statement");
+		expand_statement(sctx_ stmt->case_statement);
 		return SIDE_EFFECTS;
 
 	case STMT_LABEL:
-		expand_statement(stmt->label_statement);
+		expand_statement(sctx_ stmt->label_statement);
 		return SIDE_EFFECTS;
 
 	case STMT_GOTO:
-		expand_expression(stmt->goto_expression);
+		expand_expression(sctx_ stmt->goto_expression);
 		return SIDE_EFFECTS;
 
 	case STMT_NONE:
@@ -1181,12 +1181,12 @@ static int expand_statement(struct statement *stmt)
 		/* FIXME! Do the asm parameter evaluation! */
 		break;
 	case STMT_CONTEXT:
-		expand_expression(stmt->expression);
+		expand_expression(sctx_ stmt->expression);
 		break;
 	case STMT_RANGE:
-		expand_expression(stmt->range_expression);
-		expand_expression(stmt->range_low);
-		expand_expression(stmt->range_high);
+		expand_expression(sctx_ stmt->range_expression);
+		expand_expression(sctx_ stmt->range_low);
+		expand_expression(sctx_ stmt->range_high);
 		break;
 	}
 	return SIDE_EFFECTS;
@@ -1201,26 +1201,26 @@ static inline int bad_integer_constant_expression(struct expression *expr)
 	return 0;
 }
 
-static long long __get_expression_value(struct expression *expr, int strict)
+static long long __get_expression_value(SCTX_ struct expression *expr, int strict)
 {
 	long long value, mask;
 	struct symbol *ctype;
 
 	if (!expr)
 		return 0;
-	ctype = evaluate_expression(expr);
+	ctype = evaluate_expression(sctx_ expr);
 	if (!ctype) {
-		expression_error(expr, "bad constant expression type");
+		expression_error(sctx_ expr, "bad constant expression type");
 		return 0;
 	}
-	expand_expression(expr);
+	expand_expression(sctx_ expr);
 	if (expr->type != EXPR_VALUE) {
 		if (strict != 2)
-			expression_error(expr, "bad constant expression");
+			expression_error(sctx_ expr, "bad constant expression");
 		return 0;
 	}
 	if ((strict == 1) && bad_integer_constant_expression(expr)) {
-		expression_error(expr, "bad integer constant expression");
+		expression_error(sctx_ expr, "bad integer constant expression");
 		return 0;
 	}
 
@@ -1236,27 +1236,27 @@ static long long __get_expression_value(struct expression *expr, int strict)
 	return value;
 }
 
-long long get_expression_value(struct expression *expr)
+long long get_expression_value(SCTX_ struct expression *expr)
 {
-	return __get_expression_value(expr, 0);
+	return __get_expression_value(sctx_ expr, 0);
 }
 
-long long const_expression_value(struct expression *expr)
+long long const_expression_value(SCTX_ struct expression *expr)
 {
-	return __get_expression_value(expr, 1);
+	return __get_expression_value(sctx_ expr, 1);
 }
 
-long long get_expression_value_silent(struct expression *expr)
+long long get_expression_value_silent(SCTX_ struct expression *expr)
 {
 
-	return __get_expression_value(expr, 2);
+	return __get_expression_value(sctx_ expr, 2);
 }
 
-int is_zero_constant(struct expression *expr)
+int is_zero_constant(SCTX_ struct expression *expr)
 {
 	const int saved = conservative;
 	conservative = 1;
-	expand_expression(expr);
+	expand_expression(sctx_ expr);
 	conservative = saved;
 	return expr->type == EXPR_VALUE && !expr->value;
 }

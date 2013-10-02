@@ -1,6 +1,7 @@
 #ifndef LIB_H
 #define LIB_H
 
+#include "ctx.h"
 #include <stdlib.h>
 #include <stddef.h>
 

@@ -5,7 +5,7 @@
 #include "token.h"
 #include "expression.h"
 
-static const char *parse_escape(const char *p, unsigned *val, const char *end, int bits, struct position pos)
+static const char *parse_escape(SCTX_ const char *p, unsigned *val, const char *end, int bits, struct position pos)
 {
 	unsigned c = *p++;
 	unsigned d;
@@ -27,11 +27,11 @@ static const char *parse_escape(const char *p, unsigned *val, const char *end, i
 	case 'x': {
 		unsigned mask = -(1U << (bits - 4));
 		for (c = 0; p < end; c = (c << 4) + d) {
-			d = hexval(*p++);
+			d = hexval(sctx_ *p++);
 			if (d > 16)
 				break;
 			if (c & mask) {
-				warning(pos,
+				warning(sctx_ pos,
 					"hex escape sequence out of range");
 				mask = 0;
 			}
@@ -45,7 +45,7 @@ static const char *parse_escape(const char *p, unsigned *val, const char *end, i
 		while (p < end && (d = *p++ - '0') < 8)
 			c = (c << 3) + d;
 		if ((c & 0400) && bits < 9)
-			warning(pos,
+			warning(sctx_ pos,
 				"octal escape sequence out of range");
 		break;
 	}
@@ -56,7 +56,7 @@ static const char *parse_escape(const char *p, unsigned *val, const char *end, i
 	return p;
 }
 
-void get_char_constant(struct token *token, unsigned long long *val)
+void get_char_constant(SCTX_ struct token *token, unsigned long long *val)
 {
 	const char *p = token->embedded, *end;
 	unsigned v;
@@ -73,15 +73,15 @@ void get_char_constant(struct token *token, unsigned long long *val)
 	default:
 		end = p + type - TOKEN_WIDE_CHAR;
 	}
-	p = parse_escape(p, &v, end,
+	p = parse_escape(sctx_ p, &v, end,
 			type < TOKEN_WIDE_CHAR ? bits_in_char : 32, token->pos);
 	if (p != end)
-		warning(token->pos,
+		warning(sctx_ token->pos,
 			"multi-character character constant");
 	*val = v;
 }
 
-struct token *get_string_constant(struct token *token, struct expression *expr)
+struct token *get_string_constant(SCTX_ struct token *token, struct expression *expr)
 {
 	struct string *string = token->string;
 	struct token *next = token->next, *done = NULL;
@@ -108,7 +108,7 @@ struct token *get_string_constant(struct token *token, struct expression *expr)
 		const char *p = token->string->data;
 		const char *end = p + token->string->length - 1;
 		while (p < end) {
-			p = parse_escape(p, &v, end, bits, token->pos);
+			p = parse_escape(sctx_ p, &v, end, bits, token->pos);
 			if (len < MAX_STRING)
 				buffer[len] = v;
 			len++;
@@ -116,12 +116,12 @@ struct token *get_string_constant(struct token *token, struct expression *expr)
 		token = token->next;
 	}
 	if (len > MAX_STRING) {
-		warning(token->pos, "trying to concatenate %d-character string (%d bytes max)", len, MAX_STRING);
+		warning(sctx_ token->pos, "trying to concatenate %d-character string (%d bytes max)", len, MAX_STRING);
 		len = MAX_STRING;
 	}
 
 	if (len >= string->length)	/* can't cannibalize */
-		string = __alloc_string(len+1);
+		string = __alloc_string(sctx_ len+1);
 	string->length = len+1;
 	memcpy(string->data, buffer, len);
 	string->data[len] = '\0';

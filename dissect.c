@@ -35,16 +35,16 @@
 
 typedef unsigned usage_t;
 
-static struct reporter *reporter;
+struct reporter *reporter;
 static struct symbol *return_type;
 
-static void do_sym_list(struct symbol_list *list);
+static void do_sym_list(SCTX_ struct symbol_list *list);
 
 static struct symbol
-	*base_type_dis(struct symbol *sym),
-	*do_initializer(struct symbol *type, struct expression *expr),
-	*do_expression(usage_t mode, struct expression *expr),
-	*do_statement(usage_t mode, struct statement *stmt);
+	*base_type_dis(SCTX_ struct symbol *sym),
+	*do_initializer(SCTX_ struct symbol *type, struct expression *expr),
+	*do_expression(SCTX_ usage_t mode, struct expression *expr),
+	*do_statement(SCTX_ usage_t mode, struct statement *stmt);
 
 static inline int is_ptr(struct symbol *type)
 {
@@ -63,14 +63,14 @@ static inline usage_t u_addr(usage_t mode)
 		? U_R_AOF | (mode & U_W_AOF) : 0;
 }
 
-static usage_t u_lval(struct symbol *type)
+static usage_t u_lval(SCTX_ struct symbol *type)
 {
 	int wptr = is_ptr(type) && !(type->ctype.modifiers & MOD_CONST);
 	return wptr || type == &bad_ctype
 		? U_W_AOF | U_R_VAL : U_R_VAL;
 }
 
-static usage_t fix_mode(struct symbol *type, usage_t mode)
+static usage_t fix_mode(SCTX_ struct symbol *type, usage_t mode)
 {
 	mode &= (U_SELF | (U_SELF << U_SHIFT));
 
@@ -114,18 +114,18 @@ static inline struct symbol *no_member(struct ident *name)
 	return &sym;
 }
 
-static struct symbol *report_member(mode_t mode, struct token *pos,
+static struct symbol *report_member(SCTX_ mode_t mode, struct token *pos,
 					struct symbol *type, struct symbol *mem)
 {
 	struct symbol *ret = mem->ctype.base_type;
 
 	if (reporter->r_member)
-		reporter->r_member(fix_mode(ret, mode), pos, type, mem);
+		reporter->r_member(fix_mode(sctx_ ret, mode), pos, type, mem);
 
 	return ret;
 }
 
-static void report_implicit(usage_t mode, struct token *pos, struct symbol *type)
+static void report_implicit(SCTX_ usage_t mode, struct token *pos, struct symbol *type)
 {
 	if (type->type != SYM_STRUCT && type->type != SYM_UNION)
 		return;
@@ -160,16 +160,16 @@ static inline struct symbol *expr_symbol(struct expression *expr)
 	return sym;
 }
 
-static struct symbol *report_symbol(usage_t mode, struct expression *expr)
+static struct symbol *report_symbol(SCTX_ usage_t mode, struct expression *expr)
 {
 	struct symbol *sym = expr_symbol(expr);
-	struct symbol *ret = base_type_dis(sym);
+	struct symbol *ret = base_type_dis(sctx_ sym);
 
 	if (0 && ret->type == SYM_ENUM)
-		return report_member(mode, expr->pos, ret, expr->symbol);
+		return report_member(sctx_ mode, expr->pos, ret, expr->symbol);
 
 	if (reporter->r_symbol)
-		reporter->r_symbol(fix_mode(ret, mode), expr->pos, sym);
+		reporter->r_symbol(fix_mode(sctx_ ret, mode), expr->pos, sym);
 
 	return ret;
 }
@@ -185,7 +185,7 @@ static inline struct ident *mk_name(struct ident *root, struct ident *node)
 	return built_in_ident(name);
 }
 
-static void examine_sym_node(struct symbol *node, struct ident *root)
+static void examine_sym_node(SCTX_ struct symbol *node, struct ident *root)
 {
 	struct symbol *base;
 	struct ident *name;
@@ -200,11 +200,11 @@ static void examine_sym_node(struct symbol *node, struct ident *root)
 		switch (base->type) {
 		case SYM_TYPEOF:
 			node->ctype.base_type =
-				do_expression(U_VOID, base->initializer);
+				do_expression(sctx_ U_VOID, base->initializer);
 			break;
 
 		case SYM_ARRAY:
-			do_expression(U_R_VAL, base->array_size);
+			do_expression(sctx_ U_R_VAL, base->array_size);
 		case SYM_PTR: case SYM_FN:
 			node = base;
 			break;
@@ -227,19 +227,19 @@ static void examine_sym_node(struct symbol *node, struct ident *root)
 		}
 }
 
-static struct symbol *base_type_dis(struct symbol *sym)
+static struct symbol *base_type_dis(SCTX_ struct symbol *sym)
 {
 	if (!sym)
 		return &bad_ctype;
 
 	if (sym->type == SYM_NODE)
-		examine_sym_node(sym, NULL);
+		examine_sym_node(sctx_ sym, NULL);
 
 	return sym->ctype.base_type	// builtin_fn_type
 		?: &bad_ctype;
 }
 
-static struct symbol *__lookup_member(struct symbol *type, struct ident *name, int *p_addr)
+static struct symbol *__lookup_member(SCTX_ struct symbol *type, struct ident *name, int *p_addr)
 {
 	struct symbol *node;
 	int addr = 0;
@@ -250,7 +250,7 @@ static struct symbol *__lookup_member(struct symbol *type, struct ident *name, i
 				return node;
 		}
 		else if (node->ident == NULL) {
-			node = __lookup_member(node->ctype.base_type, name, NULL);
+			node = __lookup_member(sctx_ node->ctype.base_type, name, NULL);
 			if (node)
 				goto found;
 		}
@@ -266,13 +266,13 @@ found:
 	return NULL;
 }
 
-static struct symbol *lookup_member(struct symbol *type, struct ident *name, int *addr)
+static struct symbol *lookup_member(SCTX_ struct symbol *type, struct ident *name, int *addr)
 {
-	return __lookup_member(type, name, addr)
+	return __lookup_member(sctx_ type, name, addr)
 		?: no_member(name);
 }
 
-static struct expression *peek_preop(struct expression *expr, int op)
+static struct expression *peek_preop(SCTX_ struct expression *expr, int op)
 {
 	do {
 		if (expr->type != EXPR_PREOP)
@@ -288,14 +288,14 @@ static struct expression *peek_preop(struct expression *expr, int op)
 	return NULL;
 }
 
-static struct symbol *do_expression(usage_t mode, struct expression *expr)
+static struct symbol *do_expression(SCTX_ usage_t mode, struct expression *expr)
 {
 	struct symbol *ret = &int_ctype;
 
 again:
 	if (expr) switch (expr->type) {
 	default:
-		warning(expr->pos->pos, "bad expr->type: %d", expr->type);
+		warning(sctx_ expr->pos->pos, "bad expr->type: %d", expr->type);
 
 	case EXPR_TYPE:		// [struct T]; Why ???
 	case EXPR_VALUE:
@@ -308,55 +308,55 @@ again:
 		ret = &string_ctype;
 
 	break; case EXPR_STATEMENT:
-		ret = do_statement(mode, expr->statement);
+		ret = do_statement(sctx_ mode, expr->statement);
 
 	break; case EXPR_SIZEOF: case EXPR_ALIGNOF: case EXPR_PTRSIZEOF:
-		do_expression(U_VOID, expr->cast_expression);
+		do_expression(sctx_ U_VOID, expr->cast_expression);
 
 	break; case EXPR_COMMA:
-		do_expression(U_VOID, expr->left);
-		ret = do_expression(mode, expr->right);
+		do_expression(sctx_ U_VOID, expr->left);
+		ret = do_expression(sctx_ mode, expr->right);
 
 	break; case EXPR_CAST: case EXPR_FORCE_CAST: //case EXPR_IMPLIED_CAST:
-		ret = base_type_dis(expr->cast_type);
-		do_initializer(ret, expr->cast_expression);
+		ret = base_type_dis(sctx_ expr->cast_type);
+		do_initializer(sctx_ ret, expr->cast_expression);
 
 	break; case EXPR_COMPARE: case EXPR_LOGICAL:
 		mode = u_rval(mode);
-		do_expression(mode, expr->left);
-		do_expression(mode, expr->right);
+		do_expression(sctx_ mode, expr->left);
+		do_expression(sctx_ mode, expr->right);
 
 	break; case EXPR_CONDITIONAL: //case EXPR_SELECT:
-		do_expression(expr->cond_true
+		do_expression(sctx_ expr->cond_true
 					? U_R_VAL : U_R_VAL | mode,
 				expr->conditional);
-		ret = do_expression(mode, expr->cond_true);
-		ret = do_expression(mode, expr->cond_false);
+		ret = do_expression(sctx_ mode, expr->cond_true);
+		ret = do_expression(sctx_ mode, expr->cond_false);
 
 	break; case EXPR_CALL:
-		ret = do_expression(U_R_PTR, expr->fn);
+		ret = do_expression(sctx_ U_R_PTR, expr->fn);
 		if (is_ptr(ret))
 			ret = ret->ctype.base_type;
 		DO_2_LIST(ret->arguments, expr->args, arg, val,
 			do_expression(u_lval(base_type_dis(arg)), val));
-		ret = ret->type == SYM_FN ? base_type_dis(ret)
+		ret = ret->type == SYM_FN ? base_type_dis(sctx_ ret)
 			: &bad_ctype;
 
 	break; case EXPR_ASSIGNMENT:
 		mode |= U_W_VAL | U_R_VAL;
 		if (expr->op == '=')
 			mode &= ~U_R_VAL;
-		ret = do_expression(mode, expr->left);
-		report_implicit(mode, expr->pos, ret);
+		ret = do_expression(sctx_ mode, expr->left);
+		report_implicit(sctx_ mode, expr->pos, ret);
 		mode = expr->op == '='
-			? u_lval(ret) : U_R_VAL;
-		do_expression(mode, expr->right);
+			? u_lval(sctx_ ret) : U_R_VAL;
+		do_expression(sctx_ mode, expr->right);
 
 	break; case EXPR_BINOP: {
 		struct symbol *l, *r;
 		mode |= u_rval(mode);
-		l = do_expression(mode, expr->left);
-		r = do_expression(mode, expr->right);
+		l = do_expression(sctx_ mode, expr->left);
+		r = do_expression(sctx_ mode, expr->right);
 		if (expr->op != '+' && expr->op != '-')
 			;
 		else if (!is_ptr_type(r))
@@ -375,17 +375,17 @@ again:
 		default:
 			mode |= u_rval(mode);
 		case '(':
-			ret = do_expression(mode, unop);
+			ret = do_expression(sctx_ mode, unop);
 
 		break; case '&':
-			if ((expr = peek_preop(unop, '*')))
+			if ((expr = peek_preop(sctx_ unop, '*')))
 				goto again;
-			ret = alloc_symbol(unop->tok, SYM_PTR);
+			ret = alloc_symbol(sctx_ unop->tok, SYM_PTR);
 			ret->ctype.base_type =
-				do_expression(u_addr(mode), unop);
+				do_expression(sctx_ u_addr(mode), unop);
 
 		break; case '*':
-			if ((expr = peek_preop(unop, '&')))
+			if ((expr = peek_preop(sctx_ unop, '&')))
 				goto again;
 			if (mode & (U_MASK << U_SHIFT))
 				mode |= U_R_VAL;
@@ -394,8 +394,8 @@ again:
 				mode |= U_R_VAL;
 			if (mode & (U_W_VAL << U_SHIFT))
 				mode |= U_W_AOF;
-			ret = do_expression(mode, unop);
-			ret = is_ptr(ret) ? base_type_dis(ret)
+			ret = do_expression(sctx_ mode, unop);
+			ret = is_ptr(ret) ? base_type_dis(sctx_ ret)
 				: &bad_ctype;
 		}
 	}
@@ -407,20 +407,20 @@ again:
 		p_mode = mode & U_SELF;
 		if (!(mode & U_MASK) && (mode & (U_MASK << U_SHIFT)))
 			p_mode = U_R_VAL;
-		p_type = do_expression(p_mode, expr->deref);
+		p_type = do_expression(sctx_ p_mode, expr->deref);
 
-		ret = report_member(mode, expr->pos, p_type,
-			lookup_member(p_type, expr->member, NULL));
+		ret = report_member(sctx_ mode, expr->pos, p_type,
+			lookup_member(sctx_ p_type, expr->member, NULL));
 	}
 
 	break; case EXPR_SYMBOL:
-		ret = report_symbol(mode, expr);
+		ret = report_symbol(sctx_ mode, expr);
 	}
 
 	return ret;
 }
 
-static void do_asm_xputs(usage_t mode, struct expression_list *xputs)
+static void do_asm_xputs(SCTX_ usage_t mode, struct expression_list *xputs)
 {
 	int nr = 0;
 
@@ -429,31 +429,31 @@ static void do_asm_xputs(usage_t mode, struct expression_list *xputs)
 			do_expression(U_W_AOF | mode, expr));
 }
 
-static struct symbol *do_statement(usage_t mode, struct statement *stmt)
+static struct symbol *do_statement(SCTX_ usage_t mode, struct statement *stmt)
 {
 	struct symbol *ret = &void_ctype;
 
 	if (stmt) switch (stmt->type) {
 	default:
-		warning(stmt->pos->pos, "bad stmt->type: %d", stmt->type);
+		warning(sctx_ stmt->pos->pos, "bad stmt->type: %d", stmt->type);
 
 	case STMT_NONE:
 	case STMT_RANGE:
 	case STMT_CONTEXT:
 
 	break; case STMT_DECLARATION:
-		do_sym_list(stmt->declaration);
+		do_sym_list(sctx_ stmt->declaration);
 
 	break; case STMT_EXPRESSION:
-		ret = do_expression(mode, stmt->expression);
+		ret = do_expression(sctx_ mode, stmt->expression);
 
 	break; case STMT_RETURN:
-		do_expression(u_lval(return_type), stmt->expression);
+		do_expression(sctx_ u_lval(sctx_ return_type), stmt->expression);
 
 	break; case STMT_ASM:
-		do_expression(U_R_VAL, stmt->asm_string);
-		do_asm_xputs(U_W_VAL, stmt->asm_outputs);
-		do_asm_xputs(U_R_VAL, stmt->asm_inputs);
+		do_expression(sctx_ U_R_VAL, stmt->asm_string);
+		do_asm_xputs(sctx_ U_W_VAL, stmt->asm_outputs);
+		do_asm_xputs(sctx_ U_R_VAL, stmt->asm_inputs);
 
 	break; case STMT_COMPOUND: {
 		int count;
@@ -464,39 +464,39 @@ static struct symbol *do_statement(usage_t mode, struct statement *stmt)
 	}
 
 	break; case STMT_ITERATOR:
-		do_sym_list(stmt->iterator_syms);
-		do_statement(U_VOID, stmt->iterator_pre_statement);
-		do_expression(U_R_VAL, stmt->iterator_pre_condition);
-		do_statement(U_VOID, stmt->iterator_post_statement);
-		do_statement(U_VOID, stmt->iterator_statement);
-		do_expression(U_R_VAL, stmt->iterator_post_condition);
+		do_sym_list(sctx_ stmt->iterator_syms);
+		do_statement(sctx_ U_VOID, stmt->iterator_pre_statement);
+		do_expression(sctx_ U_R_VAL, stmt->iterator_pre_condition);
+		do_statement(sctx_ U_VOID, stmt->iterator_post_statement);
+		do_statement(sctx_ U_VOID, stmt->iterator_statement);
+		do_expression(sctx_ U_R_VAL, stmt->iterator_post_condition);
 
 	break; case STMT_IF:
-		do_expression(U_R_VAL, stmt->if_conditional);
-		do_statement(U_VOID, stmt->if_true);
-		do_statement(U_VOID, stmt->if_false);
+		do_expression(sctx_ U_R_VAL, stmt->if_conditional);
+		do_statement(sctx_ U_VOID, stmt->if_true);
+		do_statement(sctx_ U_VOID, stmt->if_false);
 
 	break; case STMT_SWITCH:
-		do_expression(U_R_VAL, stmt->switch_expression);
-		do_statement(U_VOID, stmt->switch_statement);
+		do_expression(sctx_ U_R_VAL, stmt->switch_expression);
+		do_statement(sctx_ U_VOID, stmt->switch_statement);
 
 	break; case STMT_CASE:
-		do_expression(U_R_VAL, stmt->case_expression);
-		do_expression(U_R_VAL, stmt->case_to);
-		do_statement(U_VOID, stmt->case_statement);
+		do_expression(sctx_ U_R_VAL, stmt->case_expression);
+		do_expression(sctx_ U_R_VAL, stmt->case_to);
+		do_statement(sctx_ U_VOID, stmt->case_statement);
 
 	break; case STMT_GOTO:
-		do_expression(U_R_PTR, stmt->goto_expression);
+		do_expression(sctx_ U_R_PTR, stmt->goto_expression);
 
 	break; case STMT_LABEL:
-		do_statement(mode, stmt->label_statement);
+		do_statement(sctx_ mode, stmt->label_statement);
 
 	}
 
 	return ret;
 }
 
-static struct symbol *do_initializer(struct symbol *type, struct expression *expr)
+static struct symbol *do_initializer(SCTX_ struct symbol *type, struct expression *expr)
 {
 	struct symbol *m_type;
 	struct expression *m_expr;
@@ -504,16 +504,16 @@ static struct symbol *do_initializer(struct symbol *type, struct expression *exp
 
 	if (expr) switch (expr->type) {
 	default:
-		do_expression(u_lval(type), expr);
+		do_expression(sctx_ u_lval(sctx_ type), expr);
 
 	break; case EXPR_INDEX:
-		do_initializer(base_type_dis(type), expr->idx_expression);
+		do_initializer(sctx_ base_type_dis(sctx_ type), expr->idx_expression);
 
 	break; case EXPR_INITIALIZER:
 		m_addr = 0;
 		FOR_EACH_PTR(expr->expr_list, m_expr)
 			if (type->type == SYM_ARRAY) {
-				m_type = base_type_dis(type);
+				m_type = base_type_dis(sctx_ type);
 				if (m_expr->type == EXPR_INDEX)
 					m_expr = m_expr->idx_expression;
 			} else {
@@ -525,12 +525,12 @@ static struct symbol *do_initializer(struct symbol *type, struct expression *exp
 					m_expr = m_expr->ident_expression;
 				}
 
-				m_type = report_member(U_W_VAL, pos, type,
-						lookup_member(type, m_name, &m_addr));
+				m_type = report_member(sctx_ U_W_VAL, pos, type,
+						lookup_member(sctx_ type, m_name, &m_addr));
 				if (m_expr->type != EXPR_INITIALIZER)
-					report_implicit(U_W_VAL, pos, m_type);
+					report_implicit(sctx_ U_W_VAL, pos, m_type);
 			}
-			do_initializer(m_type, m_expr);
+			do_initializer(sctx_ m_type, m_expr);
 			m_addr++;
 		END_FOR_EACH_PTR(m_expr);
 	}
@@ -568,22 +568,22 @@ static inline struct symbol *do_symbol(struct symbol *sym)
 	return type;
 }
 
-static void do_sym_list(struct symbol_list *list)
+static void do_sym_list(SCTX_ struct symbol_list *list)
 {
 	DO_LIST(list, sym, do_symbol(sym));
 }
 
-void dissect(struct symbol_list *list, struct reporter *rep)
+void dissect(SCTX_ struct symbol_list *list, struct reporter *rep)
 {
 	reporter = rep;
-	do_sym_list(list);
+	do_sym_list(sctx_ list);
 }
 
 /******** disssect arr ********/
 
 static unsigned dotc_stream;
 
-char dissect_storage(struct symbol *sym)
+char dissect_storage(SCTX_ struct symbol *sym)
 {
 	int t = sym->type;
 	unsigned m = sym->ctype.modifiers;
@@ -594,7 +594,7 @@ char dissect_storage(struct symbol *sym)
 	return (m & MOD_STATIC) ? 's' : (m & MOD_NONLOCAL) ? 'g' : 'l';
 }
 
-const char *dissect_show_mode(unsigned mode)
+const char *dissect_show_mode(SCTX_ unsigned mode)
 {
 	static char str[3];
 
@@ -620,7 +620,7 @@ const char *dissect_show_mode(unsigned mode)
 		r->indent = reporter->indent;				\
 	} while(0);
 
-static void r_symdef(struct symbol *sym)
+static void r_symdef(SCTX_ struct symbol *sym)
 {
 	struct reporter_def *r;
 	PUSH_REPORT(symdefs,r);
@@ -628,7 +628,7 @@ static void r_symdef(struct symbol *sym)
 	r->sym = sym;
 }
 
-static void r_symbol(unsigned mode, struct token *pos, struct symbol *sym)
+static void r_symbol(SCTX_ unsigned mode, struct token *pos, struct symbol *sym)
 {
 	struct reporter_def *r;
 	PUSH_REPORT(syms,r);
@@ -638,7 +638,7 @@ static void r_symbol(unsigned mode, struct token *pos, struct symbol *sym)
 	r->sym_sym = sym;
 }
 
-static void r_member(unsigned mode, struct token *pos, struct symbol *sym, struct symbol *mem)
+static void r_member(SCTX_ unsigned mode, struct token *pos, struct symbol *sym, struct symbol *mem)
 {
 	struct reporter_def *r;
 	PUSH_REPORT(members,r);
@@ -649,7 +649,7 @@ static void r_member(unsigned mode, struct token *pos, struct symbol *sym, struc
 	r->mem_mem = mem;
 }
 
-int dissect_arr(int argc, char **argv)
+int dissect_arr(SCTX_ int argc, char **argv)
 {
 	static struct reporter reporter = {
 		.r_symdef = r_symdef,
@@ -659,11 +659,11 @@ int dissect_arr(int argc, char **argv)
 	struct string_list *filelist = NULL;
 	char *file;
 
-	sparse_initialize(argc, argv, &filelist);
+	sparse_initialize(sctx_ argc, argv, &filelist);
 
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 		dotc_stream = input_stream_nr;
-		dissect(__sparse(file), &reporter);
+		dissect(sctx_ __sparse(sctx_ file), &reporter);
 	} END_FOR_EACH_PTR_NOTAG(file);
 
 	return 0;

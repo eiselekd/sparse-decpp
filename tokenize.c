@@ -39,14 +39,14 @@ typedef struct {
 	unsigned char *buffer;
 } stream_t;
 
-const char *stream_name(int stream)
+const char *stream_name(SCTX_ int stream)
 {
 	if (stream < 0 || stream > input_stream_nr)
 		return "<bad stream>";
 	return input_streams[stream].name;
 }
 
-static struct position stream_pos(stream_t *stream)
+static struct position stream_pos(SCTX_ stream_t *stream)
 {
 	struct position pos;
 	pos.type = 0;
@@ -59,7 +59,7 @@ static struct position stream_pos(stream_t *stream)
 	return pos;
 }
 
-const char *show_special(int val)
+const char *show_special(SCTX_ int val)
 {
 	static char buffer[4];
 
@@ -70,7 +70,7 @@ const char *show_special(int val)
 	return buffer;
 }
 
-const char *show_ident(const struct ident *ident)
+const char *show_ident(SCTX_ const struct ident *ident)
 {
 	static char buffer[256];
 	if (!ident)
@@ -79,7 +79,7 @@ const char *show_ident(const struct ident *ident)
 	return buffer;
 }
 
-static char *charstr(char *ptr, unsigned char c, unsigned char escape, unsigned char next)
+static char *charstr(SCTX_ char *ptr, unsigned char c, unsigned char escape, unsigned char next)
 {
 	if (isprint(c)) {
 		if (c == escape || c == '\\')
@@ -102,7 +102,7 @@ static char *charstr(char *ptr, unsigned char c, unsigned char escape, unsigned 
 	return ptr + sprintf(ptr, "%03o", c);
 }
 
-const char *show_string(const struct string *string)
+const char *show_string(SCTX_ const struct string *string)
 {
 	static char buffer[4 * MAX_STRING + 3];
 	char *ptr;
@@ -114,14 +114,14 @@ const char *show_string(const struct string *string)
 	*ptr++ = '"';
 	for (i = 0; i < string->length-1; i++) {
 		const char *p = string->data + i;
-		ptr = charstr(ptr, p[0], '"', p[1]);
+		ptr = charstr(sctx_ ptr, p[0], '"', p[1]);
 	}
 	*ptr++ = '"';
 	*ptr = '\0';
 	return buffer;
 }
 
-static const char *show_char(const char *s, size_t len, char prefix, char delim)
+static const char *show_char(SCTX_ const char *s, size_t len, char prefix, char delim)
 {
 	static char buffer[MAX_STRING + 4];
 	char *p = buffer;
@@ -135,7 +135,7 @@ static const char *show_char(const char *s, size_t len, char prefix, char delim)
 	return buffer;
 }
 
-static const char *quote_char(const char *s, size_t len, char prefix, char delim)
+static const char *quote_char(SCTX_ const char *s, size_t len, char prefix, char delim)
 {
 	static char buffer[2*MAX_STRING + 6];
 	size_t i;
@@ -157,7 +157,7 @@ static const char *quote_char(const char *s, size_t len, char prefix, char delim
 	return buffer;
 }
 
-const char *show_token(const struct token *token)
+const char *show_token(SCTX_ const struct token *token)
 {
 	static char buffer[256];
 
@@ -171,39 +171,39 @@ const char *show_token(const struct token *token)
 		return "end-of-input";
 
 	case TOKEN_IDENT:
-		return show_ident(token->ident);
+		return show_ident(sctx_ token->ident);
 
 	case TOKEN_NUMBER:
 		return token->number;
 
 	case TOKEN_SPECIAL:
-		return show_special(token->special);
+		return show_special(sctx_ token->special);
 
 	case TOKEN_CHAR: 
-		return show_char(token->string->data,
+		return show_char(sctx_ token->string->data,
 			token->string->length - 1, 0, '\'');
 	case TOKEN_CHAR_EMBEDDED_0 ... TOKEN_CHAR_EMBEDDED_3:
-		return show_char(token->embedded,
+		return show_char(sctx_ token->embedded,
 			token_type(token) - TOKEN_CHAR, 0, '\'');
 	case TOKEN_WIDE_CHAR: 
-		return show_char(token->string->data,
+		return show_char(sctx_ token->string->data,
 			token->string->length - 1, 'L', '\'');
 	case TOKEN_WIDE_CHAR_EMBEDDED_0 ... TOKEN_WIDE_CHAR_EMBEDDED_3:
-		return show_char(token->embedded,
+		return show_char(sctx_ token->embedded,
 			token_type(token) - TOKEN_WIDE_CHAR, 'L', '\'');
 	case TOKEN_STRING: 
-		return show_char(token->string->data,
+		return show_char(sctx_ token->string->data,
 			token->string->length - 1, 0, '"');
 	case TOKEN_WIDE_STRING: 
-		return show_char(token->string->data,
+		return show_char(sctx_ token->string->data,
 			token->string->length - 1, 'L', '"');
 
 	case TOKEN_STREAMBEGIN:
-		sprintf(buffer, "<beginning of '%s'>", stream_name(token->pos.stream));
+		sprintf(buffer, "<beginning of '%s'>", stream_name(sctx_ token->pos.stream));
 		return buffer;
 
 	case TOKEN_STREAMEND:
-		sprintf(buffer, "<end of '%s'>", stream_name(token->pos.stream));
+		sprintf(buffer, "<end of '%s'>", stream_name(sctx_ token->pos.stream));
 		return buffer;
 
 	case TOKEN_UNTAINT:
@@ -220,7 +220,7 @@ const char *show_token(const struct token *token)
 	}
 }
 
-const char *quote_token(const struct token *token)
+const char *quote_token(SCTX_ const struct token *token)
 {
 	static char buffer[256];
 
@@ -229,31 +229,31 @@ const char *quote_token(const struct token *token)
 		return "syntax error";
 
 	case TOKEN_IDENT:
-		return show_ident(token->ident);
+		return show_ident(sctx_ token->ident);
 
 	case TOKEN_NUMBER:
 		return token->number;
 
 	case TOKEN_SPECIAL:
-		return show_special(token->special);
+		return show_special(sctx_ token->special);
 
 	case TOKEN_CHAR: 
-		return quote_char(token->string->data,
+		return quote_char(sctx_ token->string->data,
 			token->string->length - 1, 0, '\'');
 	case TOKEN_CHAR_EMBEDDED_0 ... TOKEN_CHAR_EMBEDDED_3:
-		return quote_char(token->embedded,
+		return quote_char(sctx_ token->embedded,
 			token_type(token) - TOKEN_CHAR, 0, '\'');
 	case TOKEN_WIDE_CHAR: 
-		return quote_char(token->string->data,
+		return quote_char(sctx_ token->string->data,
 			token->string->length - 1, 'L', '\'');
 	case TOKEN_WIDE_CHAR_EMBEDDED_0 ... TOKEN_WIDE_CHAR_EMBEDDED_3:
-		return quote_char(token->embedded,
+		return quote_char(sctx_ token->embedded,
 			token_type(token) - TOKEN_WIDE_CHAR, 'L', '\'');
 	case TOKEN_STRING: 
-		return quote_char(token->string->data,
+		return quote_char(sctx_ token->string->data,
 			token->string->length - 1, 0, '"');
 	case TOKEN_WIDE_STRING: 
-		return quote_char(token->string->data,
+		return quote_char(sctx_ token->string->data,
 			token->string->length - 1, 'L', '"');
 	default:
 		sprintf(buffer, "unhandled token type '%d' ", token_type(token));
@@ -267,7 +267,7 @@ const char *quote_token(const struct token *token)
 
 static int input_stream_hashes[HASHED_INPUT] = { [0 ... HASHED_INPUT-1] = -1 };
 
-int *hash_stream(const char *name)
+int *hash_stream(SCTX_ const char *name)
 {
 	uint32_t hash = 0;
 	unsigned char c;
@@ -280,7 +280,7 @@ int *hash_stream(const char *name)
 	return input_stream_hashes + hash;
 }
 
-int init_stream(const char *name, int fd, const char **next_path)
+int init_stream(SCTX_ const char *name, int fd, const char **next_path)
 {
 	int stream = input_stream_nr, *hash;
 	struct stream *current;
@@ -289,7 +289,7 @@ int init_stream(const char *name, int fd, const char **next_path)
 		int newalloc = stream * 4 / 3 + 10;
 		input_streams = realloc(input_streams, newalloc * sizeof(struct stream));
 		if (!input_streams)
-			sparse_die("Unable to allocate more streams space");
+			sparse_die(sctx_ "Unable to allocate more streams space");
 		input_streams_allocated = newalloc;
 	}
 	current = input_streams + stream;
@@ -300,16 +300,16 @@ int init_stream(const char *name, int fd, const char **next_path)
 	current->path = NULL;
 	current->constant = CONSTANT_FILE_MAYBE;
 	input_stream_nr = stream+1;
-	hash = hash_stream(name);
+	hash = hash_stream(sctx_ name);
 	current->next_stream = *hash;
 	*hash = stream;
 	return stream;
 }
 
-static struct token * alloc_token_stream(stream_t *stream)
+static struct token * alloc_token_stream(SCTX_ stream_t *stream)
 {
-	struct token *token = __alloc_token(0);
-	token->pos = stream_pos(stream);
+	struct token *token = __alloc_token(sctx_ 0);
+	token->pos = stream_pos(sctx_ stream);
 	return token;
 }
 
@@ -317,7 +317,7 @@ static struct token * alloc_token_stream(stream_t *stream)
  *  Argh...  That was surprisingly messy - handling '\r' complicates the
  *  things a _lot_.
  */
-static int nextchar_slow(stream_t *stream)
+static int nextchar_slow(SCTX_ stream_t *stream)
 {
 	int offset = stream->offset;
 	int size = stream->size;
@@ -392,9 +392,9 @@ got_eof:
 		goto out;
 	}
 	if (stream->pos)
-		warning(stream_pos(stream), "no newline at end of file");
+		warning(sctx_ stream_pos(sctx_ stream), "no newline at end of file");
 	else if (spliced)
-		warning(stream_pos(stream), "backslash-newline at end of file");
+		warning(sctx_ stream_pos(sctx_ stream), "backslash-newline at end of file");
 	return EOF;
 }
 
@@ -423,11 +423,11 @@ static inline int nextchar(stream_t *stream)
 
 struct token eof_token_entry;
 
-static struct token *mark_eof(stream_t *stream)
+static struct token *mark_eof(SCTX_ stream_t *stream)
 {
 	struct token *end;
 
-	end = alloc_token_stream(stream);
+	end = alloc_token_stream(sctx_ stream);
 	token_type(end) = TOKEN_STREAMEND;
 	end->pos.newline = 1;
 
@@ -440,7 +440,7 @@ static struct token *mark_eof(stream_t *stream)
 	return end;
 }
 
-static void add_token(stream_t *stream)
+static void add_token(SCTX_ stream_t *stream)
 {
 	struct token *token = stream->token;
 
@@ -450,7 +450,7 @@ static void add_token(stream_t *stream)
 	stream->tokenlist = &token->next;
 }
 
-static void drop_token(stream_t *stream)
+static void drop_token(SCTX_ stream_t *stream)
 {
 	stream->newline |= stream->token->pos.newline;
 	stream->whitespace |= stream->token->pos.whitespace;
@@ -522,7 +522,7 @@ static const long cclass[257] = {
  *	pp-number P sign
  *	pp-number .
  */
-static int get_one_number(int c, int next, stream_t *stream)
+static int get_one_number(SCTX_ int c, int next, stream_t *stream)
 {
 	struct token *token;
 	static char buffer[4095];
@@ -547,7 +547,7 @@ static int get_one_number(int c, int next, stream_t *stream)
 	}
 
 	if (p == buffer_end) {
-		sparse_error(stream_pos(stream), "number token exceeds %td characters",
+		sparse_error(sctx_ stream_pos(sctx_ stream), "number token exceeds %td characters",
 		      buffer_end - buffer);
 		// Pretend we saw just "1".
 		buffer[0] = '1';
@@ -556,18 +556,18 @@ static int get_one_number(int c, int next, stream_t *stream)
 
 	*p++ = 0;
 	len = p - buffer;
-	buf = __alloc_bytes(len);
+	buf = __alloc_bytes(sctx_ len);
 	memcpy(buf, buffer, len);
 
 	token = stream->token;
 	token_type(token) = TOKEN_NUMBER;
 	token->number = buf;
-	add_token(stream);
+	add_token(sctx_ stream);
 
 	return next;
 }
 
-static int eat_string(int next, stream_t *stream, enum token_type type)
+static int eat_string(SCTX_ int next, stream_t *stream, enum token_type type)
 {
 	static char buffer[MAX_STRING];
 	struct string *string;
@@ -582,40 +582,40 @@ static int eat_string(int next, stream_t *stream, enum token_type type)
 			buffer[len] = next;
 		len++;
 		if (next == '\n') {
-			warning(stream_pos(stream),
+			warning(sctx_ stream_pos(sctx_ stream),
 				"Newline in string or character constant");
 			if (delim == '\'') /* assume it's lost ' */
 				break;
 		}
 		if (next == EOF) {
-			warning(stream_pos(stream),
+			warning(sctx_ stream_pos(sctx_ stream),
 				"End of file in middle of string");
 			return next;
 		}
 		if (!escape) {
 			if (want_hex && !(cclass[next + 1] & Hex))
-				warning(stream_pos(stream),
+				warning(sctx_ stream_pos(sctx_ stream),
 					"\\x used with no following hex digits");
 			want_hex = 0;
 			escape = next == '\\';
 		} else {
 			if (!(cclass[next + 1] & Escape))
-				warning(stream_pos(stream),
+				warning(sctx_ stream_pos(sctx_ stream),
 					"Unknown escape '%c'", next);
 			escape = 0;
 			want_hex = next == 'x';
 		}
 	}
 	if (want_hex)
-		warning(stream_pos(stream),
+		warning(sctx_ stream_pos(sctx_ stream),
 			"\\x used with no following hex digits");
 	if (len > MAX_STRING) {
-		warning(stream_pos(stream), "string too long (%d bytes, %d bytes max)", len, MAX_STRING);
+		warning(sctx_ stream_pos(sctx_ stream), "string too long (%d bytes, %d bytes max)", len, MAX_STRING);
 		len = MAX_STRING;
 	}
 	if (delim == '\'' && len <= 4) {
 		if (len == 0) {
-			sparse_error(stream_pos(stream),
+			sparse_error(sctx_ stream_pos(sctx_ stream),
 				"empty character constant");
 			return nextchar(stream);
 		}
@@ -624,7 +624,7 @@ static int eat_string(int next, stream_t *stream, enum token_type type)
 		memcpy(token->embedded, buffer, 4);
 	} else {
 		token_type(token) = type;
-		string = __alloc_string(len+1);
+		string = __alloc_string(sctx_ len+1);
 		memcpy(string->data, buffer, len);
 		string->data[len] = '\0';
 		string->length = len+1;
@@ -633,13 +633,13 @@ static int eat_string(int next, stream_t *stream, enum token_type type)
 
 	/* Pass it on.. */
 	token = stream->token;
-	add_token(stream);
+	add_token(sctx_ stream);
 	return nextchar(stream);
 }
 
-static int drop_stream_eoln(stream_t *stream)
+static int drop_stream_eoln(SCTX_ stream_t *stream)
 {
-	drop_token(stream);
+	drop_token(sctx_ stream);
 	for (;;) {
 		switch (nextchar(stream)) {
 		case EOF:
@@ -650,18 +650,18 @@ static int drop_stream_eoln(stream_t *stream)
 	}
 }
 
-static int drop_stream_comment(stream_t *stream)
+static int drop_stream_comment(SCTX_ stream_t *stream)
 {
 	int newline;
 	int next;
-	drop_token(stream);
+	drop_token(sctx_ stream);
 	newline = stream->newline;
 
 	next = nextchar(stream);
 	for (;;) {
 		int curr = next;
 		if (curr == EOF) {
-			warning(stream_pos(stream), "End of file in the middle of a comment");
+			warning(sctx_ stream_pos(sctx_ stream), "End of file in the middle of a comment");
 			return curr;
 		}
 		next = nextchar(stream);
@@ -734,7 +734,7 @@ static int code[32] = {
 #undef CODE
 };
 
-static int get_one_special(int c, stream_t *stream)
+static int get_one_special(SCTX_ int c, stream_t *stream)
 {
 	struct token *token;
 	int next, value, i;
@@ -747,17 +747,17 @@ static int get_one_special(int c, stream_t *stream)
 	switch (c) {
 	case '.':
 		if (next >= '0' && next <= '9')
-			return get_one_number(c, next, stream);
+			return get_one_number(sctx_ c, next, stream);
 		break;
 	case '"':
-		return eat_string(next, stream, TOKEN_STRING);
+		return eat_string(sctx_ next, stream, TOKEN_STRING);
 	case '\'':
-		return eat_string(next, stream, TOKEN_CHAR);
+		return eat_string(sctx_ next, stream, TOKEN_CHAR);
 	case '/':
 		if (next == '/')
-			return drop_stream_eoln(stream);
+			return drop_stream_eoln(sctx_ stream);
 		if (next == '*')
-			return drop_stream_comment(stream);
+			return drop_stream_comment(sctx_ stream);
 	}
 
 	/*
@@ -781,7 +781,7 @@ static int get_one_special(int c, stream_t *stream)
 	token = stream->token;
 	token_type(token) = TOKEN_SPECIAL;
 	token->special = value;
-	add_token(stream);
+	add_token(sctx_ stream);
 	return next;
 }
 
@@ -796,7 +796,7 @@ static int get_one_special(int c, stream_t *stream)
 static struct ident *hash_table[IDENT_HASH_SIZE];
 static int ident_hit, ident_miss, idents;
 
-void show_identifier_stats(void)
+void show_identifier_stats(SCTX_ void)
 {
 	int i;
 	int distribution[100];
@@ -826,9 +826,9 @@ void show_identifier_stats(void)
 	}
 }
 
-static struct ident *alloc_ident(const char *name, int len)
+static struct ident *alloc_ident(SCTX_ const char *name, int len)
 {
-	struct ident *ident = __alloc_ident(len);
+	struct ident *ident = __alloc_ident(sctx_ len);
 	ident->symbols = NULL;
 	ident->len = len;
 	ident->tainted = 0;
@@ -836,7 +836,7 @@ static struct ident *alloc_ident(const char *name, int len)
 	return ident;
 }
 
-static struct ident * insert_hash(struct ident *ident, unsigned long hash)
+static struct ident * insert_hash(SCTX_ struct ident *ident, unsigned long hash)
 {
 	ident->next = hash_table[hash];
 	hash_table[hash] = ident;
@@ -844,7 +844,7 @@ static struct ident * insert_hash(struct ident *ident, unsigned long hash)
 	return ident;
 }
 
-static struct ident *create_hashed_ident(const char *name, int len, unsigned long hash)
+static struct ident *create_hashed_ident(SCTX_ const char *name, int len, unsigned long hash)
 {
 	struct ident *ident;
 	struct ident **p;
@@ -862,7 +862,7 @@ next:
 		//misses++;
 		p = &ident->next;
 	}
-	ident = alloc_ident(name, len);
+	ident = alloc_ident(sctx_ name, len);
 	*p = ident;
 	ident->next = NULL;
 	ident_miss++;
@@ -870,7 +870,7 @@ next:
 	return ident;
 }
 
-static unsigned long hash_name(const char *name, int len)
+static unsigned long hash_name(SCTX_ const char *name, int len)
 {
 	unsigned long hash;
 	const unsigned char *p = (const unsigned char *)name;
@@ -883,29 +883,29 @@ static unsigned long hash_name(const char *name, int len)
 	return ident_hash_end(hash);
 }
 
-struct ident *hash_ident(struct ident *ident)
+struct ident *hash_ident(SCTX_ struct ident *ident)
 {
-	return insert_hash(ident, hash_name(ident->name, ident->len));
+	return insert_hash(sctx_ ident, hash_name(sctx_ ident->name, ident->len));
 }
 
-struct ident *built_in_ident(const char *name)
+struct ident *built_in_ident(SCTX_ const char *name)
 {
 	int len = strlen(name);
-	return create_hashed_ident(name, len, hash_name(name, len));
+	return create_hashed_ident(sctx_ name, len, hash_name(sctx_ name, len));
 }
 
-struct token *built_in_token(int stream, const char *name)
+struct token *built_in_token(SCTX_ int stream, const char *name)
 {
 	struct token *token;
 
-	token = __alloc_token(0);
+	token = __alloc_token(sctx_ 0);
 	token->pos.stream = stream;
 	token_type(token) = TOKEN_IDENT;
-	token->ident = built_in_ident(name);
+	token->ident = built_in_ident(sctx_ name);
 	return token;
 }
 
-static int get_one_identifier(int c, stream_t *stream)
+static int get_one_identifier(SCTX_ int c, stream_t *stream)
 {
 	struct token *token;
 	struct ident *ident;
@@ -929,35 +929,35 @@ static int get_one_identifier(int c, stream_t *stream)
 	if (cclass[next + 1] & Quote) {
 		if (len == 1 && buf[0] == 'L') {
 			if (next == '\'')
-				return eat_string(nextchar(stream), stream,
+				return eat_string(sctx_ nextchar(stream), stream,
 							TOKEN_WIDE_CHAR);
 			else
-				return eat_string(nextchar(stream), stream,
+				return eat_string(sctx_ nextchar(stream), stream,
 							TOKEN_WIDE_STRING);
 		}
 	}
 	hash = ident_hash_end(hash);
-	ident = create_hashed_ident(buf, len, hash);
+	ident = create_hashed_ident(sctx_ buf, len, hash);
 
 	/* Pass it on.. */
 	token = stream->token;
 	token_type(token) = TOKEN_IDENT;
 	token->ident = ident;
-	add_token(stream);
+	add_token(sctx_ stream);
 	return next;
 }		
 
-static int get_one_token(int c, stream_t *stream)
+static int get_one_token(SCTX_ int c, stream_t *stream)
 {
 	long class = cclass[c + 1];
 	if (class & Digit)
-		return get_one_number(c, nextchar(stream), stream);
+		return get_one_number(sctx_ c, nextchar(stream), stream);
 	if (class & Letter)
-		return get_one_identifier(c, stream);
-	return get_one_special(c, stream);
+		return get_one_identifier(sctx_ c, stream);
+	return get_one_special(sctx_ c, stream);
 }
 
-static struct expansion *setup_stream(stream_t *stream, int idx, int fd,
+static struct expansion *setup_stream(SCTX_ stream_t *stream, int idx, int fd,
 	unsigned char *buf, unsigned int buf_size)
 {
 	struct token *begin; struct expansion *e;
@@ -974,11 +974,11 @@ static struct expansion *setup_stream(stream_t *stream, int idx, int fd,
 	stream->size = buf_size;
 	stream->buffer = buf;
 
-	begin = alloc_token_stream(stream);
+	begin = alloc_token_stream(sctx_ stream);
 	token_type(begin) = TOKEN_STREAMBEGIN;
 	stream->tokenlist = &begin->next;
 	
-	e = __alloc_expansion(0);
+	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_STREAM;
 	e->s = begin;
@@ -986,45 +986,45 @@ static struct expansion *setup_stream(stream_t *stream, int idx, int fd,
 	return e;
 }
 
-static struct token *tokenize_stream(stream_t *stream)
+static struct token *tokenize_stream(SCTX_ stream_t *stream)
 {
 	int c = nextchar(stream);
 	while (c != EOF) {
 		if (!isspace(c)) {
-			struct token *token = alloc_token_stream(stream);
+			struct token *token = alloc_token_stream(sctx_ stream);
 			stream->token = token;
 			stream->newline = 0;
 			stream->whitespace = 0;
-			c = get_one_token(c, stream);
+			c = get_one_token(sctx_ c, stream);
 			continue;
 		}
 		stream->whitespace = 1;
 		c = nextchar(stream);
 	}
-	return mark_eof(stream);
+	return mark_eof(sctx_ stream);
 }
 
-struct expansion * tokenize_buffer(void *buffer, unsigned long size, struct token **endtoken)
+struct expansion * tokenize_buffer(SCTX_ void *buffer, unsigned long size, struct token **endtoken)
 {
 	stream_t stream;
 	struct expansion *e;
 
-	e = setup_stream(&stream, 0, -1, buffer, size);
-	*endtoken = tokenize_stream(&stream);
+	e = setup_stream(sctx_ &stream, 0, -1, buffer, size);
+	*endtoken = tokenize_stream(sctx_ &stream);
 	list_e(e->s, e);
 	return e;
 }
 
-struct expansion * tokenize(const char *name, int fd, struct token *endtoken, const char **next_path)
+struct expansion * tokenize(SCTX_ const char *name, int fd, struct token *endtoken, const char **next_path)
 {
 	struct token *end;
 	stream_t stream; struct expansion *e;
 	unsigned char buffer[BUFSIZE];
 	int idx;
 
-	idx = init_stream(name, fd, next_path);
+	idx = init_stream(sctx_ name, fd, next_path);
 	if (idx < 0) {
-		e = __alloc_expansion(0);
+		e = __alloc_expansion(sctx_ 0);
 		memset(e, 0, sizeof(struct expansion));
 		e->typ = EXPANSION_STREAM;
 		e->s = endtoken;
@@ -1032,8 +1032,8 @@ struct expansion * tokenize(const char *name, int fd, struct token *endtoken, co
 		return e;
 	}
 
-	e = setup_stream(&stream, idx, fd, buffer, 0);
-	end = tokenize_stream(&stream);
+	e = setup_stream(sctx_ &stream, idx, fd, buffer, 0);
+	end = tokenize_stream(sctx_ &stream);
 	if (endtoken)
 		end->next = endtoken;
 

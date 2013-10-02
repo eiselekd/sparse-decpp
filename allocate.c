@@ -27,12 +27,12 @@
 #include "expression.h"
 #include "linearize.h"
 
-void protect_allocations(struct allocator_struct *desc)
+void protect_allocations(SCTX_ struct allocator_struct *desc)
 {
 	desc->blobs = NULL;
 }
 
-void drop_all_allocations(struct allocator_struct *desc)
+void drop_all_allocations(SCTX_ struct allocator_struct *desc)
 {
 	struct allocation_blob *blob = desc->blobs;
 
@@ -43,19 +43,19 @@ void drop_all_allocations(struct allocator_struct *desc)
 	desc->freelist = NULL;
 	while (blob) {
 		struct allocation_blob *next = blob->next;
-		blob_free(blob, desc->chunking);
+		blob_free(sctx_ blob, desc->chunking);
 		blob = next;
 	}
 }
 
-void free_one_entry(struct allocator_struct *desc, void *entry)
+void free_one_entry(SCTX_ struct allocator_struct *desc, void *entry)
 {
 	void **p = entry;
 	*p = desc->freelist;
 	desc->freelist = p;
 }
 
-void *allocate(struct allocator_struct *desc, unsigned int size)
+void *allocate(SCTX_ struct allocator_struct *desc, unsigned int size)
 {
 	unsigned long alignment = desc->alignment;
 	struct allocation_blob *blob = desc->blobs;
@@ -84,9 +84,9 @@ void *allocate(struct allocator_struct *desc, unsigned int size)
 	size = (size + alignment - 1) & ~(alignment-1);
 	if (!blob || blob->left < size) {
 		unsigned int offset, chunking = desc->chunking;
-		struct allocation_blob *newblob = blob_alloc(chunking);
+		struct allocation_blob *newblob = blob_alloc(sctx_ chunking);
 		if (!newblob)
-			sparse_die("out of memory");
+			sparse_die(sctx_ "out of memory");
 		desc->total_bytes += chunking;
 		newblob->next = blob;
 		blob = newblob;
@@ -102,7 +102,7 @@ void *allocate(struct allocator_struct *desc, unsigned int size)
 	return retval;
 }
 
-void show_allocations(struct allocator_struct *x)
+void show_allocations(SCTX_ struct allocator_struct *x)
 {
 	fprintf(stderr, "%s: %d allocations, %d bytes (%d total bytes, "
 			"%6.2f%% usage, %6.2f average size)\n",
@@ -126,5 +126,3 @@ ALLOCATOR(entrypoint, "entrypoint",0);
 ALLOCATOR(instruction, "instruction",0);
 ALLOCATOR(multijmp, "multijmp",0);
 ALLOCATOR(pseudo, "pseudo",0);
-
-

@@ -16,15 +16,15 @@ sparse::tok(sparsetok):
 
 sparse::exp(sparseexpand):
     int   : typ 
-    sparsetok :  s { new=>1 }
-    sparsetok :  d { new=>1 }
+    sparsetok :  s                  { new=>1 }
+    sparsetok :  d                  { new=>1 }
 
 sparse::exp::EXPANSION_MACROARG(sparseexpand):
-    sparseexpand :  mac { new=>1 }
+    sparseexpand :  mac             { new=>1 }
 
 sparse::exp::EXPANSION_MACRO(sparseexpand):
-    sparsesym :  msym { new=>1 }
-    sparsetok :  tok  { new=>1 }
+    sparsesym :  msym               { new=>1 }
+    sparsetok :  tok                { new=>1 }
 
 sparse::ident(sparseident):
     sparseident : next              { new=>1 }
@@ -83,25 +83,25 @@ sparse::stmt::STMT_ITERATOR(sparsestmt):
     sparseexpr   : iterator_post_condition { new=>1 }
 
 sparse::stmt::STMT_LABEL(sparsestmt):
-    sparsesym    : label_identifier   { new=>1 }
-    sparsestmt   : label_statement    { new=>1 }
+    sparsesym    : label_identifier { new=>1 }
+    sparsestmt   : label_statement  { new=>1 }
 
 sparse::stmt::STMT_GOTO(sparsestmt):
-    sparsesym    : goto_label        { new=>1 }
-    sparseexpr   : goto_expression   { new=>1 }
-    sparsesym    : target_list       { new=>1, arr=>1 }
+    sparsesym    : goto_label       { new=>1 }
+    sparseexpr   : goto_expression  { new=>1 }
+    sparsesym    : target_list      { new=>1, arr=>1 }
 
 sparse::stmt::STMT_ASM(sparsestmt):
-    sparseexpr   : asm_string   { new=>1 }
-    sparseexpr   : asm_outputs  { new=>1, arr=>1 }
-    sparseexpr   : asm_inputs   { new=>1, arr=>1 }
-    sparseexpr   : asm_clobbers { new=>1, arr=>1 }
-    sparsesym    : asm_labels   { new=>1, arr=>1 }
+    sparseexpr   : asm_string       { new=>1 }
+    sparseexpr   : asm_outputs      { new=>1, arr=>1 }
+    sparseexpr   : asm_inputs       { new=>1, arr=>1 }
+    sparseexpr   : asm_clobbers     { new=>1, arr=>1 }
+    sparsesym    : asm_labels       { new=>1, arr=>1 }
 
 sparse::stmt::STMT_RANGE(sparsestmt):
-    sparseexpr : range_expression  { new=>1 }
-    sparseexpr : range_low         { new=>1 }
-    sparseexpr : range_high        { new=>1 }
+    sparseexpr : range_expression   { new=>1 }
+    sparseexpr : range_low          { new=>1 }
+    sparseexpr : range_high         { new=>1 }
 
 
 
@@ -120,13 +120,13 @@ sparse::expr::EXPR_STRING
     sparsestring : string
 
 sparse::expr::EXPR_UNOP(sparseexpr):
-    sparseexpr : unop             { new=>1 }
+    sparseexpr : unop                 { new=>1 }
     unsigned long : op_value
 sparse::expr::EXPR_PREOP(sparseexpr):
-    sparseexpr : unop             { new=>1 }
+    sparseexpr : unop                 { new=>1 }
     unsigned long : op_value
 sparse::expr::EXPR_POSTOP(sparseexpr):
-    sparseexpr : unop             { new=>1 }
+    sparseexpr : unop                 { new=>1 }
     unsigned long : op_value
 
 sparse::expr::EXPR_SYMBOL(sparseexpr):
@@ -212,9 +212,9 @@ sparse::expr::EXPR_OFFSETOF(sparseexpr):
     sparseexpr  : index               { new=>1 }
 
 sparse::scope(sparsescope):
-    sparsetok   : token   { new=>1 }
-    sparsesym   : symbols { new=>1, arr=>1 }
-    sparsescope : next    { new=>1 }
+    sparsetok   : token               { new=>1 }
+    sparsesym   : symbols             { new=>1, arr=>1 }
+    sparsescope : next                { new=>1 }
 
 sparse::sym(sparsesym):
     unsigned int : type
@@ -223,15 +223,15 @@ sparse::sym(sparsesym):
     unsigned char : attr
     unsigned char : enum_member
     unsigned char : bound
-    sparsetok   : tok { new=>1 }
-    sparsetok   : pos { new=>1 }
-    sparsetok   : endpos { new=>1 }
-    sparseident : ident { new=>1 }
-    sparsesym   : next_id { new=>1 }		
-    sparsesym   : replace { new=>1 }
-    sparsescope : scope { new=>1 }
-    sparsesym   : same_symbol { new=>1 }
-    sparsesym   : next_subobject { new=>1 }
+    sparsetok   : tok                 { new=>1 }
+    sparsetok   : pos                 { new=>1 }
+    sparsetok   : endpos              { new=>1 }
+    sparseident : ident               { new=>1 }
+    sparsesym   : next_id             { new=>1 }		
+    sparsesym   : replace             { new=>1 }
+    sparsescope : scope               { new=>1 }
+    sparsesym   : same_symbol         { new=>1 }
+    sparsesym   : next_subobject      { new=>1 }
 
 
 sparse::sym::NS_SYMBOL(sparsesym):
@@ -262,13 +262,11 @@ sparse::sym::NS_SYMBOL(sparsesym):
 sparse::ctype(sparsectype):
     unsigned long : modifiers
     unsigned long : alignment
-    sparsesymctx  : contexts         { new=>1, arr=>1 }
+    sparsesymctx  : contexts           { new=>1, arr=>1 }
     unsigned int  : as
-    sparsesym     : base_type        { new=>1 }
+    sparsesym     : base_type          { new=>1 }
 
 sparse::symctx(sparsesymctx):
-    sparseexpr   : context           { new=>1 }
+    sparseexpr   : context             { new=>1 }
     unsigned int : in
     unsigned int : out
-
-
