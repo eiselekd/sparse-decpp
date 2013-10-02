@@ -23,12 +23,12 @@
 #include "symbol.h"
 #include "expression.h"
 
-static void clean_up_symbols(struct symbol_list *list)
+static void clean_up_symbols(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 
 	FOR_EACH_PTR(list, sym) {
-		expand_symbol(sym);
+		expand_symbol(sctx_ sym);
 	} END_FOR_EACH_PTR(sym);
 }
 
@@ -36,40 +36,40 @@ int main(int argc, char **argv)
 {
 	struct symbol_list * list;
 	struct string_list * filelist = NULL;
-	char *file;
+	char *file; struct sparse_ctx sctx;
 
-	list = sparse_initialize(argc, argv, &filelist);
+	list = sparse_initialize(&sctx, argc, argv, &filelist);
 
 	// Simplification
-	clean_up_symbols(list);
+	clean_up_symbols(&sctx, list);
 
 #if 1
-	show_symbol_list(list, "\n\n");
+	show_symbol_list(&sctx, list, "\n\n");
 	printf("\n\n");
 #endif
 
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		list = sparse(file);
+		list = sparse(&sctx, file);
 
 		// Simplification
-		clean_up_symbols(list);
+		clean_up_symbols(&sctx,list);
 
 #if 1
 		// Show the end result.
-		show_symbol_list(list, "\n\n");
+		show_symbol_list(&sctx,list, "\n\n");
 		printf("\n\n");
 #endif
 	} END_FOR_EACH_PTR_NOTAG(file);
 
 #if 0
 	// And show the allocation statistics
-	show_ident_alloc();
-	show_token_alloc();
-	show_symbol_alloc();
-	show_expression_alloc();
-	show_statement_alloc();
-	show_string_alloc();
-	show_bytes_alloc();
+	show_ident_alloc(&sctx);
+	show_token_alloc(&sctx);
+	show_symbol_alloc(&sctx);
+	show_expression_alloc(&sctx);
+	show_statement_alloc(&sctx);
+	show_string_alloc(&sctx);
+	show_bytes_alloc(&sctx);
 #endif
 	return 0;
 }

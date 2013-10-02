@@ -61,10 +61,10 @@ static struct symbol_list **function_symbol_list;
 struct symbol_list *function_computed_target_list;
 struct statement_list *function_computed_goto_list;
 
-static struct token *statement(struct token *token, struct statement **tree);
-static struct token *handle_attributes(struct token *token, struct decl_state *ctx, unsigned int keywords);
+static struct token *statement(SCTX_ struct token *token, struct statement **tree);
+static struct token *handle_attributes(SCTX_ struct token *token, struct decl_state *ctx, unsigned int keywords);
 
-typedef struct token *declarator_t(struct token *, struct decl_state *);
+typedef struct token *declarator_t(SCTX_ struct token *, struct decl_state *);
 static declarator_t
 	struct_specifier, union_specifier, enum_specifier,
 	attribute_specifier, typeof_specifier, parse_asm_declarator,
@@ -72,22 +72,23 @@ static declarator_t
 	register_specifier, static_specifier, extern_specifier,
 	thread_specifier, const_qualifier, volatile_qualifier;
 
-static struct token *parse_if_statement(struct token *token, struct statement *stmt);
-static struct token *parse_return_statement(struct token *token, struct statement *stmt);
-static struct token *parse_loop_iterator(struct token *token, struct statement *stmt);
-static struct token *parse_default_statement(struct token *token, struct statement *stmt);
-static struct token *parse_case_statement(struct token *token, struct statement *stmt);
-static struct token *parse_switch_statement(struct token *token, struct statement *stmt);
-static struct token *parse_for_statement(struct token *token, struct statement *stmt);
-static struct token *parse_while_statement(struct token *token, struct statement *stmt);
-static struct token *parse_do_statement(struct token *token, struct statement *stmt);
-static struct token *parse_goto_statement(struct token *token, struct statement *stmt);
-static struct token *parse_context_statement(struct token *token, struct statement *stmt);
-static struct token *parse_range_statement(struct token *token, struct statement *stmt);
-static struct token *parse_asm_statement(struct token *token, struct statement *stmt);
-static struct token *toplevel_asm_declaration(struct token *token, struct symbol_list **list);
+static struct token *parse_if_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_return_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_loop_iterator(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_default_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_case_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_switch_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_for_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_while_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_do_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_goto_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_context_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_range_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *parse_asm_statement(SCTX_ struct token *token, struct statement *stmt);
+static struct token *toplevel_asm_declaration(SCTX_ struct token *token, struct symbol_list **list);
 
-typedef struct token *attr_t(struct token *, struct symbol *,
+typedef struct token *attr_t(SCTX_ 
+struct token *, struct symbol *,
 			     struct decl_state *);
 
 static attr_t
@@ -97,7 +98,7 @@ static attr_t
 	attribute_transparent_union, ignore_attribute,
 	attribute_mode, attribute_force;
 
-typedef struct symbol *to_mode_t(struct symbol *);
+typedef struct symbol *to_mode_t(SCTX_ struct symbol *);
 
 static to_mode_t
 	to_QI_mode, to_HI_mode, to_SI_mode, to_DI_mode, to_TI_mode, to_word_mode;
@@ -616,12 +617,12 @@ const char *ignored_attributes[] = {
 };
 
 
-void init_parser(int stream)
+void init_parser(SCTX_ int stream)
 {
 	int i;
 	for (i = 0; i < ARRAY_SIZE(keyword_table); i++) {
 		struct init_keyword *ptr = keyword_table + i;
-		struct symbol *sym = create_symbol(stream, ptr->name, SYM_KEYWORD, ptr->ns);
+		struct symbol *sym = create_symbol(sctx_ stream, ptr->name, SYM_KEYWORD, ptr->ns);
 		sym->ident->keyword = 1;
 		if (ptr->ns == NS_TYPEDEF)
 			sym->ident->reserved = 1;
@@ -632,7 +633,7 @@ void init_parser(int stream)
 
 	for (i = 0; i < ARRAY_SIZE(ignored_attributes); i++) {
 		const char * name = ignored_attributes[i];
-		struct symbol *sym = create_symbol(stream, name, SYM_KEYWORD,
+		struct symbol *sym = create_symbol(sctx_ stream, name, SYM_KEYWORD,
 						   NS_KEYWORD);
 		sym->ident->keyword = 1;
 		sym->op = &ignore_attr_op;
@@ -641,13 +642,13 @@ void init_parser(int stream)
 
 
 // Add a symbol to the list of function-local symbols
-static void fn_local_symbol(struct symbol *sym)
+static void fn_local_symbol(SCTX_ struct symbol *sym)
 {
 	if (function_symbol_list)
-		add_symbol(function_symbol_list, sym);
+		add_symbol(sctx_ function_symbol_list, sym);
 }
 
-static int SENTINEL_ATTR match_idents(struct token *token, ...)
+static int SENTINEL_ATTR match_idents(SCTX_ struct token *token, ...)
 {
 	va_list args;
 	struct ident * next;
@@ -665,34 +666,34 @@ static int SENTINEL_ATTR match_idents(struct token *token, ...)
 }
 
 
-struct statement *alloc_statement(struct token *tok, int type)
+struct statement *alloc_statement(SCTX_ struct token *tok, int type)
 {
-	struct statement *stmt = __alloc_statement(0);
+	struct statement *stmt = __alloc_statement(sctx_ 0);
 	stmt->type = type;
 	stmt->pos = tok;
 	stmt->tok = tok;
 	return stmt;
 }
 
-static struct token *struct_declaration_list(struct token *token, struct symbol_list **list);
+static struct token *struct_declaration_list(SCTX_ struct token *token, struct symbol_list **list);
 
-static void apply_modifiers(struct position pos, struct decl_state *ctx)
+static void apply_modifiers(SCTX_ struct position pos, struct decl_state *ctx)
 {
 	struct symbol *ctype;
 	if (!ctx->mode)
 		return;
-	ctype = ctx->mode->to_mode(ctx->ctype.base_type);
+	ctype = ctx->mode->to_mode(sctx_ ctx->ctype.base_type);
 	if (!ctype)
-		sparse_error(pos, "don't know how to apply mode to %s",
-				show_typename(ctx->ctype.base_type));
+		sparse_error(sctx_ pos, "don't know how to apply mode to %s",
+				show_typename(sctx_ ctx->ctype.base_type));
 	else
 		ctx->ctype.base_type = ctype;
 	
 }
 
-static struct symbol * alloc_indirect_symbol(struct token *tok, struct ctype *ctype, int type)
+static struct symbol * alloc_indirect_symbol(SCTX_ struct token *tok, struct ctype *ctype, int type)
 {
-	struct symbol *sym = alloc_symbol(tok, type);
+	struct symbol *sym = alloc_symbol(sctx_ tok, type);
 
 	sym->ctype.base_type = ctype->base_type;
 	sym->ctype.modifiers = ctype->modifiers;
@@ -707,37 +708,37 @@ static struct symbol * alloc_indirect_symbol(struct token *tok, struct ctype *ct
  * it also ends up using function scope instead of the
  * regular symbol scope.
  */
-struct symbol *label_symbol(struct token *token)
+struct symbol *label_symbol(SCTX_ struct token *token)
 {
-	struct symbol *sym = lookup_symbol(token->ident, NS_LABEL);
+	struct symbol *sym = lookup_symbol(sctx_ token->ident, NS_LABEL);
 	if (!sym) {
-		sym = alloc_symbol(token, SYM_LABEL);
-		bind_symbol(sym, token->ident, NS_LABEL);
-		fn_local_symbol(sym);
+		sym = alloc_symbol(sctx_ token, SYM_LABEL);
+		bind_symbol(sctx_ sym, token->ident, NS_LABEL);
+		fn_local_symbol(sctx_ sym);
 	}
 	return sym;
 }
 
-static struct token *struct_union_enum_specifier(enum type type,
+static struct token *struct_union_enum_specifier(SCTX_ enum type type,
 	struct token *token, struct decl_state *ctx,
-	struct token *(*parse)(struct token *, struct symbol *))
+	struct token *(*parse)(SCTX_ struct token *, struct symbol *))
 {
 	struct symbol *sym;
 	struct token *repos;
 
-	token = handle_attributes(token, ctx, KW_ATTRIBUTE);
+	token = handle_attributes(sctx_ token, ctx, KW_ATTRIBUTE);
 	if (token_type(token) == TOKEN_IDENT) {
-		sym = lookup_symbol(token->ident, NS_STRUCT);
+		sym = lookup_symbol(sctx_ token->ident, NS_STRUCT);
 		if (!sym ||
-		    (is_outer_scope(sym->scope) &&
+		    (is_outer_scope(sctx_ sym->scope) &&
 		     (match_op(token->next,';') || match_op(token->next,'{')))) {
 			// Either a new symbol, or else an out-of-scope
 			// symbol being redefined.
-			sym = alloc_symbol(token, type);
-			bind_symbol(sym, token->ident, NS_STRUCT);
+			sym = alloc_symbol(sctx_ token, type);
+			bind_symbol(sctx_ sym, token->ident, NS_STRUCT);
 		}
 		if (sym->type != type)
-			error_die(token->pos, "invalid tag applied to %s", show_typename (sym));
+			error_die(sctx_ token->pos, "invalid tag applied to %s", show_typename (sctx_ sym));
 		ctx->ctype.base_type = sym;
 		repos = token;
 		token = token->next;
@@ -746,10 +747,10 @@ static struct token *struct_union_enum_specifier(enum type type,
 			// structs, but (1) they are not C99, (2) gcc does
 			// the same thing, and (3) it's easier.
 			if (sym->symbol_list)
-				error_die(token->pos, "redefinition of %s", show_typename (sym));
+				error_die(sctx_ token->pos, "redefinition of %s", show_typename (sctx_ sym));
 			sym->pos = repos;
-			token = parse(token->next, sym);
-			token = expect(token, '}', "at end of struct-union-enum-specifier");
+			token = parse(sctx_ token->next, sym);
+			token = expect(sctx_ token, '}', "at end of struct-union-enum-specifier");
 
 			// Mark the structure as needing re-examination
 			sym->examined = 0;
@@ -760,25 +761,25 @@ static struct token *struct_union_enum_specifier(enum type type,
 
 	// private struct/union/enum type
 	if (!match_op(token, '{')) {
-		sparse_error(token->pos, "expected declaration");
+		sparse_error(sctx_ token->pos, "expected declaration");
 		ctx->ctype.base_type = &bad_ctype;
 		return token;
 	}
 
-	sym = alloc_symbol(token, type);
-	token = parse(token->next, sym);
+	sym = alloc_symbol(sctx_ token, type);
+	token = parse(sctx_ token->next, sym);
 	ctx->ctype.base_type = sym;
-	token =  expect(token, '}', "at end of specifier");
+	token =  expect(sctx_ token, '}', "at end of specifier");
 	sym->endpos = token;
 
 	return token;
 }
 
-static struct token *parse_struct_declaration(struct token *token, struct symbol *sym)
+static struct token *parse_struct_declaration(SCTX_ struct token *token, struct symbol *sym)
 {
 	struct symbol *field, *last = NULL;
 	struct token *res;
-	res = struct_declaration_list(token, &sym->symbol_list);
+	res = struct_declaration_list(sctx_ token, &sym->symbol_list);
 	FOR_EACH_PTR(sym->symbol_list, field) {
 		if (!field->ident) {
 			struct symbol *base = field->ctype.base_type;
@@ -792,19 +793,19 @@ static struct token *parse_struct_declaration(struct token *token, struct symbol
 	return res;
 }
 
-static struct token *parse_union_declaration(struct token *token, struct symbol *sym)
+static struct token *parse_union_declaration(SCTX_ struct token *token, struct symbol *sym)
 {
-	return struct_declaration_list(token, &sym->symbol_list);
+	return struct_declaration_list(sctx_ token, &sym->symbol_list);
 }
 
-static struct token *struct_specifier(struct token *token, struct decl_state *ctx)
+static struct token *struct_specifier(SCTX_ struct token *token, struct decl_state *ctx)
 {
-	return struct_union_enum_specifier(SYM_STRUCT, token, ctx, parse_struct_declaration);
+	return struct_union_enum_specifier(sctx_ SYM_STRUCT, token, ctx, parse_struct_declaration);
 }
 
-static struct token *union_specifier(struct token *token, struct decl_state *ctx)
+static struct token *union_specifier(SCTX_ struct token *token, struct decl_state *ctx)
 {
-	return struct_union_enum_specifier(SYM_UNION, token, ctx, parse_union_declaration);
+	return struct_union_enum_specifier(sctx_ SYM_UNION, token, ctx, parse_union_declaration);
 }
 
 
@@ -813,7 +814,7 @@ typedef struct {
 	unsigned long long y;
 } Num;
 
-static void upper_boundary(Num *n, Num *v)
+static void upper_boundary(SCTX_ Num *n, Num *v)
 {
 	if (n->x > v->x)
 		return;
@@ -825,7 +826,7 @@ static void upper_boundary(Num *n, Num *v)
 		n->y = v->y;
 }
 
-static void lower_boundary(Num *n, Num *v)
+static void lower_boundary(SCTX_ Num *n, Num *v)
 {
 	if (n->x < v->x)
 		return;
@@ -837,7 +838,7 @@ static void lower_boundary(Num *n, Num *v)
 		n->y = v->y;
 }
 
-static int type_is_ok(struct symbol *type, Num *upper, Num *lower)
+static int type_is_ok(SCTX_ struct symbol *type, Num *upper, Num *lower)
 {
 	int shift = type->bit_size;
 	int is_unsigned = type->ctype.modifiers & MOD_UNSIGNED;
@@ -851,7 +852,7 @@ static int type_is_ok(struct symbol *type, Num *upper, Num *lower)
 	return 0;
 }
 
-static struct symbol *bigger_enum_type(struct symbol *s1, struct symbol *s2)
+static struct symbol *bigger_enum_type(SCTX_ struct symbol *s1, struct symbol *s2)
 {
 	if (s1->bit_size < s2->bit_size) {
 		s1 = s2;
@@ -864,7 +865,7 @@ static struct symbol *bigger_enum_type(struct symbol *s1, struct symbol *s2)
 	return s1;
 }
 
-static void cast_enum_list(struct symbol_list *list, struct symbol *base_type)
+static void cast_enum_list(SCTX_ struct symbol_list *list, struct symbol *base_type)
 {
 	struct symbol *sym;
 
@@ -876,11 +877,11 @@ static void cast_enum_list(struct symbol_list *list, struct symbol *base_type)
 		ctype = expr->ctype;
 		if (ctype->bit_size == base_type->bit_size)
 			continue;
-		cast_value(expr, base_type, expr, ctype);
+		cast_value(sctx_ expr, base_type, expr, ctype);
 	} END_FOR_EACH_PTR(sym);
 }
 
-static struct token *parse_enum_declaration(struct token *token, struct symbol *parent)
+static struct token *parse_enum_declaration(SCTX_ struct token *token, struct symbol *parent)
 {
 	unsigned long long lastval = 0;
 	struct symbol *ctype = NULL, *base_type = NULL;
@@ -894,8 +895,8 @@ static struct token *parse_enum_declaration(struct token *token, struct symbol *
 		struct symbol *sym;
 
 		if (match_op(next, '=')) {
-			next = constant_expression(next->next, &expr);
-			lastval = get_expression_value(expr);
+			next = constant_expression(sctx_ next->next, &expr);
+			lastval = get_expression_value(sctx_ expr);
 			ctype = &void_ctype;
 			if (expr && expr->ctype)
 				ctype = expr->ctype;
@@ -904,17 +905,17 @@ static struct token *parse_enum_declaration(struct token *token, struct symbol *
 		} else if (is_int_type(ctype)) {
 			lastval++;
 		} else {
-			error_die(token->pos, "can't increment the last enum member");
+			error_die(sctx_ token->pos, "can't increment the last enum member");
 		}
 
 		if (!expr) {
-			expr = alloc_expression(token, EXPR_VALUE);
+			expr = alloc_expression(sctx_ token, EXPR_VALUE);
 			expr->value = lastval;
 			expr->ctype = ctype;
 		}
 
-		sym = alloc_symbol(token, SYM_NODE);
-		bind_symbol(sym, token->ident, NS_SYMBOL);
+		sym = alloc_symbol(sctx_ token, SYM_NODE);
+		bind_symbol(sctx_ sym, token->ident, NS_SYMBOL);
 		sym->ctype.modifiers &= ~MOD_ADDRESSABLE;
 		sym->initializer = expr;
 		sym->enum_member = 1;
@@ -945,7 +946,7 @@ static struct token *parse_enum_declaration(struct token *token, struct symbol *
 			} else if (ctype == base_type) {
 				/* nothing */
 			} else if (is_int_type(base_type) && is_int_type(ctype)) {
-				base_type = bigger_enum_type(base_type, ctype);
+				base_type = bigger_enum_type(sctx_ base_type, ctype);
 			} else
 				base_type = &bad_ctype;
 			parent->ctype.base_type = base_type;
@@ -958,8 +959,8 @@ static struct token *parse_enum_declaration(struct token *token, struct symbol *
 				v.x = 0;
 			else
 				v.x = -1;
-			upper_boundary(&upper, &v);
-			lower_boundary(&lower, &v);
+			upper_boundary(sctx_ &upper, &v);
+			lower_boundary(sctx_ &lower, &v);
 		}
 		token = next;
 
@@ -970,24 +971,24 @@ static struct token *parse_enum_declaration(struct token *token, struct symbol *
 		token = token->next;
 	}
 	if (!base_type) {
-		sparse_error(token->pos, "bad enum definition");
+		sparse_error(sctx_ token->pos, "bad enum definition");
 		base_type = &bad_ctype;
 	}
 	else if (!is_int_type(base_type))
 		base_type = base_type;
-	else if (type_is_ok(base_type, &upper, &lower))
+	else if (type_is_ok(sctx_ base_type, &upper, &lower))
 		base_type = base_type;
-	else if (type_is_ok(&int_ctype, &upper, &lower))
+	else if (type_is_ok(sctx_ &int_ctype, &upper, &lower))
 		base_type = &int_ctype;
-	else if (type_is_ok(&uint_ctype, &upper, &lower))
+	else if (type_is_ok(sctx_ &uint_ctype, &upper, &lower))
 		base_type = &uint_ctype;
-	else if (type_is_ok(&long_ctype, &upper, &lower))
+	else if (type_is_ok(sctx_ &long_ctype, &upper, &lower))
 		base_type = &long_ctype;
-	else if (type_is_ok(&ulong_ctype, &upper, &lower))
+	else if (type_is_ok(sctx_ &ulong_ctype, &upper, &lower))
 		base_type = &ulong_ctype;
-	else if (type_is_ok(&llong_ctype, &upper, &lower))
+	else if (type_is_ok(sctx_ &llong_ctype, &upper, &lower))
 		base_type = &llong_ctype;
-	else if (type_is_ok(&ullong_ctype, &upper, &lower))
+	else if (type_is_ok(sctx_ &ullong_ctype, &upper, &lower))
 		base_type = &ullong_ctype;
 	else
 		base_type = &bad_ctype;
@@ -995,14 +996,14 @@ static struct token *parse_enum_declaration(struct token *token, struct symbol *
 	parent->ctype.modifiers |= (base_type->ctype.modifiers & MOD_UNSIGNED);
 	parent->examined = 0;
 
-	cast_enum_list(parent->symbol_list, base_type);
+	cast_enum_list(sctx_ parent->symbol_list, base_type);
 
 	return token;
 }
 
-static struct token *enum_specifier(struct token *token, struct decl_state *ctx)
+static struct token *enum_specifier(SCTX_ struct token *token, struct decl_state *ctx)
 {
-	struct token *ret = struct_union_enum_specifier(SYM_ENUM, token, ctx, parse_enum_declaration);
+	struct token *ret = struct_union_enum_specifier(sctx_ SYM_ENUM, token, ctx, parse_enum_declaration);
 	struct ctype *ctype = &ctx->ctype.base_type->ctype;
 
 	if (!ctype->base_type)
@@ -1011,96 +1012,96 @@ static struct token *enum_specifier(struct token *token, struct decl_state *ctx)
 	return ret;
 }
 
-static void apply_ctype(struct position pos, struct ctype *thistype, struct ctype *ctype);
+static void apply_ctype(SCTX_ struct position pos, struct ctype *thistype, struct ctype *ctype);
 
-static struct token *typeof_specifier(struct token *token, struct decl_state *ctx)
+static struct token *typeof_specifier(SCTX_ struct token *token, struct decl_state *ctx)
 {
 	struct symbol *sym;
 
 	if (!match_op(token, '(')) {
-		sparse_error(token->pos, "expected '(' after typeof");
+		sparse_error(sctx_ token->pos, "expected '(' after typeof");
 		return token;
 	}
-	if (lookup_type(token->next)) {
-		token = typename(token->next, &sym, NULL);
+	if (lookup_type(sctx_ token->next)) {
+		token = typename(sctx_ token->next, &sym, NULL);
 		ctx->ctype.base_type = sym->ctype.base_type;
-		apply_ctype(token->pos, &sym->ctype, &ctx->ctype);
+		apply_ctype(sctx_ token->pos, &sym->ctype, &ctx->ctype);
 	} else {
-		struct symbol *typeof_sym = alloc_symbol(token, SYM_TYPEOF);
-		token = parse_expression(token->next, &typeof_sym->initializer);
+		struct symbol *typeof_sym = alloc_symbol(sctx_ token, SYM_TYPEOF);
+		token = parse_expression(sctx_ token->next, &typeof_sym->initializer);
 
 		typeof_sym->endpos = token;
 		if (!typeof_sym->initializer) {
-			sparse_error(token->pos, "expected expression after the '(' token");
+			sparse_error(sctx_ token->pos, "expected expression after the '(' token");
 			typeof_sym = &bad_ctype;
 		}
 		ctx->ctype.base_type = typeof_sym;
 	}
-	return expect(token, ')', "after typeof");
+	return expect(sctx_ token, ')', "after typeof");
 }
 
-static struct token *ignore_attribute(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *ignore_attribute(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
 	struct expression *expr = NULL;
 	if (match_op(token, '('))
-		token = parens_expression(token, &expr, "in attribute");
+		token = parens_expression(sctx_ token, &expr, "in attribute");
 	return token;
 }
 
-static struct token *attribute_packed(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *attribute_packed(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
 	if (!ctx->ctype.alignment)
 		ctx->ctype.alignment = 1;
 	return token;
 }
 
-static struct token *attribute_aligned(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *attribute_aligned(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
 	int alignment = max_alignment;
 	struct expression *expr = NULL;
 
 	if (match_op(token, '(')) {
-		token = parens_expression(token, &expr, "in attribute");
+		token = parens_expression(sctx_ token, &expr, "in attribute");
 		if (expr)
-			alignment = const_expression_value(expr);
+			alignment = const_expression_value(sctx_ expr);
 	}
 	if (alignment & (alignment-1)) {
-		warning(token->pos, "I don't like non-power-of-2 alignments");
+		warning(sctx_ token->pos, "I don't like non-power-of-2 alignments");
 		return token;
 	} else if (alignment > ctx->ctype.alignment)
 		ctx->ctype.alignment = alignment;
 	return token;
 }
 
-static void apply_qualifier(struct position *pos, struct ctype *ctx, unsigned long qual)
+static void apply_qualifier(SCTX_ struct position *pos, struct ctype *ctx, unsigned long qual)
 {
 	if (ctx->modifiers & qual)
-		warning(*pos, "duplicate %s", modifier_string(qual));
+		warning(sctx_ *pos, "duplicate %s", modifier_string(sctx_ qual));
 	ctx->modifiers |= qual;
 }
 
-static struct token *attribute_modifier(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *attribute_modifier(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
-	apply_qualifier(&token->pos, &ctx->ctype, attr->ctype.modifiers);
+	apply_qualifier(sctx_ &token->pos, &ctx->ctype, attr->ctype.modifiers);
 	return token;
 }
 
-static struct token *attribute_address_space(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *attribute_address_space(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
 	struct expression *expr = NULL;
 	int as;
-	token = expect(token, '(', "after address_space attribute");
-	token = conditional_expression(token, &expr);
+	token = expect(sctx_ token, '(', "after address_space attribute");
+	token = conditional_expression(sctx_ token, &expr);
 	if (expr) {
-		as = const_expression_value(expr);
+		as = const_expression_value(sctx_ expr);
 		if (Waddress_space && as)
 			ctx->ctype.as = as;
 	}
-	token = expect(token, ')', "after address_space attribute");
+	token = expect(sctx_ token, ')', "after address_space attribute");
 	return token;
 }
 
-static struct symbol *to_QI_mode(struct symbol *ctype)
+static struct symbol *to_QI_mode(SCTX_ struct symbol *ctype)
 {
 	if (ctype->ctype.base_type != &int_type)
 		return NULL;
@@ -1110,7 +1111,7 @@ static struct symbol *to_QI_mode(struct symbol *ctype)
 						     : &schar_ctype;
 }
 
-static struct symbol *to_HI_mode(struct symbol *ctype)
+static struct symbol *to_HI_mode(SCTX_ struct symbol *ctype)
 {
 	if (ctype->ctype.base_type != &int_type)
 		return NULL;
@@ -1118,7 +1119,7 @@ static struct symbol *to_HI_mode(struct symbol *ctype)
 						     : &sshort_ctype;
 }
 
-static struct symbol *to_SI_mode(struct symbol *ctype)
+static struct symbol *to_SI_mode(SCTX_ struct symbol *ctype)
 {
 	if (ctype->ctype.base_type != &int_type)
 		return NULL;
@@ -1126,7 +1127,7 @@ static struct symbol *to_SI_mode(struct symbol *ctype)
 						     : &sint_ctype;
 }
 
-static struct symbol *to_DI_mode(struct symbol *ctype)
+static struct symbol *to_DI_mode(SCTX_ struct symbol *ctype)
 {
 	if (ctype->ctype.base_type != &int_type)
 		return NULL;
@@ -1134,7 +1135,7 @@ static struct symbol *to_DI_mode(struct symbol *ctype)
 						     : &sllong_ctype;
 }
 
-static struct symbol *to_TI_mode(struct symbol *ctype)
+static struct symbol *to_TI_mode(SCTX_ struct symbol *ctype)
 {
 	if (ctype->ctype.base_type != &int_type)
 		return NULL;
@@ -1142,7 +1143,7 @@ static struct symbol *to_TI_mode(struct symbol *ctype)
 						     : &slllong_ctype;
 }
 
-static struct symbol *to_word_mode(struct symbol *ctype)
+static struct symbol *to_word_mode(SCTX_ struct symbol *ctype)
 {
 	if (ctype->ctype.base_type != &int_type)
 		return NULL;
@@ -1150,32 +1151,32 @@ static struct symbol *to_word_mode(struct symbol *ctype)
 						     : &slong_ctype;
 }
 
-static struct token *attribute_mode(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *attribute_mode(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
-	token = expect(token, '(', "after mode attribute");
+	token = expect(sctx_ token, '(', "after mode attribute");
 	if (token_type(token) == TOKEN_IDENT) {
-		struct symbol *mode = lookup_keyword(token->ident, NS_KEYWORD);
+		struct symbol *mode = lookup_keyword(sctx_ token->ident, NS_KEYWORD);
 		if (mode && mode->op->type == KW_MODE)
 			ctx->mode = mode->op;
 		else
-			sparse_error(token->pos, "unknown mode attribute %s\n", show_ident(token->ident));
+			sparse_error(sctx_ token->pos, "unknown mode attribute %s\n", show_ident(sctx_ token->ident));
 		token = token->next;
 	} else
-		sparse_error(token->pos, "expect attribute mode symbol\n");
-	token = expect(token, ')', "after mode attribute");
+		sparse_error(sctx_ token->pos, "expect attribute mode symbol\n");
+	token = expect(sctx_ token, ')', "after mode attribute");
 	return token;
 }
 
-static struct token *attribute_context(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *attribute_context(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
-	struct sym_context *context = alloc_context();
+	struct sym_context *context = alloc_context(sctx );
 	struct expression *args[3];
 	int argc = 0;
 
-	token = expect(token, '(', "after context attribute");
+	token = expect(sctx_ token, '(', "after context attribute");
 	while (!match_op(token, ')')) {
 		struct expression *expr = NULL;
-		token = conditional_expression(token, &expr);
+		token = conditional_expression(sctx_ token, &expr);
 		if (!expr)
 			break;
 		if (argc < 3)
@@ -1187,60 +1188,60 @@ static struct token *attribute_context(struct token *token, struct symbol *attr,
 
 	switch(argc) {
 	case 0:
-		sparse_error(token->pos, "expected context input/output values");
+		sparse_error(sctx_ token->pos, "expected context input/output values");
 		break;
 	case 1:
-		context->in = get_expression_value(args[0]);
+		context->in = get_expression_value(sctx_ args[0]);
 		break;
 	case 2:
-		context->in = get_expression_value(args[0]);
-		context->out = get_expression_value(args[1]);
+		context->in = get_expression_value(sctx_ args[0]);
+		context->out = get_expression_value(sctx_ args[1]);
 		break;
 	case 3:
 		context->context = args[0];
-		context->in = get_expression_value(args[1]);
-		context->out = get_expression_value(args[2]);
+		context->in = get_expression_value(sctx_ args[1]);
+		context->out = get_expression_value(sctx_ args[2]);
 		break;
 	}
 
 	if (argc)
 		add_ptr_list(&ctx->ctype.contexts, context);
 
-	token = expect(token, ')', "after context attribute");
+	token = expect(sctx_ token, ')', "after context attribute");
 	return token;
 }
 
-static struct token *attribute_designated_init(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *attribute_designated_init(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
 	if (ctx->ctype.base_type && ctx->ctype.base_type->type == SYM_STRUCT)
 		ctx->ctype.base_type->designated_init = 1;
 	else
-		warning(token->pos, "attribute designated_init applied to non-structure type");
+		warning(sctx_ token->pos, "attribute designated_init applied to non-structure type");
 	return token;
 }
 
-static struct token *attribute_transparent_union(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *attribute_transparent_union(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
 	if (Wtransparent_union)
-		warning(token->pos, "ignoring attribute __transparent_union__");
+		warning(sctx_ token->pos, "ignoring attribute __transparent_union__");
 	return token;
 }
 
-static struct token *recover_unknown_attribute(struct token *token)
+static struct token *recover_unknown_attribute(SCTX_ struct token *token)
 {
 	struct expression *expr = NULL;
 
-	sparse_error(token->pos, "attribute '%s': unknown attribute", show_ident(token->ident));
+	sparse_error(sctx_ token->pos, "attribute '%s': unknown attribute", show_ident(sctx_ token->ident));
 	token = token->next;
 	if (match_op(token, '('))
-		token = parens_expression(token, &expr, "in attribute");
+		token = parens_expression(sctx_ token, &expr, "in attribute");
 	return token;
 }
 
-static struct token *attribute_specifier(struct token *token, struct decl_state *ctx)
+static struct token *attribute_specifier(SCTX_ struct token *token, struct decl_state *ctx)
 {
-	token = expect(token, '(', "after attribute");
-	token = expect(token, '(', "after attribute");
+	token = expect(sctx_ token, '(', "after attribute");
+	token = expect(sctx_ token, '(', "after attribute");
 
 	for (;;) {
 		struct ident *attribute_name;
@@ -1253,19 +1254,19 @@ static struct token *attribute_specifier(struct token *token, struct decl_state 
 		if (token_type(token) != TOKEN_IDENT)
 			break;
 		attribute_name = token->ident;
-		attr = lookup_keyword(attribute_name, NS_KEYWORD);
+		attr = lookup_keyword(sctx_ attribute_name, NS_KEYWORD);
 		if (attr && attr->op->attribute)
-			token = attr->op->attribute(token->next, attr, ctx);
+			token = attr->op->attribute(sctx_ token->next, attr, ctx);
 		else
-			token = recover_unknown_attribute(token);
+			token = recover_unknown_attribute(sctx_ token);
 
 		if (!match_op(token, ','))
 			break;
 		token = token->next;
 	}
 
-	token = expect(token, ')', "after attribute");
-	token = expect(token, ')', "after attribute");
+	token = expect(sctx_ token, ')', "after attribute");
+	token = expect(sctx_ token, ')', "after attribute");
 	return token;
 }
 
@@ -1279,7 +1280,7 @@ static const char *storage_class[] =
 	[SForced] = "[force]"
 };
 
-static unsigned long storage_modifiers(struct decl_state *ctx)
+static unsigned long storage_modifiers(SCTX_ struct decl_state *ctx)
 {
 	static unsigned long mod[] = 
 	{
@@ -1292,11 +1293,11 @@ static unsigned long storage_modifiers(struct decl_state *ctx)
 		| (ctx->is_tls ? MOD_TLS : 0);
 }
 
-static void set_storage_class(struct position *pos, struct decl_state *ctx, int class)
+static void set_storage_class(SCTX_ struct position *pos, struct decl_state *ctx, int class)
 {
 	/* __thread can be used alone, or with extern or static */
 	if (ctx->is_tls && (class != SStatic && class != SExtern)) {
-		sparse_error(*pos, "__thread can only be used alone, or with "
+		sparse_error(sctx_ *pos, "__thread can only be used alone, or with "
 				"extern or static");
 		return;
 	}
@@ -1306,88 +1307,88 @@ static void set_storage_class(struct position *pos, struct decl_state *ctx, int 
 		return;
 	}
 	if (ctx->storage_class == class)
-		sparse_error(*pos, "duplicate %s", storage_class[class]);
+		sparse_error(sctx_ *pos, "duplicate %s", storage_class[class]);
 	else
-		sparse_error(*pos, "multiple storage classes");
+		sparse_error(sctx_ *pos, "multiple storage classes");
 }
 
-static struct token *typedef_specifier(struct token *next, struct decl_state *ctx)
+static struct token *typedef_specifier(SCTX_ struct token *next, struct decl_state *ctx)
 {
-	set_storage_class(&next->pos, ctx, STypedef);
+	set_storage_class(sctx_ &next->pos, ctx, STypedef);
 	return next;
 }
 
-static struct token *auto_specifier(struct token *next, struct decl_state *ctx)
+static struct token *auto_specifier(SCTX_ struct token *next, struct decl_state *ctx)
 {
-	set_storage_class(&next->pos, ctx, SAuto);
+	set_storage_class(sctx_ &next->pos, ctx, SAuto);
 	return next;
 }
 
-static struct token *register_specifier(struct token *next, struct decl_state *ctx)
+static struct token *register_specifier(SCTX_ struct token *next, struct decl_state *ctx)
 {
-	set_storage_class(&next->pos, ctx, SRegister);
+	set_storage_class(sctx_ &next->pos, ctx, SRegister);
 	return next;
 }
 
-static struct token *static_specifier(struct token *next, struct decl_state *ctx)
+static struct token *static_specifier(SCTX_ struct token *next, struct decl_state *ctx)
 {
-	set_storage_class(&next->pos, ctx, SStatic);
+	set_storage_class(sctx_ &next->pos, ctx, SStatic);
 	return next;
 }
 
-static struct token *extern_specifier(struct token *next, struct decl_state *ctx)
+static struct token *extern_specifier(SCTX_ struct token *next, struct decl_state *ctx)
 {
-	set_storage_class(&next->pos, ctx, SExtern);
+	set_storage_class(sctx_ &next->pos, ctx, SExtern);
 	return next;
 }
 
-static struct token *thread_specifier(struct token *next, struct decl_state *ctx)
+static struct token *thread_specifier(SCTX_ struct token *next, struct decl_state *ctx)
 {
 	/* This GCC extension can be used alone, or with extern or static */
 	if (!ctx->storage_class || ctx->storage_class == SStatic
 			|| ctx->storage_class == SExtern) {
 		ctx->is_tls = 1;
 	} else {
-		sparse_error(next->pos, "__thread can only be used alone, or "
+		sparse_error(sctx_ next->pos, "__thread can only be used alone, or "
 				"with extern or static");
 	}
 
 	return next;
 }
 
-static struct token *attribute_force(struct token *token, struct symbol *attr, struct decl_state *ctx)
+static struct token *attribute_force(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
-	set_storage_class(&token->pos, ctx, SForced);
+	set_storage_class(sctx_ &token->pos, ctx, SForced);
 	return token;
 }
 
-static struct token *inline_specifier(struct token *next, struct decl_state *ctx)
+static struct token *inline_specifier(SCTX_ struct token *next, struct decl_state *ctx)
 {
 	ctx->is_inline = 1;
 	return next;
 }
 
-static struct token *const_qualifier(struct token *next, struct decl_state *ctx)
+static struct token *const_qualifier(SCTX_ struct token *next, struct decl_state *ctx)
 {
-	apply_qualifier(&next->pos, &ctx->ctype, MOD_CONST);
+	apply_qualifier(sctx_ &next->pos, &ctx->ctype, MOD_CONST);
 	return next;
 }
 
-static struct token *volatile_qualifier(struct token *next, struct decl_state *ctx)
+static struct token *volatile_qualifier(SCTX_ struct token *next, struct decl_state *ctx)
 {
-	apply_qualifier(&next->pos, &ctx->ctype, MOD_VOLATILE);
+	apply_qualifier(sctx_ &next->pos, &ctx->ctype, MOD_VOLATILE);
 	return next;
 }
 
-static void apply_ctype(struct position pos, struct ctype *thistype, struct ctype *ctype)
+static void apply_ctype(SCTX_ struct position pos, struct ctype *thistype, struct ctype *ctype)
 {
 	unsigned long mod = thistype->modifiers;
 
 	if (mod)
-		apply_qualifier(&pos, ctype, mod);
+		apply_qualifier(sctx_ &pos, ctype, mod);
 
 	/* Context */
-	concat_ptr_list((struct ptr_list *)thistype->contexts,
+	concat_ptr_list(sctx_ (struct ptr_list *)thistype->contexts,
 	                (struct ptr_list **)&ctype->contexts);
 
 	/* Alignment */
@@ -1399,7 +1400,7 @@ static void apply_ctype(struct position pos, struct ctype *thistype, struct ctyp
 		ctype->as = thistype->as;
 }
 
-static void specifier_conflict(struct position pos, int what, struct ident *new)
+static void specifier_conflict(SCTX_ struct position pos, int what, struct ident *new)
 {
 	const char *old;
 	if (what & (Set_S | Set_T))
@@ -1420,12 +1421,12 @@ static void specifier_conflict(struct position pos, int what, struct ident *new)
 		old = "long";
 	else
 		old = "long long";
-	sparse_error(pos, "impossible combination of type specifiers: %s %s",
-			old, show_ident(new));
+	sparse_error(sctx_ pos, "impossible combination of type specifiers: %s %s",
+			old, show_ident(sctx_ new));
 	return;
 
 Catch_all:
-	sparse_error(pos, "two or more data types in declaration specifiers");
+	sparse_error(sctx_ pos, "two or more data types in declaration specifiers");
 }
 
 static struct symbol * const int_types[] =
@@ -1445,15 +1446,15 @@ static struct symbol * const * const types[] = {
 	real_types + 1, char_types, char_types + 1, char_types + 2
 };
 
-struct symbol *ctype_integer(int size, int want_unsigned)
+struct symbol *ctype_integer(SCTX_ int size, int want_unsigned)
 {
 	return types[want_unsigned ? CUInt : CInt][size];
 }
 
-static struct token *handle_qualifiers(struct token *t, struct decl_state *ctx)
+static struct token *handle_qualifiers(SCTX_ struct token *t, struct decl_state *ctx)
 {
 	while (token_type(t) == TOKEN_IDENT) {
-		struct symbol *s = lookup_symbol(t->ident, NS_TYPEDEF);
+		struct symbol *s = lookup_symbol(sctx_ t->ident, NS_TYPEDEF);
 		if (!s)
 			break;
 		if (s->type != SYM_KEYWORD)
@@ -1462,19 +1463,19 @@ static struct token *handle_qualifiers(struct token *t, struct decl_state *ctx)
 			break;
 		t = t->next;
 		if (s->op->declarator)
-			t = s->op->declarator(t, ctx);
+			t = s->op->declarator(sctx_ t, ctx);
 	}
 	return t;
 }
 
-static struct token *declaration_specifiers(struct token *token, struct decl_state *ctx)
+static struct token *declaration_specifiers(SCTX_ struct token *token, struct decl_state *ctx)
 {
 	int seen = 0;
 	int class = CInt;
 	int size = 0;
 
 	while (token_type(token) == TOKEN_IDENT) {
-		struct symbol *s = lookup_symbol(token->ident,
+		struct symbol *s = lookup_symbol(sctx_ token->ident,
 						 NS_TYPEDEF | NS_SYMBOL);
 		if (!s || !(s->namespace & NS_TYPEDEF))
 			break;
@@ -1483,13 +1484,13 @@ static struct token *declaration_specifiers(struct token *token, struct decl_sta
 				break;
 			seen |= Set_S | Set_T;
 			ctx->ctype.base_type = s->ctype.base_type;
-			apply_ctype(token->pos, &s->ctype, &ctx->ctype);
+			apply_ctype(sctx_ token->pos, &s->ctype, &ctx->ctype);
 			token = token->next;
 			continue;
 		}
 		if (s->op->type & KW_SPECIFIER) {
 			if (seen & s->op->test) {
-				specifier_conflict(token->pos,
+				specifier_conflict(sctx_ token->pos,
 						   seen & s->op->test,
 						   token->ident);
 				break;
@@ -1500,7 +1501,7 @@ static struct token *declaration_specifiers(struct token *token, struct decl_sta
 				size = -1;
 			} else if (s->op->type & KW_LONG && size++) {
 				if (class == CReal) {
-					specifier_conflict(token->pos,
+					specifier_conflict(sctx_ token->pos,
 							   Set_Vlong,
 							   &double_ident);
 					break;
@@ -1510,7 +1511,7 @@ static struct token *declaration_specifiers(struct token *token, struct decl_sta
 		}
 		token = token->next;
 		if (s->op->declarator)
-			token = s->op->declarator(token, ctx);
+			token = s->op->declarator(sctx_ token, ctx);
 		if (s->op->type & KW_EXACT) {
 			ctx->ctype.base_type = s->ctype.base_type;
 			ctx->ctype.modifiers |= s->ctype.modifiers;
@@ -1528,36 +1529,36 @@ static struct token *declaration_specifiers(struct token *token, struct decl_sta
 		struct symbol *type;
 		ctx->ctype.modifiers &= ~MOD_BITWISE;
 		if (!is_int_type(ctx->ctype.base_type)) {
-			sparse_error(token->pos, "invalid modifier");
+			sparse_error(sctx_ token->pos, "invalid modifier");
 			return token;
 		}
-		type = alloc_symbol(token, SYM_BASETYPE);
+		type = alloc_symbol(sctx_ token, SYM_BASETYPE);
 		*type = *ctx->ctype.base_type;
 		type->ctype.modifiers &= ~MOD_SPECIFIER;
 		type->ctype.base_type = ctx->ctype.base_type;
 		type->type = SYM_RESTRICT;
 		ctx->ctype.base_type = type;
-		create_fouled(type);
+		create_fouled(sctx_ type);
 	}
 	return token;
 }
 
-static struct token *abstract_array_declarator(struct token *token, struct symbol *sym)
+static struct token *abstract_array_declarator(SCTX_ struct token *token, struct symbol *sym)
 {
 	struct expression *expr = NULL;
 
-	if (match_idents(token, &restrict_ident, &__restrict_ident, NULL))
+	if (match_idents(sctx_ token, &restrict_ident, &__restrict_ident, NULL))
 		token = token->next;
-	token = parse_expression(token, &expr);
+	token = parse_expression(sctx_ token, &expr);
 	sym->array_size = expr;
 	return token;
 }
 
-static struct token *parameter_type_list(struct token *, struct symbol *);
-static struct token *identifier_list(struct token *, struct symbol *);
-static struct token *declarator(struct token *token, struct decl_state *ctx);
+static struct token *parameter_type_list(SCTX_ struct token *, struct symbol *);
+static struct token *identifier_list(SCTX_ struct token *, struct symbol *);
+static struct token *declarator(SCTX_ struct token *token, struct decl_state *ctx);
 
-static struct token *skip_attribute(struct token *token)
+static struct token *skip_attribute(SCTX_ struct token *token)
 {
 	token = token->next;
 	if (match_op(token, '(')) {
@@ -1576,19 +1577,19 @@ static struct token *skip_attribute(struct token *token)
 	return token;
 }
 
-static struct token *skip_attributes(struct token *token)
+static struct token *skip_attributes(SCTX_ struct token *token)
 {
 	struct symbol *keyword;
 	for (;;) {
 		if (token_type(token) != TOKEN_IDENT)
 			break;
-		keyword = lookup_keyword(token->ident, NS_KEYWORD | NS_TYPEDEF);
+		keyword = lookup_keyword(sctx_ token->ident, NS_KEYWORD | NS_TYPEDEF);
 		if (!keyword || keyword->type != SYM_KEYWORD)
 			break;
 		if (!(keyword->op->type & KW_ATTRIBUTE))
 			break;
-		token = expect(token->next, '(', "after attribute");
-		token = expect(token, '(', "after attribute");
+		token = expect(sctx_ token->next, '(', "after attribute");
+		token = expect(sctx_ token, '(', "after attribute");
 		for (;;) {
 			if (eof_token(token))
 				break;
@@ -1596,35 +1597,35 @@ static struct token *skip_attributes(struct token *token)
 				break;
 			if (token_type(token) != TOKEN_IDENT)
 				break;
-			token = skip_attribute(token);
+			token = skip_attribute(sctx_ token);
 			if (!match_op(token, ','))
 				break;
 			token = token->next;
 		}
-		token = expect(token, ')', "after attribute");
-		token = expect(token, ')', "after attribute");
+		token = expect(sctx_ token, ')', "after attribute");
+		token = expect(sctx_ token, ')', "after attribute");
 	}
 	return token;
 }
 
-static struct token *handle_attributes(struct token *token, struct decl_state *ctx, unsigned int keywords)
+static struct token *handle_attributes(SCTX_ struct token *token, struct decl_state *ctx, unsigned int keywords)
 {
 	struct symbol *keyword;
 	for (;;) {
 		if (token_type(token) != TOKEN_IDENT)
 			break;
-		keyword = lookup_keyword(token->ident, NS_KEYWORD | NS_TYPEDEF);
+		keyword = lookup_keyword(sctx_ token->ident, NS_KEYWORD | NS_TYPEDEF);
 		if (!keyword || keyword->type != SYM_KEYWORD)
 			break;
 		if (!(keyword->op->type & keywords))
 			break;
-		token = keyword->op->declarator(token->next, ctx);
+		token = keyword->op->declarator(sctx_ token->next, ctx);
 		keywords &= KW_ATTRIBUTE;
 	}
 	return token;
 }
 
-static int is_nested(struct token *token, struct token **p,
+static int is_nested(SCTX_ struct token *token, struct token **p,
 		    int prefer_abstract)
 {
 	/*
@@ -1636,10 +1637,10 @@ static int is_nested(struct token *token, struct token **p,
 	 */
 	struct token *next = token->next;
 
-	*p = next = skip_attributes(next);
+	*p = next = skip_attributes(sctx_ next);
 
 	if (token_type(next) == TOKEN_IDENT) {
-		if (lookup_type(next))
+		if (lookup_type(sctx_ next))
 			return !prefer_abstract;
 		return 1;
 	}
@@ -1654,18 +1655,18 @@ enum kind {
 	Empty, K_R, Proto, Bad_Func,
 };
 
-static enum kind which_func(struct token *token,
+static enum kind which_func(SCTX_ struct token *token,
 			    struct ident **n,
 			    int prefer_abstract)
 {
 	struct token *next = token->next;
 
 	if (token_type(next) == TOKEN_IDENT) {
-		if (lookup_type(next))
+		if (lookup_type(sctx_ next))
 			return Proto;
 		/* identifier list not in definition; complain */
 		if (prefer_abstract)
-			warning(token->pos,
+			warning(sctx_ token->pos,
 				"identifier list not in definition");
 		return K_R;
 	}
@@ -1677,14 +1678,14 @@ static enum kind which_func(struct token *token,
 		/* don't complain about those */
 		if (!n || match_op(next->next, ';'))
 			return Empty;
-		warning(next->pos,
+		warning(sctx_ next->pos,
 			"non-ANSI function declaration of function '%s'",
-			show_ident(*n));
+			show_ident(sctx_ *n));
 		return Empty;
 	}
 
 	if (next->special == SPECIAL_ELLIPSIS) {
-		warning(next->pos,
+		warning(sctx_ next->pos,
 			"variadic functions must have one named argument");
 		return Proto;
 	}
@@ -1692,7 +1693,7 @@ static enum kind which_func(struct token *token,
 	return Bad_Func;
 }
 
-static struct token *direct_declarator(struct token *token, struct decl_state *ctx)
+static struct token *direct_declarator(SCTX_ struct token *token, struct decl_state *ctx)
 {
 	struct ctype *ctype = &ctx->ctype;
 	struct token *next;
@@ -1702,47 +1703,47 @@ static struct token *direct_declarator(struct token *token, struct decl_state *c
 		*ctx->ident = token->ident;
 		token = token->next;
 	} else if (match_op(token, '(') &&
-	    is_nested(token, &next, ctx->prefer_abstract)) {
+	    is_nested(sctx_ token, &next, ctx->prefer_abstract)) {
 		struct symbol *base_type = ctype->base_type;
 		if (token->next != next)
-			next = handle_attributes(token->next, ctx,
+			next = handle_attributes(sctx_ token->next, ctx,
 						  KW_ATTRIBUTE);
-		token = declarator(next, ctx);
-		token = expect(token, ')', "in nested declarator");
+		token = declarator(sctx_ next, ctx);
+		token = expect(sctx_ token, ')', "in nested declarator");
 		while (ctype->base_type != base_type)
 			ctype = &ctype->base_type->ctype;
 		p = NULL;
 	}
 
 	if (match_op(token, '(')) {
-		enum kind kind = which_func(token, p, ctx->prefer_abstract);
+		enum kind kind = which_func(sctx_ token, p, ctx->prefer_abstract);
 		struct symbol *fn;
-		fn = alloc_indirect_symbol(token, ctype, SYM_FN);
+		fn = alloc_indirect_symbol(sctx_ token, ctype, SYM_FN);
 		token = token->next;
 		if (kind == K_R)
-			token = identifier_list(token, fn);
+			token = identifier_list(sctx_ token, fn);
 		else if (kind == Proto)
-			token = parameter_type_list(token, fn);
-		token = expect(token, ')', "in function declarator");
+			token = parameter_type_list(sctx_ token, fn);
+		token = expect(sctx_ token, ')', "in function declarator");
 		fn->endpos = token;
 		return token;
 	}
 
 	while (match_op(token, '[')) {
 		struct symbol *array;
-		array = alloc_indirect_symbol(token, ctype, SYM_ARRAY);
-		token = abstract_array_declarator(token->next, array);
-		token = expect(token, ']', "in abstract_array_declarator");
+		array = alloc_indirect_symbol(sctx_ token, ctype, SYM_ARRAY);
+		token = abstract_array_declarator(sctx_ token->next, array);
+		token = expect(sctx_ token, ']', "in abstract_array_declarator");
 		array->endpos = token;
 		ctype = &array->ctype;
 	}
 	return token;
 }
 
-static struct token *pointer(struct token *token, struct decl_state *ctx)
+static struct token *pointer(SCTX_ struct token *token, struct decl_state *ctx)
 {
 	while (match_op(token,'*')) {
-		struct symbol *ptr = alloc_symbol(token, SYM_PTR);
+		struct symbol *ptr = alloc_symbol(sctx_ token, SYM_PTR);
 		ptr->ctype.modifiers = ctx->ctype.modifiers;
 		ptr->ctype.base_type = ctx->ctype.base_type;
 		ptr->ctype.as = ctx->ctype.as;
@@ -1753,19 +1754,19 @@ static struct token *pointer(struct token *token, struct decl_state *ctx)
 		ctx->ctype.contexts = NULL;
 		ctx->ctype.alignment = 0;
 
-		token = handle_qualifiers(token->next, ctx);
+		token = handle_qualifiers(sctx_ token->next, ctx);
 		ctx->ctype.base_type->endpos = token;
 	}
 	return token;
 }
 
-static struct token *declarator(struct token *token, struct decl_state *ctx)
+static struct token *declarator(SCTX_ struct token *token, struct decl_state *ctx)
 {
-	token = pointer(token, ctx);
-	return direct_declarator(token, ctx);
+	token = pointer(sctx_ token, ctx);
+	return direct_declarator(sctx_ token, ctx);
 }
 
-static struct token *handle_bitfield(struct token *token, struct decl_state *ctx)
+static struct token *handle_bitfield(SCTX_ struct token *token, struct decl_state *ctx)
 {
 	struct ctype *ctype = &ctx->ctype;
 	struct expression *expr;
@@ -1773,23 +1774,23 @@ static struct token *handle_bitfield(struct token *token, struct decl_state *ctx
 	long long width;
 
 	if (ctype->base_type != &int_type && !is_int_type(ctype->base_type)) {
-		sparse_error(token->pos, "invalid bitfield specifier for type %s.",
-			show_typename(ctype->base_type));
+		sparse_error(sctx_ token->pos, "invalid bitfield specifier for type %s.",
+			show_typename(sctx_ ctype->base_type));
 		// Parse this to recover gracefully.
-		return conditional_expression(token->next, &expr);
+		return conditional_expression(sctx_ token->next, &expr);
 	}
 
-	bitfield = alloc_indirect_symbol(token, ctype, SYM_BITFIELD);
-	token = conditional_expression(token->next, &expr);
-	width = const_expression_value(expr);
+	bitfield = alloc_indirect_symbol(sctx_ token, ctype, SYM_BITFIELD);
+	token = conditional_expression(sctx_ token->next, &expr);
+	width = const_expression_value(sctx_ expr);
 	bitfield->bit_size = width;
 
 	if (width < 0 || width > INT_MAX) {
-		sparse_error(token->pos, "invalid bitfield width, %lld.", width);
+		sparse_error(sctx_ token->pos, "invalid bitfield width, %lld.", width);
 		width = -1;
 	} else if (*ctx->ident && width == 0) {
-		sparse_error(token->pos, "invalid named zero-width bitfield `%s'",
-		     show_ident(*ctx->ident));
+		sparse_error(sctx_ token->pos, "invalid named zero-width bitfield `%s'",
+		     show_ident(sctx_ *ctx->ident));
 		width = -1;
 	} else if (*ctx->ident) {
 		struct symbol *base_type = bitfield->ctype.base_type;
@@ -1798,14 +1799,14 @@ static struct token *handle_bitfield(struct token *token, struct decl_state *ctx
 		if (Wone_bit_signed_bitfield && width == 1 && is_signed) {
 			// Valid values are either {-1;0} or {0}, depending on integer
 			// representation.  The latter makes for very efficient code...
-			sparse_error(token->pos, "dubious one-bit signed bitfield");
+			sparse_error(sctx_ token->pos, "dubious one-bit signed bitfield");
 		}
 		if (Wdefault_bitfield_sign &&
 		    bitfield_type->type != SYM_ENUM &&
 		    !(bitfield_type->ctype.modifiers & MOD_EXPLICITLY_SIGNED) &&
 		    is_signed) {
 			// The sign of bitfields is unspecified by default.
-			warning(token->pos, "dubious bitfield without explicit `signed' or `unsigned'");
+			warning(sctx_ token->pos, "dubious bitfield without explicit `signed' or `unsigned'");
 		}
 	}
 	bitfield->bit_size = width;
@@ -1813,30 +1814,30 @@ static struct token *handle_bitfield(struct token *token, struct decl_state *ctx
 	return token;
 }
 
-static struct token *declaration_list(struct token *token, struct symbol_list **list)
+static struct token *declaration_list(SCTX_ struct token *token, struct symbol_list **list)
 {
 	struct decl_state ctx = {.prefer_abstract = 0};
 	struct ctype saved;
 	unsigned long mod;
 
-	token = declaration_specifiers(token, &ctx);
-	mod = storage_modifiers(&ctx);
+	token = declaration_specifiers(sctx_ token, &ctx);
+	mod = storage_modifiers(sctx_ &ctx);
 	saved = ctx.ctype;
 	for (;;) {
-		struct symbol *decl = alloc_symbol(token, SYM_NODE);
+		struct symbol *decl = alloc_symbol(sctx_ token, SYM_NODE);
 		ctx.ident = &decl->ident;
 
-		token = declarator(token, &ctx);
+		token = declarator(sctx_ token, &ctx);
 		if (match_op(token, ':'))
-			token = handle_bitfield(token, &ctx);
+			token = handle_bitfield(sctx_ token, &ctx);
 
-		token = handle_attributes(token, &ctx, KW_ATTRIBUTE);
-		apply_modifiers(token->pos, &ctx);
+		token = handle_attributes(sctx_ token, &ctx, KW_ATTRIBUTE);
+		apply_modifiers(sctx_ token->pos, &ctx);
 
 		decl->ctype = ctx.ctype;
 		decl->ctype.modifiers |= mod;
 		decl->endpos = token;
-		add_symbol(list, decl);
+		add_symbol(sctx_ list, decl);
 		if (!match_op(token, ','))
 			break;
 		token = token->next;
@@ -1845,13 +1846,13 @@ static struct token *declaration_list(struct token *token, struct symbol_list **
 	return token;
 }
 
-static struct token *struct_declaration_list(struct token *token, struct symbol_list **list)
+static struct token *struct_declaration_list(SCTX_ struct token *token, struct symbol_list **list)
 {
 	while (!match_op(token, '}')) {
 		if (!match_op(token, ';'))
-			token = declaration_list(token, list);
+			token = declaration_list(sctx_ token, list);
 		if (!match_op(token, ';')) {
-			sparse_error(token->pos, "expected ; at end of declaration");
+			sparse_error(sctx_ token->pos, "expected ; at end of declaration");
 			break;
 		}
 		token = token->next;
@@ -1859,31 +1860,31 @@ static struct token *struct_declaration_list(struct token *token, struct symbol_
 	return token;
 }
 
-static struct token *parameter_declaration(struct token *token, struct symbol *sym)
+static struct token *parameter_declaration(SCTX_ struct token *token, struct symbol *sym)
 {
 	struct decl_state ctx = {.prefer_abstract = 1};
 
-	token = declaration_specifiers(token, &ctx);
+	token = declaration_specifiers(sctx_ token, &ctx);
 	ctx.ident = &sym->ident;
-	token = declarator(token, &ctx);
-	token = handle_attributes(token, &ctx, KW_ATTRIBUTE);
-	apply_modifiers(token->pos, &ctx);
+	token = declarator(sctx_ token, &ctx);
+	token = handle_attributes(sctx_ token, &ctx, KW_ATTRIBUTE);
+	apply_modifiers(sctx_ token->pos, &ctx);
 	sym->ctype = ctx.ctype;
-	sym->ctype.modifiers |= storage_modifiers(&ctx);
+	sym->ctype.modifiers |= storage_modifiers(sctx_ &ctx);
 	sym->endpos = token;
 	sym->forced_arg = ctx.storage_class == SForced;
 	return token;
 }
 
-struct token *typename(struct token *token, struct symbol **p, int *forced)
+struct token *typename(SCTX_ struct token *token, struct symbol **p, int *forced)
 {
 	struct decl_state ctx = {.prefer_abstract = 1};
 	int class;
-	struct symbol *sym = alloc_symbol(token, SYM_NODE);
+	struct symbol *sym = alloc_symbol(sctx_ token, SYM_NODE);
 	*p = sym;
-	token = declaration_specifiers(token, &ctx);
-	token = declarator(token, &ctx);
-	apply_modifiers(token->pos, &ctx);
+	token = declaration_specifiers(sctx_ token, &ctx);
+	token = declarator(sctx_ token, &ctx);
+	apply_modifiers(sctx_ token->pos, &ctx);
 	sym->ctype = ctx.ctype;
 	sym->endpos = token;
 	class = ctx.storage_class;
@@ -1895,18 +1896,18 @@ struct token *typename(struct token *token, struct symbol **p, int *forced)
 		}
 	}
 	if (class)
-		warning(sym->pos->pos, "storage class in typename (%s %s)",
-			storage_class[class], show_typename(sym));
+		warning(sctx_ sym->pos->pos, "storage class in typename (%s %s)",
+			storage_class[class], show_typename(sctx_ sym));
 	return token;
 }
 
-static struct token *expression_statement(struct token *token, struct expression **tree)
+static struct token *expression_statement(SCTX_ struct token *token, struct expression **tree)
 {
-	token = parse_expression(token, tree);
-	return expect(token, ';', "at end of statement");
+	token = parse_expression(sctx_ token, tree);
+	return expect(sctx_ token, ';', "at end of statement");
 }
 
-static struct token *parse_asm_operands(struct token *token, struct statement *stmt,
+static struct token *parse_asm_operands(SCTX_ struct token *token, struct statement *stmt,
 	struct expression_list **inout)
 {
 	struct expression *expr;
@@ -1922,29 +1923,29 @@ static struct token *parse_asm_operands(struct token *token, struct statement *s
 			ident = token->next->next->ident;
 			token = token->next->next->next;
 		}
-		add_expression(inout, (struct expression *)ident); /* UGGLEE!!! */
-		token = primary_expression(token->next, &expr);
-		add_expression(inout, expr);
-		token = parens_expression(token, &expr, "in asm parameter");
-		add_expression(inout, expr);
+		add_expression(sctx_ inout, (struct expression *)ident); /* UGGLEE!!! */
+		token = primary_expression(sctx_ token->next, &expr);
+		add_expression(sctx_ inout, expr);
+		token = parens_expression(sctx_ token, &expr, "in asm parameter");
+		add_expression(sctx_ inout, expr);
 	} while (match_op(token, ','));
 	return token;
 }
 
-static struct token *parse_asm_clobbers(struct token *token, struct statement *stmt,
+static struct token *parse_asm_clobbers(SCTX_ struct token *token, struct statement *stmt,
 	struct expression_list **clobbers)
 {
 	struct expression *expr;
 
 	do {
-		token = primary_expression(token->next, &expr);
+		token = primary_expression(sctx_ token->next, &expr);
 		if (expr)
-			add_expression(clobbers, expr);
+			add_expression(sctx_ clobbers, expr);
 	} while (match_op(token, ','));
 	return token;
 }
 
-static struct token *parse_asm_labels(struct token *token, struct statement *stmt,
+static struct token *parse_asm_labels(SCTX_ struct token *token, struct statement *stmt,
 		        struct symbol_list **labels)
 {
 	struct symbol *label;
@@ -1953,57 +1954,57 @@ static struct token *parse_asm_labels(struct token *token, struct statement *stm
 		token = token->next; /* skip ':' and ',' */
 		if (token_type(token) != TOKEN_IDENT)
 			return token;
-		label = label_symbol(token);
-		add_symbol(labels, label);
+		label = label_symbol(sctx_ token);
+		add_symbol(sctx_ labels, label);
 		token = token->next;
 	} while (match_op(token, ','));
 	return token;
 }
 
-static struct token *parse_asm_statement(struct token *token, struct statement *stmt)
+static struct token *parse_asm_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	int is_goto = 0;
 
 	token = token->next;
 	stmt->type = STMT_ASM;
-	if (match_idents(token, &__volatile___ident, &__volatile_ident, &volatile_ident, NULL)) {
+	if (match_idents(sctx_ token, &__volatile___ident, &__volatile_ident, &volatile_ident, NULL)) {
 		token = token->next;
 	}
 	if (token_type(token) == TOKEN_IDENT && token->ident == &goto_ident) {
 		is_goto = 1;
 		token = token->next;
 	}
-	token = expect(token, '(', "after asm");
-	token = parse_expression(token, &stmt->asm_string);
+	token = expect(sctx_ token, '(', "after asm");
+	token = parse_expression(sctx_ token, &stmt->asm_string);
 	if (match_op(token, ':'))
-		token = parse_asm_operands(token, stmt, &stmt->asm_outputs);
+		token = parse_asm_operands(sctx_ token, stmt, &stmt->asm_outputs);
 	if (match_op(token, ':'))
-		token = parse_asm_operands(token, stmt, &stmt->asm_inputs);
+		token = parse_asm_operands(sctx_ token, stmt, &stmt->asm_inputs);
 	if (match_op(token, ':'))
-		token = parse_asm_clobbers(token, stmt, &stmt->asm_clobbers);
+		token = parse_asm_clobbers(sctx_ token, stmt, &stmt->asm_clobbers);
 	if (is_goto && match_op(token, ':'))
-		token = parse_asm_labels(token, stmt, &stmt->asm_labels);
-	token = expect(token, ')', "after asm");
-	return expect(token, ';', "at end of asm-statement");
+		token = parse_asm_labels(sctx_ token, stmt, &stmt->asm_labels);
+	token = expect(sctx_ token, ')', "after asm");
+	return expect(sctx_ token, ';', "at end of asm-statement");
 }
 
-static struct token *parse_asm_declarator(struct token *token, struct decl_state *ctx)
+static struct token *parse_asm_declarator(SCTX_ struct token *token, struct decl_state *ctx)
 {
 	struct expression *expr;
-	token = expect(token, '(', "after asm");
-	token = parse_expression(token->next, &expr);
-	token = expect(token, ')', "after asm");
+	token = expect(sctx_ token, '(', "after asm");
+	token = parse_expression(sctx_ token->next, &expr);
+	token = expect(sctx_ token, ')', "after asm");
 	return token;
 }
 
 /* Make a statement out of an expression */
-static struct statement *make_statement(struct expression *expr)
+static struct statement *make_statement(SCTX_ struct expression *expr)
 {
 	struct statement *stmt;
 
 	if (!expr)
 		return NULL;
-	stmt = alloc_statement(expr->tok, STMT_EXPRESSION);
+	stmt = alloc_statement(sctx_ expr->tok, STMT_EXPRESSION);
 	stmt->expression = expr;
 	return stmt;
 }
@@ -2017,41 +2018,41 @@ static struct statement *make_statement(struct expression *expr)
  * all the normal visibility rules, so nested iterators
  * automatically work right.
  */
-static void start_iterator(struct statement *stmt)
+static void start_iterator(SCTX_ struct statement *stmt)
 {
 	struct symbol *cont, *brk;
 
-	start_symbol_scope();
-	cont = alloc_symbol(stmt->tok, SYM_NODE);
-	bind_symbol(cont, &continue_ident, NS_ITERATOR);
-	brk = alloc_symbol(stmt->tok, SYM_NODE);
-	bind_symbol(brk, &break_ident, NS_ITERATOR);
+	start_symbol_scope(sctx);
+	cont = alloc_symbol(sctx_ stmt->tok, SYM_NODE);
+	bind_symbol(sctx_ cont, &continue_ident, NS_ITERATOR);
+	brk = alloc_symbol(sctx_ stmt->tok, SYM_NODE);
+	bind_symbol(sctx_ brk, &break_ident, NS_ITERATOR);
 
 	stmt->type = STMT_ITERATOR;
 	stmt->iterator_break = brk;
 	stmt->iterator_continue = cont;
-	fn_local_symbol(brk);
-	fn_local_symbol(cont);
+	fn_local_symbol(sctx_ brk);
+	fn_local_symbol(sctx_ cont);
 }
 
-static void end_iterator(struct statement *stmt)
+static void end_iterator(SCTX_ struct statement *stmt)
 {
-	end_symbol_scope();
+	end_symbol_scope(sctx);
 }
 
-static struct statement *start_function(struct token *token, struct symbol *sym)
+static struct statement *start_function(SCTX_ struct token *token, struct symbol *sym)
 {
 	struct symbol *ret;
-	struct statement *stmt = alloc_statement(sym->tok, STMT_COMPOUND);
+	struct statement *stmt = alloc_statement(sctx_ sym->tok, STMT_COMPOUND);
 
-	start_function_scope();
-	ret = alloc_symbol(token, SYM_NODE);
+	start_function_scope(sctx);
+	ret = alloc_symbol(sctx_ token, SYM_NODE);
 	ret->ctype = sym->ctype.base_type->ctype;
 	ret->ctype.modifiers &= ~(MOD_STORAGE | MOD_CONST | MOD_VOLATILE | MOD_TLS | MOD_INLINE | MOD_ADDRESSABLE | MOD_NOCAST | MOD_NODEREF | MOD_ACCESSED | MOD_TOPLEVEL);
 	ret->ctype.modifiers |= (MOD_AUTO | MOD_REGISTER);
-	bind_symbol(ret, &return_ident, NS_ITERATOR);
+	bind_symbol(sctx_ ret, &return_ident, NS_ITERATOR);
 	stmt->ret = ret;
-	fn_local_symbol(ret);
+	fn_local_symbol(sctx_ ret);
 
 	// Currently parsed symbol for __func__/__FUNCTION__/__PRETTY_FUNCTION__
 	current_fn = sym;
@@ -2059,10 +2060,10 @@ static struct statement *start_function(struct token *token, struct symbol *sym)
 	return stmt;
 }
 
-static void end_function(struct symbol *sym)
+static void end_function(SCTX_ struct symbol *sym)
 {
 	current_fn = NULL;
-	end_function_scope();
+	end_function_scope(sctx );
 }
 
 /*
@@ -2077,209 +2078,209 @@ static void end_function(struct symbol *sym)
  * case/default statements to find the switch statement
  * that they are associated with.
  */
-static void start_switch(struct statement *stmt)
+static void start_switch(SCTX_ struct statement *stmt)
 {
 	struct symbol *brk, *switch_case;
 
-	start_symbol_scope();
-	brk = alloc_symbol(stmt->tok, SYM_NODE);
-	bind_symbol(brk, &break_ident, NS_ITERATOR);
+	start_symbol_scope(sctx );
+	brk = alloc_symbol(sctx_ stmt->tok, SYM_NODE);
+	bind_symbol(sctx_ brk, &break_ident, NS_ITERATOR);
 
-	switch_case = alloc_symbol(stmt->tok, SYM_NODE);
-	bind_symbol(switch_case, &case_ident, NS_ITERATOR);
+	switch_case = alloc_symbol(sctx_ stmt->tok, SYM_NODE);
+	bind_symbol(sctx_ switch_case, &case_ident, NS_ITERATOR);
 	switch_case->stmt = stmt;
 
 	stmt->type = STMT_SWITCH;
 	stmt->switch_break = brk;
 	stmt->switch_case = switch_case;
 
-	fn_local_symbol(brk);
-	fn_local_symbol(switch_case);
+	fn_local_symbol(sctx_ brk);
+	fn_local_symbol(sctx_ switch_case);
 }
 
-static void end_switch(struct statement *stmt)
+static void end_switch(SCTX_ struct statement *stmt)
 {
 	if (!stmt->switch_case->symbol_list)
-		warning(stmt->pos->pos, "switch with no cases");
-	end_symbol_scope();
+		warning(sctx_ stmt->pos->pos, "switch with no cases");
+	end_symbol_scope(sctx );
 }
 
-static void add_case_statement(struct statement *stmt)
+static void add_case_statement(SCTX_ struct statement *stmt)
 {
-	struct symbol *target = lookup_symbol(&case_ident, NS_ITERATOR);
+	struct symbol *target = lookup_symbol(sctx_ &case_ident, NS_ITERATOR);
 	struct symbol *sym;
 
 	if (!target) {
-		sparse_error(stmt->pos->pos, "not in switch scope");
+		sparse_error(sctx_ stmt->pos->pos, "not in switch scope");
 		stmt->type = STMT_NONE;
 		return;
 	}
-	sym = alloc_symbol(stmt->tok, SYM_NODE);
-	add_symbol(&target->symbol_list, sym);
+	sym = alloc_symbol(sctx_ stmt->tok, SYM_NODE);
+	add_symbol(sctx_ &target->symbol_list, sym);
 	sym->stmt = stmt;
 	stmt->case_label = sym;
-	fn_local_symbol(sym);
+	fn_local_symbol(sctx_ sym);
 }
 
-static struct token *parse_return_statement(struct token *token, struct statement *stmt)
+static struct token *parse_return_statement(SCTX_ struct token *token, struct statement *stmt)
 {
-	struct symbol *target = lookup_symbol(&return_ident, NS_ITERATOR);
+	struct symbol *target = lookup_symbol(sctx_ &return_ident, NS_ITERATOR);
 
 	if (!target)
-		error_die(token->pos, "internal error: return without a function target");
+		error_die(sctx_ token->pos, "internal error: return without a function target");
 	stmt->type = STMT_RETURN;
 	stmt->ret_target = target;
-	return expression_statement(token->next, &stmt->ret_value);
+	return expression_statement(sctx_ token->next, &stmt->ret_value);
 }
 
-static struct token *parse_for_statement(struct token *token, struct statement *stmt)
+static struct token *parse_for_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	struct symbol_list *syms;
 	struct expression *e1, *e2, *e3;
 	struct statement *iterator;
 
-	start_iterator(stmt);
-	token = expect(token->next, '(', "after 'for'");
+	start_iterator(sctx_ stmt);
+	token = expect(sctx_ token->next, '(', "after 'for'");
 
 	syms = NULL;
 	e1 = NULL;
 	/* C99 variable declaration? */
-	if (lookup_type(token)) {
-		token = external_declaration(token, &syms);
+	if (lookup_type(sctx_ token)) {
+		token = external_declaration(sctx_ token, &syms);
 	} else {
-		token = parse_expression(token, &e1);
-		token = expect(token, ';', "in 'for'");
+		token = parse_expression(sctx_ token, &e1);
+		token = expect(sctx_ token, ';', "in 'for'");
 	}
-	token = parse_expression(token, &e2);
-	token = expect(token, ';', "in 'for'");
-	token = parse_expression(token, &e3);
-	token = expect(token, ')', "in 'for'");
-	token = statement(token, &iterator);
+	token = parse_expression(sctx_ token, &e2);
+	token = expect(sctx_ token, ';', "in 'for'");
+	token = parse_expression(sctx_ token, &e3);
+	token = expect(sctx_ token, ')', "in 'for'");
+	token = statement(sctx_ token, &iterator);
 
 	stmt->iterator_syms = syms;
-	stmt->iterator_pre_statement = make_statement(e1);
+	stmt->iterator_pre_statement = make_statement(sctx_ e1);
 	stmt->iterator_pre_condition = e2;
-	stmt->iterator_post_statement = make_statement(e3);
+	stmt->iterator_post_statement = make_statement(sctx_ e3);
 	stmt->iterator_post_condition = NULL;
 	stmt->iterator_statement = iterator;
-	end_iterator(stmt);
+	end_iterator(sctx_ stmt);
 
 	return token;
 }
 
-static struct token *parse_while_statement(struct token *token, struct statement *stmt)
+static struct token *parse_while_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	struct expression *expr;
 	struct statement *iterator;
 
-	start_iterator(stmt);
-	token = parens_expression(token->next, &expr, "after 'while'");
-	token = statement(token, &iterator);
+	start_iterator(sctx_ stmt);
+	token = parens_expression(sctx_ token->next, &expr, "after 'while'");
+	token = statement(sctx_ token, &iterator);
 
 	stmt->iterator_pre_condition = expr;
 	stmt->iterator_post_condition = NULL;
 	stmt->iterator_statement = iterator;
-	end_iterator(stmt);
+	end_iterator(sctx_ stmt);
 
 	return token;
 }
 
-static struct token *parse_do_statement(struct token *token, struct statement *stmt)
+static struct token *parse_do_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	struct expression *expr;
 	struct statement *iterator;
 
-	start_iterator(stmt);
-	token = statement(token->next, &iterator);
+	start_iterator(sctx_ stmt);
+	token = statement(sctx_ token->next, &iterator);
 	if (token_type(token) == TOKEN_IDENT && token->ident == &while_ident)
 		token = token->next;
 	else
-		sparse_error(token->pos, "expected 'while' after 'do'");
-	token = parens_expression(token, &expr, "after 'do-while'");
+		sparse_error(sctx_ token->pos, "expected 'while' after 'do'");
+	token = parens_expression(sctx_ token, &expr, "after 'do-while'");
 
 	stmt->iterator_post_condition = expr;
 	stmt->iterator_statement = iterator;
-	end_iterator(stmt);
+	end_iterator(sctx_ stmt);
 
 	if (iterator && iterator->type != STMT_COMPOUND && Wdo_while)
-		warning(iterator->pos->pos, "do-while statement is not a compound statement");
+		warning(sctx_ iterator->pos->pos, "do-while statement is not a compound statement");
 
-	return expect(token, ';', "after statement");
+	return expect(sctx_ token, ';', "after statement");
 }
 
-static struct token *parse_if_statement(struct token *token, struct statement *stmt)
+static struct token *parse_if_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	stmt->type = STMT_IF;
-	token = parens_expression(token->next, &stmt->if_conditional, "after if");
-	token = statement(token, &stmt->if_true);
+	token = parens_expression(sctx_ token->next, &stmt->if_conditional, "after if");
+	token = statement(sctx_ token, &stmt->if_true);
 	if (token_type(token) != TOKEN_IDENT)
 		return token;
 	if (token->ident != &else_ident)
 		return token;
-	return statement(token->next, &stmt->if_false);
+	return statement(sctx_ token->next, &stmt->if_false);
 }
 
-static inline struct token *case_statement(struct token *token, struct statement *stmt)
+static inline struct token *case_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	stmt->type = STMT_CASE;
-	token = expect(token, ':', "after default/case");
-	add_case_statement(stmt);
-	return statement(token, &stmt->case_statement);
+	token = expect(sctx_ token, ':', "after default/case");
+	add_case_statement(sctx_ stmt);
+	return statement(sctx_ token, &stmt->case_statement);
 }
 
-static struct token *parse_case_statement(struct token *token, struct statement *stmt)
+static struct token *parse_case_statement(SCTX_ struct token *token, struct statement *stmt)
 {
-	token = parse_expression(token->next, &stmt->case_expression);
+	token = parse_expression(sctx_ token->next, &stmt->case_expression);
 	if (match_op(token, SPECIAL_ELLIPSIS))
-		token = parse_expression(token->next, &stmt->case_to);
-	return case_statement(token, stmt);
+		token = parse_expression(sctx_ token->next, &stmt->case_to);
+	return case_statement(sctx_ token, stmt);
 }
 
-static struct token *parse_default_statement(struct token *token, struct statement *stmt)
+static struct token *parse_default_statement(SCTX_ struct token *token, struct statement *stmt)
 {
-	return case_statement(token->next, stmt);
+	return case_statement(sctx_ token->next, stmt);
 }
 
-static struct token *parse_loop_iterator(struct token *token, struct statement *stmt)
+static struct token *parse_loop_iterator(SCTX_ struct token *token, struct statement *stmt)
 {
-	struct symbol *target = lookup_symbol(token->ident, NS_ITERATOR);
+	struct symbol *target = lookup_symbol(sctx_ token->ident, NS_ITERATOR);
 	stmt->type = STMT_GOTO;
 	stmt->goto_label = target;
 	if (!target)
-		sparse_error(stmt->pos->pos, "break/continue not in iterator scope");
-	return expect(token->next, ';', "at end of statement");
+		sparse_error(sctx_ stmt->pos->pos, "break/continue not in iterator scope");
+	return expect(sctx_ token->next, ';', "at end of statement");
 }
 
-static struct token *parse_switch_statement(struct token *token, struct statement *stmt)
+static struct token *parse_switch_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	stmt->type = STMT_SWITCH;
-	start_switch(stmt);
-	token = parens_expression(token->next, &stmt->switch_expression, "after 'switch'");
-	token = statement(token, &stmt->switch_statement);
-	end_switch(stmt);
+	start_switch(sctx_ stmt);
+	token = parens_expression(sctx_ token->next, &stmt->switch_expression, "after 'switch'");
+	token = statement(sctx_ token, &stmt->switch_statement);
+	end_switch(sctx_ stmt);
 	return token;
 }
 
-static struct token *parse_goto_statement(struct token *token, struct statement *stmt)
+static struct token *parse_goto_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	stmt->type = STMT_GOTO;
 	token = token->next;
 	if (match_op(token, '*')) {
-		token = parse_expression(token->next, &stmt->goto_expression);
-		add_statement(&function_computed_goto_list, stmt);
+		token = parse_expression(sctx_ token->next, &stmt->goto_expression);
+		add_statement(sctx_ &function_computed_goto_list, stmt);
 	} else if (token_type(token) == TOKEN_IDENT) {
-		stmt->goto_label = label_symbol(token);
+		stmt->goto_label = label_symbol(sctx_ token);
 		token = token->next;
 	} else {
-		sparse_error(token->pos, "Expected identifier or goto expression");
+		sparse_error(sctx_ token->pos, "Expected identifier or goto expression");
 	}
-	return expect(token, ';', "at end of statement");
+	return expect(sctx_ token, ';', "at end of statement");
 }
 
-static struct token *parse_context_statement(struct token *token, struct statement *stmt)
+static struct token *parse_context_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	stmt->type = STMT_CONTEXT;
-	token = parse_expression(token->next, &stmt->expression);
+	token = parse_expression(sctx_ token->next, &stmt->expression);
 	if (stmt->expression->type == EXPR_PREOP
 	    && stmt->expression->op == '('
 	    && stmt->expression->unop->type == EXPR_COMMA) {
@@ -2288,120 +2289,120 @@ static struct token *parse_context_statement(struct token *token, struct stateme
 		stmt->context = expr->left;
 		stmt->expression = expr->right;
 	}
-	return expect(token, ';', "at end of statement");
+	return expect(sctx_ token, ';', "at end of statement");
 }
 
-static struct token *parse_range_statement(struct token *token, struct statement *stmt)
+static struct token *parse_range_statement(SCTX_ struct token *token, struct statement *stmt)
 {
 	stmt->type = STMT_RANGE;
-	token = assignment_expression(token->next, &stmt->range_expression);
-	token = expect(token, ',', "after range expression");
-	token = assignment_expression(token, &stmt->range_low);
-	token = expect(token, ',', "after low range");
-	token = assignment_expression(token, &stmt->range_high);
-	return expect(token, ';', "after range statement");
+	token = assignment_expression(sctx_ token->next, &stmt->range_expression);
+	token = expect(sctx_ token, ',', "after range expression");
+	token = assignment_expression(sctx_ token, &stmt->range_low);
+	token = expect(sctx_ token, ',', "after low range");
+	token = assignment_expression(sctx_ token, &stmt->range_high);
+	return expect(sctx_ token, ';', "after range statement");
 }
 
-static struct token *statement(struct token *token, struct statement **tree)
+static struct token *statement(SCTX_ struct token *token, struct statement **tree)
 {
-	struct statement *stmt = alloc_statement(token, STMT_NONE);
+	struct statement *stmt = alloc_statement(sctx_ token, STMT_NONE);
 
 	*tree = stmt;
 	if (token_type(token) == TOKEN_IDENT) {
-		struct symbol *s = lookup_keyword(token->ident, NS_KEYWORD);
+		struct symbol *s = lookup_keyword(sctx_ token->ident, NS_KEYWORD);
 		if (s && s->op->statement)
-			return s->op->statement(token, stmt);
+			return s->op->statement(sctx_ token, stmt);
 
 		if (match_op(token->next, ':')) {
-			struct symbol *s = label_symbol(token);
+			struct symbol *s = label_symbol(sctx_ token);
 			stmt->type = STMT_LABEL;
 			stmt->label_identifier = s;
 			if (s->stmt)
-				sparse_error(stmt->pos->pos, "label '%s' redefined", show_ident(token->ident));
+				sparse_error(sctx_ stmt->pos->pos, "label '%s' redefined", show_ident(sctx_ token->ident));
 			s->stmt = stmt;
-			token = skip_attributes(token->next->next);
-			return statement(token, &stmt->label_statement);
+			token = skip_attributes(sctx_ token->next->next);
+			return statement(sctx_ token, &stmt->label_statement);
 		}
 	}
 
 	if (match_op(token, '{')) {
 		stmt->type = STMT_COMPOUND;
-		start_symbol_scope();
-		token = compound_statement(token->next, stmt);
-		end_symbol_scope();
+		start_symbol_scope(sctx );
+		token = compound_statement(sctx_ token->next, stmt);
+		end_symbol_scope(sctx );
 		
-		return expect(token, '}', "at end of compound statement");
+		return expect(sctx_ token, '}', "at end of compound statement");
 	}
 			
 	stmt->type = STMT_EXPRESSION;
-	return expression_statement(token, &stmt->expression);
+	return expression_statement(sctx_ token, &stmt->expression);
 }
 
 /* gcc extension - __label__ ident-list; in the beginning of compound stmt */
-static struct token *label_statement(struct token *token)
+static struct token *label_statement(SCTX_ struct token *token)
 {
 	while (token_type(token) == TOKEN_IDENT) {
-		struct symbol *sym = alloc_symbol(token, SYM_LABEL);
+		struct symbol *sym = alloc_symbol(sctx_ token, SYM_LABEL);
 		/* it's block-scope, but we want label namespace */
-		bind_symbol(sym, token->ident, NS_SYMBOL);
+		bind_symbol(sctx_ sym, token->ident, NS_SYMBOL);
 		sym->namespace = NS_LABEL;
-		fn_local_symbol(sym);
+		fn_local_symbol(sctx_ sym);
 		token = token->next;
 		if (!match_op(token, ','))
 			break;
 		token = token->next;
 	}
-	return expect(token, ';', "at end of label declaration");
+	return expect(sctx_ token, ';', "at end of label declaration");
 }
 
-static struct token * statement_list(struct token *token, struct statement_list **list)
+static struct token * statement_list(SCTX_ struct token *token, struct statement_list **list)
 {
 	int seen_statement = 0;
 	while (token_type(token) == TOKEN_IDENT &&
 	       token->ident == &__label___ident)
-		token = label_statement(token->next);
+		token = label_statement(sctx_ token->next);
 	for (;;) {
 		struct statement * stmt;
 		if (eof_token(token))
 			break;
 		if (match_op(token, '}'))
 			break;
-		if (lookup_type(token)) {
+		if (lookup_type(sctx_ token)) {
 			if (seen_statement) {
-				warning(token->pos, "mixing declarations and code");
+				warning(sctx_ token->pos, "mixing declarations and code");
 				seen_statement = 0;
 			}
-			stmt = alloc_statement(token, STMT_DECLARATION);
-			token = external_declaration(token, &stmt->declaration);
+			stmt = alloc_statement(sctx_ token, STMT_DECLARATION);
+			token = external_declaration(sctx_ token, &stmt->declaration);
 		} else {
 			seen_statement = Wdeclarationafterstatement;
-			token = statement(token, &stmt);
+			token = statement(sctx_ token, &stmt);
 		}
-		add_statement(list, stmt);
+		add_statement(sctx_ list, stmt);
 	}
 	return token;
 }
 
-static struct token *identifier_list(struct token *token, struct symbol *fn)
+static struct token *identifier_list(SCTX_ struct token *token, struct symbol *fn)
 {
 	struct symbol_list **list = &fn->arguments;
 	for (;;) {
-		struct symbol *sym = alloc_symbol(token, SYM_NODE);
+		struct symbol *sym = alloc_symbol(sctx_ token, SYM_NODE);
 		sym->ident = token->ident;
 		token = token->next;
 		sym->endpos = token;
 		sym->ctype.base_type = &incomplete_ctype;
-		add_symbol(list, sym);
+		add_symbol(sctx_ list, sym);
 		if (!match_op(token, ',') ||
 		    token_type(token->next) != TOKEN_IDENT ||
-		    lookup_type(token->next))
+		    lookup_type(sctx_ token->next))
 			break;
 		token = token->next;
 	}
 	return token;
 }
 
-static struct token *parameter_type_list(struct token *token, struct symbol *fn)
+static struct token *parameter_type_list(SCTX_ struct token *token, struct symbol *fn)
 {
 	struct symbol_list **list = &fn->arguments;
 
@@ -2414,15 +2415,15 @@ static struct token *parameter_type_list(struct token *token, struct symbol *fn)
 			break;
 		}
 
-		sym = alloc_symbol(token, SYM_NODE);
-		token = parameter_declaration(token, sym);
+		sym = alloc_symbol(sctx_ token, SYM_NODE);
+		token = parameter_declaration(sctx_ token, sym);
 		if (sym->ctype.base_type == &void_ctype) {
 			/* Special case: (void) */
 			if (!*list && !sym->ident)
 				break;
-			warning(token->pos, "void parameter");
+			warning(sctx_ token->pos, "void parameter");
 		}
-		add_symbol(list, sym);
+		add_symbol(sctx_ list, sym);
 		if (!match_op(token, ','))
 			break;
 		token = token->next;
@@ -2430,37 +2431,37 @@ static struct token *parameter_type_list(struct token *token, struct symbol *fn)
 	return token;
 }
 
-struct token *compound_statement(struct token *token, struct statement *stmt)
+struct token *compound_statement(SCTX_ struct token *token, struct statement *stmt)
 {
-	token = statement_list(token, &stmt->stmts);
+	token = statement_list(sctx_ token, &stmt->stmts);
 	return token;
 }
 
-static struct expression *identifier_expression(struct token *token)
+static struct expression *identifier_expression(SCTX_ struct token *token)
 {
-	struct expression *expr = alloc_expression(token, EXPR_IDENTIFIER);
+	struct expression *expr = alloc_expression(sctx_ token, EXPR_IDENTIFIER);
 	expr->expr_ident = token->ident;
 	return expr;
 }
 
-static struct expression *index_expression(struct expression *from, struct expression *to)
+static struct expression *index_expression(SCTX_ struct expression *from, struct expression *to)
 {
 	int idx_from, idx_to;
-	struct expression *expr = alloc_expression(from->tok, EXPR_INDEX);
+	struct expression *expr = alloc_expression(sctx_ from->tok, EXPR_INDEX);
 
-	idx_from = const_expression_value(from);
+	idx_from = const_expression_value(sctx_ from);
 	idx_to = idx_from;
 	if (to) {
-		idx_to = const_expression_value(to);
+		idx_to = const_expression_value(sctx_ to);
 		if (idx_to < idx_from || idx_from < 0)
-			warning(from->pos->pos, "nonsense array initializer index range");
+			warning(sctx_ from->pos->pos, "nonsense array initializer index range");
 	}
 	expr->idx_from = idx_from;
 	expr->idx_to = idx_to;
 	return expr;
 }
 
-static struct token *single_initializer(struct expression **ep, struct token *token)
+static struct token *single_initializer(SCTX_ struct expression **ep, struct token *token)
 {
 	int expect_equal = 0;
 	struct token *next = token->next;
@@ -2470,10 +2471,10 @@ static struct token *single_initializer(struct expression **ep, struct token *to
 	*ep = NULL; 
 
 	if ((token_type(token) == TOKEN_IDENT) && match_op(next, ':')) {
-		struct expression *expr = identifier_expression(token);
+		struct expression *expr = identifier_expression(sctx_ token);
 		if (Wold_initializer)
-			warning(token->pos, "obsolete struct initializer, use C99 syntax");
-		token = initializer(&expr->ident_expression, next->next);
+			warning(sctx_ token->pos, "obsolete struct initializer, use C99 syntax");
+		token = initializer(sctx_ &expr->ident_expression, next->next);
 		if (expr->ident_expression)
 			*ep = expr;
 		return token;
@@ -2481,24 +2482,24 @@ static struct token *single_initializer(struct expression **ep, struct token *to
 
 	for (tail = ep, nested = 0; ; nested++, next = token->next) {
 		if (match_op(token, '.') && (token_type(next) == TOKEN_IDENT)) {
-			struct expression *expr = identifier_expression(next);
+			struct expression *expr = identifier_expression(sctx_ next);
 			*tail = expr;
 			tail = &expr->ident_expression;
 			expect_equal = 1;
 			token = next->next;
 		} else if (match_op(token, '[')) {
 			struct expression *from = NULL, *to = NULL, *expr;
-			token = constant_expression(token->next, &from);
+			token = constant_expression(sctx_ token->next, &from);
 			if (!from) {
-				sparse_error(token->pos, "Expected constant expression");
+				sparse_error(sctx_ token->pos, "Expected constant expression");
 				break;
 			}
 			if (match_op(token, SPECIAL_ELLIPSIS))
-				token = constant_expression(token->next, &to);
-			expr = index_expression(from, to);
+				token = constant_expression(sctx_ token->next, &to);
+			expr = index_expression(sctx_ from, to);
 			*tail = expr;
 			tail = &expr->idx_expression;
-			token = expect(token, ']', "at end of initializer index");
+			token = expect(sctx_ token, ']', "at end of initializer index");
 			if (nested)
 				expect_equal = 1;
 		} else {
@@ -2507,28 +2508,28 @@ static struct token *single_initializer(struct expression **ep, struct token *to
 	}
 	if (nested && !expect_equal) {
 		if (!match_op(token, '='))
-			warning(token->pos, "obsolete array initializer, use C99 syntax");
+			warning(sctx_ token->pos, "obsolete array initializer, use C99 syntax");
 		else
 			expect_equal = 1;
 	}
 	if (expect_equal)
-		token = expect(token, '=', "at end of initializer index");
+		token = expect(sctx_ token, '=', "at end of initializer index");
 
-	token = initializer(tail, token);
+	token = initializer(sctx_ tail, token);
 	if (!*tail)
 		*ep = NULL;
 	return token;
 }
 
-static struct token *initializer_list(struct expression_list **list, struct token *token)
+static struct token *initializer_list(SCTX_ struct expression_list **list, struct token *token)
 {
 	struct expression *expr;
 
 	for (;;) {
-		token = single_initializer(&expr, token);
+		token = single_initializer(sctx_ &expr, token);
 		if (!expr)
 			break;
-		add_expression(list, expr);
+		add_expression(sctx_ list, expr);
 		if (!match_op(token, ','))
 			break;
 		token = token->next;
@@ -2536,27 +2537,27 @@ static struct token *initializer_list(struct expression_list **list, struct toke
 	return token;
 }
 
-struct token *initializer(struct expression **tree, struct token *token)
+struct token *initializer(SCTX_ struct expression **tree, struct token *token)
 {
 	if (match_op(token, '{')) {
-		struct expression *expr = alloc_expression(token, EXPR_INITIALIZER);
+		struct expression *expr = alloc_expression(sctx_ token, EXPR_INITIALIZER);
 		*tree = expr;
-		token = initializer_list(&expr->expr_list, token->next);
-		return expect(token, '}', "at end of initializer");
+		token = initializer_list(sctx_ &expr->expr_list, token->next);
+		return expect(sctx_ token, '}', "at end of initializer");
 	}
-	return assignment_expression(token, tree);
+	return assignment_expression(sctx_ token, tree);
 }
 
-static void declare_argument(struct symbol *sym, struct symbol *fn)
+static void declare_argument(SCTX_ struct symbol *sym, struct symbol *fn)
 {
 	if (!sym->ident) {
-		sparse_error(sym->pos->pos, "no identifier for function argument");
+		sparse_error(sctx_ sym->pos->pos, "no identifier for function argument");
 		return;
 	}
-	bind_symbol(sym, sym->ident, NS_SYMBOL);
+	bind_symbol(sctx_ sym, sym->ident, NS_SYMBOL);
 }
 
-static struct token *parse_function_body(struct token *token, struct symbol *decl,
+static struct token *parse_function_body(SCTX_ struct token *token, struct symbol *decl,
 	struct symbol_list **list)
 {
 	struct symbol_list **old_symbol_list;
@@ -2578,30 +2579,30 @@ static struct token *parse_function_body(struct token *token, struct symbol *dec
 
 	if (decl->ctype.modifiers & MOD_EXTERN) {
 		if (!(decl->ctype.modifiers & MOD_INLINE))
-			warning(decl->pos->pos, "function '%s' with external linkage has definition", show_ident(decl->ident));
+			warning(sctx_ decl->pos->pos, "function '%s' with external linkage has definition", show_ident(sctx_ decl->ident));
 	}
 	if (!(decl->ctype.modifiers & MOD_STATIC))
 		decl->ctype.modifiers |= MOD_EXTERN;
 
-	stmt = start_function(token, decl);
+	stmt = start_function(sctx_ token, decl);
 
 	*p = stmt;
 	FOR_EACH_PTR (base_type->arguments, arg) {
-		declare_argument(arg, base_type);
+		declare_argument(sctx_ arg, base_type);
 	} END_FOR_EACH_PTR(arg);
 
-	token = compound_statement(token->next, stmt);
+	token = compound_statement(sctx_ token->next, stmt);
 
-	end_function(decl);
+	end_function(sctx_ decl);
 	if (!(decl->ctype.modifiers & MOD_INLINE))
-		add_symbol(list, decl);
-	check_declaration(decl);
+		add_symbol(sctx_ list, decl);
+	check_declaration(sctx_ decl);
 	decl->definition = decl;
 	prev = decl->same_symbol;
 	if (prev && prev->definition) {
-		warning(decl->pos->pos, "multiple definitions for function '%s'",
-			show_ident(decl->ident));
-		info(prev->definition->pos->pos, " the previous one is here");
+		warning(sctx_ decl->pos->pos, "multiple definitions for function '%s'",
+			show_ident(sctx_ decl->ident));
+		info(sctx_ prev->definition->pos->pos, " the previous one is here");
 	} else {
 		while (prev) {
 			prev->definition = decl;
@@ -2611,17 +2612,17 @@ static struct token *parse_function_body(struct token *token, struct symbol *dec
 	function_symbol_list = old_symbol_list;
 	if (function_computed_goto_list) {
 		if (!function_computed_target_list)
-			warning(decl->pos->pos, "function '%s' has computed goto but no targets?", show_ident(decl->ident));
+			warning(sctx_ decl->pos->pos, "function '%s' has computed goto but no targets?", show_ident(sctx_ decl->ident));
 		else {
 			FOR_EACH_PTR(function_computed_goto_list, stmt) {
 				stmt->target_list = function_computed_target_list;
 			} END_FOR_EACH_PTR(stmt);
 		}
 	}
-	return expect(token, '}', "at end of function");
+	return expect(sctx_ token, '}', "at end of function");
 }
 
-static void promote_k_r_types(struct symbol *arg)
+static void promote_k_r_types(SCTX_ struct symbol *arg)
 {
 	struct symbol *base = arg->ctype.base_type;
 	if (base && base->ctype.base_type == &int_type && (base->ctype.modifiers & (MOD_CHAR | MOD_SHORT))) {
@@ -2629,7 +2630,7 @@ static void promote_k_r_types(struct symbol *arg)
 	}
 }
 
-static void apply_k_r_types(struct symbol_list *argtypes, struct symbol *fn)
+static void apply_k_r_types(SCTX_ struct symbol_list *argtypes, struct symbol *fn)
 {
 	struct symbol_list *real_args = fn->ctype.base_type->arguments;
 	struct symbol *arg;
@@ -2642,64 +2643,64 @@ static void apply_k_r_types(struct symbol_list *argtypes, struct symbol *fn)
 			if (type->ident == arg->ident)
 				goto match;
 		} END_FOR_EACH_PTR(type);
-		sparse_error(arg->pos->pos, "missing type declaration for parameter '%s'", show_ident(arg->ident));
+		sparse_error(sctx_ arg->pos->pos, "missing type declaration for parameter '%s'", show_ident(sctx_ arg->ident));
 		continue;
 match:
 		type->used = 1;
 		/* "char" and "short" promote to "int" */
-		promote_k_r_types(type);
+		promote_k_r_types(sctx_ type);
 
 		arg->ctype = type->ctype;
 	} END_FOR_EACH_PTR(arg);
 
 	FOR_EACH_PTR(argtypes, arg) {
 		if (!arg->used)
-			warning(arg->pos->pos, "nonsensical parameter declaration '%s'", show_ident(arg->ident));
+			warning(sctx_ arg->pos->pos, "nonsensical parameter declaration '%s'", show_ident(sctx_ arg->ident));
 	} END_FOR_EACH_PTR(arg);
 
 }
 
-static struct token *parse_k_r_arguments(struct token *token, struct symbol *decl,
+static struct token *parse_k_r_arguments(SCTX_ struct token *token, struct symbol *decl,
 	struct symbol_list **list)
 {
 	struct symbol_list *args = NULL;
 
-	warning(token->pos, "non-ANSI definition of function '%s'", show_ident(decl->ident));
+	warning(sctx_ token->pos, "non-ANSI definition of function '%s'", show_ident(sctx_ decl->ident));
 	do {
-		token = declaration_list(token, &args);
+		token = declaration_list(sctx_ token, &args);
 		if (!match_op(token, ';')) {
-			sparse_error(token->pos, "expected ';' at end of parameter declaration");
+			sparse_error(sctx_ token->pos, "expected ';' at end of parameter declaration");
 			break;
 		}
 		token = token->next;
-	} while (lookup_type(token));
+	} while (lookup_type(sctx_ token));
 
-	apply_k_r_types(args, decl);
+	apply_k_r_types(sctx_ args, decl);
 
 	if (!match_op(token, '{')) {
-		sparse_error(token->pos, "expected function body");
+		sparse_error(sctx_ token->pos, "expected function body");
 		return token;
 	}
-	return parse_function_body(token, decl, list);
+	return parse_function_body(sctx_ token, decl, list);
 }
 
-static struct token *toplevel_asm_declaration(struct token *token, struct symbol_list **list)
+static struct token *toplevel_asm_declaration(SCTX_ struct token *token, struct symbol_list **list)
 {
-	struct symbol *anon = alloc_symbol(token, SYM_NODE);
-	struct symbol *fn = alloc_symbol(token, SYM_FN);
+	struct symbol *anon = alloc_symbol(sctx_ token, SYM_NODE);
+	struct symbol *fn = alloc_symbol(sctx_ token, SYM_FN);
 	struct statement *stmt;
 
 	anon->ctype.base_type = fn;
-	stmt = alloc_statement(token, STMT_NONE);
+	stmt = alloc_statement(sctx_ token, STMT_NONE);
 	fn->stmt = stmt;
 
-	token = parse_asm_statement(token, stmt);
+	token = parse_asm_statement(sctx_ token, stmt);
 
-	add_symbol(list, anon);
+	add_symbol(sctx_ list, anon);
 	return token;
 }
 
-struct token *external_declaration(struct token *token, struct symbol_list **list)
+struct token *external_declaration(SCTX_ struct token *token, struct symbol_list **list)
 {
 	struct ident *ident = NULL;
 	struct symbol *decl;
@@ -2711,25 +2712,25 @@ struct token *external_declaration(struct token *token, struct symbol_list **lis
 
 	/* Top-level inline asm? */
 	if (token_type(token) == TOKEN_IDENT) {
-		struct symbol *s = lookup_keyword(token->ident, NS_KEYWORD);
+		struct symbol *s = lookup_keyword(sctx_ token->ident, NS_KEYWORD);
 		if (s && s->op->toplevel)
-			return s->op->toplevel(token, list);
+			return s->op->toplevel(sctx_ token, list);
 	}
 
 	/* Parse declaration-specifiers, if any */
-	token = declaration_specifiers(token, &ctx);
-	mod = storage_modifiers(&ctx);
-	decl = alloc_symbol(token, SYM_NODE);
+	token = declaration_specifiers(sctx_ token, &ctx);
+	mod = storage_modifiers(sctx_ &ctx);
+	decl = alloc_symbol(sctx_ token, SYM_NODE);
 	/* Just a type declaration? */
 	if (match_op(token, ';')) {
-		apply_modifiers(token->pos, &ctx);
+		apply_modifiers(sctx_ token->pos, &ctx);
 		return token->next;
 	}
 
 	saved = ctx.ctype;
-	token = declarator(token, &ctx);
-	token = handle_attributes(token, &ctx, KW_ATTRIBUTE | KW_ASM);
-	apply_modifiers(token->pos, &ctx);
+	token = declarator(sctx_ token, &ctx);
+	token = handle_attributes(sctx_ token, &ctx, KW_ATTRIBUTE | KW_ASM);
+	apply_modifiers(sctx_ token->pos, &ctx);
 
 	decl->ctype = ctx.ctype;
 	decl->ctype.modifiers |= mod;
@@ -2737,8 +2738,8 @@ struct token *external_declaration(struct token *token, struct symbol_list **lis
 
 	/* Just a type declaration? */
 	if (!ident) {
-		warning(token->pos, "missing identifier in declaration");
-		return expect(token, ';', "at the end of type declaration");
+		warning(sctx_ token->pos, "missing identifier in declaration");
+		return expect(sctx_ token, ';', "at the end of type declaration");
 	}
 
 	/* type define declaration? */
@@ -2748,7 +2749,7 @@ struct token *external_declaration(struct token *token, struct symbol_list **lis
 	if (is_typedef)
 		decl->ctype.modifiers |= MOD_USERTYPE;
 
-	bind_symbol(decl, ident, is_typedef ? NS_TYPEDEF: NS_SYMBOL);
+	bind_symbol(sctx_ decl, ident, is_typedef ? NS_TYPEDEF: NS_SYMBOL);
 
 	base_type = decl->ctype.base_type;
 
@@ -2764,32 +2765,32 @@ struct token *external_declaration(struct token *token, struct symbol_list **lis
 		}
 	} else if (base_type && base_type->type == SYM_FN) {
 		/* K&R argument declaration? */
-		if (lookup_type(token))
-			return parse_k_r_arguments(token, decl, list);
+		if (lookup_type(sctx_ token))
+			return parse_k_r_arguments(sctx_ token, decl, list);
 		if (match_op(token, '{'))
-			return parse_function_body(token, decl, list);
+			return parse_function_body(sctx_ token, decl, list);
 
 		if (!(decl->ctype.modifiers & MOD_STATIC))
 			decl->ctype.modifiers |= MOD_EXTERN;
 	} else if (base_type == &void_ctype && !(decl->ctype.modifiers & MOD_EXTERN)) {
-		sparse_error(token->pos, "void declaration");
+		sparse_error(sctx_ token->pos, "void declaration");
 	}
 
 	for (;;) {
 		if (!is_typedef && match_op(token, '=')) {
 			if (decl->ctype.modifiers & MOD_EXTERN) {
-				warning(decl->pos->pos, "symbol with external linkage has initializer");
+				warning(sctx_ decl->pos->pos, "symbol with external linkage has initializer");
 				decl->ctype.modifiers &= ~MOD_EXTERN;
 			}
-			token = initializer(&decl->initializer, token->next);
+			token = initializer(sctx_ &decl->initializer, token->next);
 		}
 		if (!is_typedef) {
 			if (!(decl->ctype.modifiers & (MOD_EXTERN | MOD_INLINE))) {
-				add_symbol(list, decl);
-				fn_local_symbol(decl);
+				add_symbol(sctx_ list, decl);
+				fn_local_symbol(sctx_ decl);
 			}
 		}
-		check_declaration(decl);
+		check_declaration(sctx_ decl);
 		if (decl->same_symbol)
 			decl->definition = decl->same_symbol->definition;
 
@@ -2798,24 +2799,24 @@ struct token *external_declaration(struct token *token, struct symbol_list **lis
 
 		token = token->next;
 		ident = NULL;
-		decl = alloc_symbol(token, SYM_NODE);
+		decl = alloc_symbol(sctx_ token, SYM_NODE);
 		ctx.ctype = saved;
-		token = handle_attributes(token, &ctx, KW_ATTRIBUTE);
-		token = declarator(token, &ctx);
-		token = handle_attributes(token, &ctx, KW_ATTRIBUTE | KW_ASM);
-		apply_modifiers(token->pos, &ctx);
+		token = handle_attributes(sctx_ token, &ctx, KW_ATTRIBUTE);
+		token = declarator(sctx_ token, &ctx);
+		token = handle_attributes(sctx_ token, &ctx, KW_ATTRIBUTE | KW_ASM);
+		apply_modifiers(sctx_ token->pos, &ctx);
 		decl->ctype = ctx.ctype;
 		decl->ctype.modifiers |= mod;
 		decl->endpos = token;
 		if (!ident) {
-			sparse_error(token->pos, "expected identifier name in type definition");
+			sparse_error(sctx_ token->pos, "expected identifier name in type definition");
 			return token;
 		}
 
 		if (is_typedef)
 			decl->ctype.modifiers |= MOD_USERTYPE;
 
-		bind_symbol(decl, ident, is_typedef ? NS_TYPEDEF: NS_SYMBOL);
+		bind_symbol(sctx_ decl, ident, is_typedef ? NS_TYPEDEF: NS_SYMBOL);
 
 		/* Function declarations are automatically extern unless specifically static */
 		base_type = decl->ctype.base_type;
@@ -2824,5 +2825,5 @@ struct token *external_declaration(struct token *token, struct symbol_list **lis
 				decl->ctype.modifiers |= MOD_EXTERN;
 		}
 	}
-	return expect(token, ';', "at end of declaration");
+	return expect(sctx_ token, ';', "at end of declaration");
 }

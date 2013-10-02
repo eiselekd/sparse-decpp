@@ -44,17 +44,17 @@ struct reporter_def {
 
 struct reporter
 {
-	void (*r_symdef)(struct symbol *);
-	void (*r_symbol)(unsigned, struct token *, struct symbol *);
-	void (*r_member)(unsigned, struct token *, struct symbol *, struct symbol *);
+	void (*r_symdef)(SCTX_ struct symbol *);
+	void (*r_symbol)(SCTX_ unsigned, struct token *, struct symbol *);
+	void (*r_member)(SCTX_ unsigned, struct token *, struct symbol *, struct symbol *);
 	struct reporter_symdef **defs; int defs_pos, defs_cnt;
 	int indent;
 };
 
 extern struct reporter *reporter;
 
-extern void dissect(struct symbol_list *, struct reporter *);
-extern int dissect_arr(int argc, char **argv);
+extern void dissect(SCTX_ struct symbol_list *, struct reporter *);
+extern int dissect_arr(SCTX_ int argc, char **argv);
 
 #define	MK_IDENT(s)	({				\
 	static struct {					\

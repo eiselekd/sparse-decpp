@@ -403,7 +403,7 @@ got_eof:
  *  Slow path (including the logics with line-splicing and EOF sanity
  *  checks) is in nextchar_slow().
  */
-static inline int nextchar(stream_t *stream)
+static inline int nextchar(SCTX_ stream_t *stream)
 {
 	int offset = stream->offset;
 
@@ -418,7 +418,7 @@ static inline int nextchar(stream_t *stream)
 			return c;
 		}
 	}
-	return nextchar_slow(stream);
+	return nextchar_slow(sctx_ stream);
 }
 
 struct token eof_token_entry;
@@ -536,12 +536,12 @@ static int get_one_number(SCTX_ int c, int next, stream_t *stream)
 			break;
 		if (p != buffer_end)
 			*p++ = next;
-		next = nextchar(stream);
+		next = nextchar(sctx_ stream);
 		if (class & Exp) {
 			if (next == '-' || next == '+') {
 				if (p != buffer_end)
 					*p++ = next;
-				next = nextchar(stream);
+				next = nextchar(sctx_ stream);
 			}
 		}
 	}
@@ -577,7 +577,7 @@ static int eat_string(SCTX_ int next, stream_t *stream, enum token_type type)
 	int want_hex = 0;
 	char delim = type < TOKEN_STRING ? '\'' : '"';
 
-	for (escape = 0; escape || next != delim; next = nextchar(stream)) {
+	for (escape = 0; escape || next != delim; next = nextchar(sctx_ stream)) {
 		if (len < MAX_STRING)
 			buffer[len] = next;
 		len++;
@@ -617,7 +617,7 @@ static int eat_string(SCTX_ int next, stream_t *stream, enum token_type type)
 		if (len == 0) {
 			sparse_error(sctx_ stream_pos(sctx_ stream),
 				"empty character constant");
-			return nextchar(stream);
+			return nextchar(sctx_ stream);
 		}
 		token_type(token) = type + len;
 		memset(buffer + len, '\0', 4 - len);
@@ -634,18 +634,18 @@ static int eat_string(SCTX_ int next, stream_t *stream, enum token_type type)
 	/* Pass it on.. */
 	token = stream->token;
 	add_token(sctx_ stream);
-	return nextchar(stream);
+	return nextchar(sctx_ stream);
 }
 
 static int drop_stream_eoln(SCTX_ stream_t *stream)
 {
 	drop_token(sctx_ stream);
 	for (;;) {
-		switch (nextchar(stream)) {
+		switch (nextchar(sctx_ stream)) {
 		case EOF:
 			return EOF;
 		case '\n':
-			return nextchar(stream);
+			return nextchar(sctx_ stream);
 		}
 	}
 }
@@ -657,19 +657,19 @@ static int drop_stream_comment(SCTX_ stream_t *stream)
 	drop_token(sctx_ stream);
 	newline = stream->newline;
 
-	next = nextchar(stream);
+	next = nextchar(sctx_ stream);
 	for (;;) {
 		int curr = next;
 		if (curr == EOF) {
 			warning(sctx_ stream_pos(sctx_ stream), "End of file in the middle of a comment");
 			return curr;
 		}
-		next = nextchar(stream);
+		next = nextchar(sctx_ stream);
 		if (curr == '*' && next == '/')
 			break;
 	}
 	stream->newline = newline;
-	return nextchar(stream);
+	return nextchar(sctx_ stream);
 }
 
 unsigned char combinations[][4] = COMBINATION_STRINGS;
@@ -739,7 +739,7 @@ static int get_one_special(SCTX_ int c, stream_t *stream)
 	struct token *token;
 	int next, value, i;
 
-	next = nextchar(stream);
+	next = nextchar(sctx_ stream);
 
 	/*
 	 * Check for numbers, strings, character constants, and comments
@@ -768,11 +768,11 @@ static int get_one_special(SCTX_ int c, stream_t *stream)
 		i = special_hash(c, next);
 		if (hash_results[i][0] == c && hash_results[i][1] == next) {
 			value = code[i];
-			next = nextchar(stream);
+			next = nextchar(sctx_ stream);
 			if (value >= SPECIAL_LEFTSHIFT &&
 			    next == "==."[value - SPECIAL_LEFTSHIFT]) {
 				value += 3;
-				next = nextchar(stream);
+				next = nextchar(sctx_ stream);
 			}
 		}
 	}
@@ -796,7 +796,7 @@ static int get_one_special(SCTX_ int c, stream_t *stream)
 static struct ident *hash_table[IDENT_HASH_SIZE];
 static int ident_hit, ident_miss, idents;
 
-void show_identifier_stats(SCTX_ void)
+void show_identifier_stats(SCTX)
 {
 	int i;
 	int distribution[100];
@@ -917,7 +917,7 @@ static int get_one_identifier(SCTX_ int c, stream_t *stream)
 	hash = ident_hash_init(c);
 	buf[0] = c;
 	for (;;) {
-		next = nextchar(stream);
+		next = nextchar(sctx_ stream);
 		if (!(cclass[next + 1] & (Letter | Digit)))
 			break;
 		if (len >= sizeof(buf))
@@ -929,10 +929,10 @@ static int get_one_identifier(SCTX_ int c, stream_t *stream)
 	if (cclass[next + 1] & Quote) {
 		if (len == 1 && buf[0] == 'L') {
 			if (next == '\'')
-				return eat_string(sctx_ nextchar(stream), stream,
+				return eat_string(sctx_ nextchar(sctx_ stream), stream,
 							TOKEN_WIDE_CHAR);
 			else
-				return eat_string(sctx_ nextchar(stream), stream,
+				return eat_string(sctx_ nextchar(sctx_ stream), stream,
 							TOKEN_WIDE_STRING);
 		}
 	}
@@ -951,7 +951,7 @@ static int get_one_token(SCTX_ int c, stream_t *stream)
 {
 	long class = cclass[c + 1];
 	if (class & Digit)
-		return get_one_number(sctx_ c, nextchar(stream), stream);
+		return get_one_number(sctx_ c, nextchar(sctx_ stream), stream);
 	if (class & Letter)
 		return get_one_identifier(sctx_ c, stream);
 	return get_one_special(sctx_ c, stream);
@@ -988,7 +988,7 @@ static struct expansion *setup_stream(SCTX_ stream_t *stream, int idx, int fd,
 
 static struct token *tokenize_stream(SCTX_ stream_t *stream)
 {
-	int c = nextchar(stream);
+	int c = nextchar(sctx_ stream);
 	while (c != EOF) {
 		if (!isspace(c)) {
 			struct token *token = alloc_token_stream(sctx_ stream);
@@ -999,7 +999,7 @@ static struct token *tokenize_stream(SCTX_ stream_t *stream)
 			continue;
 		}
 		stream->whitespace = 1;
-		c = nextchar(stream);
+		c = nextchar(sctx_ stream);
 	}
 	return mark_eof(sctx_ stream);
 }

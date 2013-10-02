@@ -13,7 +13,7 @@
 #include "flow.h"
 
 static void phi_defines(SCTX_ struct instruction * phi_node, pseudo_t target,
-	void (*defines)(struct basic_block *, struct instruction *, pseudo_t))
+	void (*defines)(SCTX_ struct basic_block *, struct instruction *, pseudo_t))
 {
 	pseudo_t phi;
 	FOR_EACH_PTR(phi_node->phi_list, phi) {
@@ -27,33 +27,33 @@ static void phi_defines(SCTX_ struct instruction * phi_node, pseudo_t target,
 			phi_defines(sctx_ def, target, defines);
 			continue;
 		}
-		defines(def->bb, phi->def, target);
+		defines(sctx_ def->bb, phi->def, target);
 	} END_FOR_EACH_PTR(phi);
 }
 
 static void asm_liveness(SCTX_ struct basic_block *bb, struct instruction *insn,
-	void (*def)(struct basic_block *, struct instruction *, pseudo_t),
-	void (*use)(struct basic_block *, struct instruction *, pseudo_t))
+	void (*def)(SCTX_ struct basic_block *, struct instruction *, pseudo_t),
+	void (*use)(SCTX_ struct basic_block *, struct instruction *, pseudo_t))
 {
 	struct asm_constraint *entry;
 
 	FOR_EACH_PTR(insn->asm_rules->inputs, entry) {
-		use(bb, insn, entry->pseudo);
+		use(sctx_ bb, insn, entry->pseudo);
 	} END_FOR_EACH_PTR(entry);
 		
 	FOR_EACH_PTR(insn->asm_rules->outputs, entry) {
-		def(bb, insn, entry->pseudo);
+		def(sctx_ bb, insn, entry->pseudo);
 	} END_FOR_EACH_PTR(entry);
 }
 
 static void track_instruction_usage(SCTX_ struct basic_block *bb, struct instruction *insn,
-	void (*def)(struct basic_block *, struct instruction *, pseudo_t),
-	void (*use)(struct basic_block *, struct instruction *, pseudo_t))
+	void (*def)(SCTX_ struct basic_block *, struct instruction *, pseudo_t),
+	void (*use)(SCTX_ struct basic_block *, struct instruction *, pseudo_t))
 {
 	pseudo_t pseudo;
 
-	#define USES(x)		use(bb, insn, insn->x)
-	#define DEFINES(x)	def(bb, insn, insn->x)
+	#define USES(x)		use(sctx_ bb, insn, insn->x)
+	#define DEFINES(x)	def(sctx_ bb, insn, insn->x)
 
 	switch (insn->opcode) {
 	case OP_RET:
@@ -126,7 +126,7 @@ static void track_instruction_usage(SCTX_ struct basic_block *bb, struct instruc
 		if (insn->target != VOID)
 			DEFINES(target);
 		FOR_EACH_PTR(insn->arguments, pseudo) {
-			use(bb, insn, pseudo);
+			use(sctx_ bb, insn, pseudo);
 		} END_FOR_EACH_PTR(pseudo);
 		break;
 
@@ -175,7 +175,7 @@ static void add_pseudo_exclusive(SCTX_ struct pseudo_list **list, pseudo_t pseud
 {
 	if (!pseudo_in_list(sctx_ *list, pseudo)) {
 		liveness_changed = 1;
-		add_pseudo(list, pseudo);
+		add_pseudo(sctx_ list, pseudo);
 	}
 }
 
@@ -196,7 +196,7 @@ static void insn_uses(SCTX_ struct basic_block *bb, struct instruction *insn, ps
 static void insn_defines(SCTX_ struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
 {
 	assert(trackable_pseudo(pseudo));
-	add_pseudo(&bb->defines, pseudo);
+	add_pseudo(sctx_ &bb->defines, pseudo);
 }
 
 static void track_bb_liveness(SCTX_ struct basic_block *bb)
@@ -311,8 +311,8 @@ static void death_def(SCTX_ struct basic_block *bb, struct instruction *insn, ps
 static void death_use(SCTX_ struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
 {
 	if (trackable_pseudo(pseudo) && !pseudo_in_list(sctx_ *live_list, pseudo)) {
-		add_pseudo(&dead_list, pseudo);
-		add_pseudo(live_list, pseudo);
+		add_pseudo(sctx_ &dead_list, pseudo);
+		add_pseudo(sctx_ live_list, pseudo);
 	}
 }
 

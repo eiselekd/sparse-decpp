@@ -116,20 +116,20 @@ struct statement {
 extern struct symbol_list *function_computed_target_list;
 extern struct statement_list *function_computed_goto_list;
 
-extern struct token *parse_expression(struct token *, struct expression **);
-extern struct symbol *label_symbol(struct token *token);
+extern struct token *parse_expression(SCTX_ struct token *, struct expression **);
+extern struct symbol *label_symbol(SCTX_ struct token *token);
 
-extern int show_statement(struct statement *);
-extern void show_statement_list(struct statement_list *, const char *);
-extern int show_expression(struct expression *);
+extern int show_statement(SCTX_ struct statement *);
+extern void show_statement_list(SCTX_ struct statement_list *, const char *);
+extern int show_expression(SCTX_ struct expression *);
 
-extern struct token *external_declaration(struct token *token, struct symbol_list **list);
+extern struct token *external_declaration(SCTX_ struct token *token, struct symbol_list **list);
 
-extern struct symbol *ctype_integer(int size, int want_unsigned);
+extern struct symbol *ctype_integer(SCTX_ int size, int want_unsigned);
 
-extern void copy_statement(struct statement *src, struct statement *dst);
-extern int inline_function(struct expression *expr, struct symbol *sym);
-extern void uninline(struct symbol *sym);
-extern void init_parser(int);
+extern void copy_statement(SCTX_ struct statement *src, struct statement *dst);
+extern int inline_function(SCTX_ struct expression *expr, struct symbol *sym);
+extern void uninline(SCTX_ struct symbol *sym);
+extern void init_parser(SCTX_ int);
 
 #endif /* PARSE_H */

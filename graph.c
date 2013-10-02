@@ -25,15 +25,15 @@
 
 /* Draw the subgraph for a given entrypoint. Includes details of loads
  * and stores for globals, and marks return bbs */
-static void graph_ep(struct entrypoint *ep)
+static void graph_ep(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 	struct instruction *insn;
 
 	const char *fname, *sname;
 
-	fname = show_ident(ep->name->ident);
-	sname = stream_name(ep->entry->bb->pos->pos.stream);
+	fname = show_ident(sctx_ ep->name->ident);
+	sname = stream_name(sctx_ ep->entry->bb->pos->pos.stream);
 
 	printf("subgraph cluster%p {\n"
 	       "    color=blue;\n"
@@ -61,14 +61,14 @@ static void graph_ep(struct entrypoint *ep)
 			switch(insn->opcode) {
 			case OP_STORE:
 				if (insn->symbol->type == PSEUDO_SYM) {
-				  printf("%s store(%s)", s, show_ident(insn->symbol->sym->ident));
+				  printf("%s store(%s)", s, show_ident(sctx_ insn->symbol->sym->ident));
 				  s = ",";
 				}
 				break;
 
 			case OP_LOAD:
 				if (insn->symbol->type == PSEUDO_SYM) {
-				  printf("%s load(%s)", s, show_ident(insn->symbol->sym->ident));
+				  printf("%s load(%s)", s, show_ident(sctx_ insn->symbol->sym->ident));
 				  s = ",";
 				}
 				break;
@@ -99,13 +99,13 @@ static void graph_ep(struct entrypoint *ep)
 /* Insert edges for intra- or inter-file calls, depending on the value
  * of internal. Bold edges are used for calls with destinations;
  * dashed for calls to external functions */
-static void graph_calls(struct entrypoint *ep, int internal)
+static void graph_calls(SCTX_ struct entrypoint *ep, int internal)
 {
 	struct basic_block *bb;
 	struct instruction *insn;
 
-	show_ident(ep->name->ident);
-	stream_name(ep->entry->bb->pos->pos.stream);
+	show_ident(sctx_ ep->name->ident);
+	stream_name(sctx_ ep->entry->bb->pos->pos.stream);
 
 	FOR_EACH_PTR(ep->bbs, bb) {
 		if (!bb)
@@ -134,7 +134,7 @@ static void graph_calls(struct entrypoint *ep, int internal)
 					else
 						printf("bb%p -> \"%s\" "
 						       "[label=%d,line=%d,col=%d,op=extern,style=dashed];\n",
-						       bb, show_pseudo(insn->func),
+						       bb, show_pseudo(sctx_ insn->func),
 						       insn->pos.line, insn->pos.line, insn->pos.pos);
 				}
 			}
@@ -146,30 +146,30 @@ int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
 	char *file;
-	struct symbol *sym;
+	struct symbol *sym; struct sparse_ctx sctx;
 
 	struct symbol_list *fsyms, *all_syms=NULL;
 
 	printf("digraph call_graph {\n");
-	fsyms = sparse_initialize(argc, argv, &filelist);
-	concat_symbol_list(fsyms, &all_syms);
+	fsyms = sparse_initialize(&sctx, argc, argv, &filelist);
+	concat_symbol_list(&sctx, fsyms, &all_syms);
 
 	/* Linearize all symbols, graph internal basic block
 	 * structures and intra-file calls */
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 
-		fsyms = sparse(file);
-		concat_symbol_list(fsyms, &all_syms);
+		fsyms = sparse(&sctx, file);
+		concat_symbol_list(&sctx, fsyms, &all_syms);
 
 		FOR_EACH_PTR(fsyms, sym) {
-			expand_symbol(sym);
-			linearize_symbol(sym);
+			expand_symbol(&sctx, sym);
+			linearize_symbol(&sctx, sym);
 		} END_FOR_EACH_PTR(sym);
 
 		FOR_EACH_PTR(fsyms, sym) {
 			if (sym->ep) {
-				graph_ep(sym->ep);
-				graph_calls(sym->ep, 1);
+				graph_ep(&sctx, sym->ep);
+				graph_calls(&sctx, sym->ep, 1);
 			}
 		} END_FOR_EACH_PTR_NOTAG(sym);
 
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 	/* Graph inter-file calls */
 	FOR_EACH_PTR(all_syms, sym) {
 		if (sym->ep)
-			graph_calls(sym->ep, 0);
+			graph_calls(&sctx, sym->ep, 0);
 	} END_FOR_EACH_PTR_NOTAG(sym);
 
 	printf("}\n");

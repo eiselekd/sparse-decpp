@@ -161,36 +161,36 @@ struct expression {
 };
 
 /* Constant expression values */
-int is_zero_constant(struct expression *);
-long long get_expression_value(struct expression *);
-long long const_expression_value(struct expression *);
-long long get_expression_value_silent(struct expression *expr);
+int is_zero_constant(SCTX_ struct expression *);
+long long get_expression_value(SCTX_ struct expression *);
+long long const_expression_value(SCTX_ struct expression *);
+long long get_expression_value_silent(SCTX_ struct expression *expr);
 
 /* Expression parsing */
-struct token *parse_expression(struct token *token, struct expression **tree);
-struct token *conditional_expression(struct token *token, struct expression **tree);
-struct token *primary_expression(struct token *token, struct expression **tree);
-struct token *parens_expression(struct token *token, struct expression **expr, const char *where);
-struct token *assignment_expression(struct token *token, struct expression **tree);
+struct token *parse_expression(SCTX_ struct token *token, struct expression **tree);
+struct token *conditional_expression(SCTX_ struct token *token, struct expression **tree);
+struct token *primary_expression(SCTX_ struct token *token, struct expression **tree);
+struct token *parens_expression(SCTX_ struct token *token, struct expression **expr, const char *where);
+struct token *assignment_expression(SCTX_ struct token *token, struct expression **tree);
 
-extern void evaluate_symbol_list(struct symbol_list *list);
-extern struct symbol *evaluate_statement(struct statement *stmt);
-extern struct symbol *evaluate_expression(struct expression *);
+extern void evaluate_symbol_list(SCTX_ struct symbol_list *list);
+extern struct symbol *evaluate_statement(SCTX_ struct statement *stmt);
+extern struct symbol *evaluate_expression(SCTX_ struct expression *);
 
-extern int expand_symbol(struct symbol *);
+extern int expand_symbol(SCTX_ struct symbol *);
 
-static inline struct expression *alloc_expression(struct token *tok, int type)
+static inline struct expression *alloc_expression(SCTX_ struct token *tok, int type)
 {
-	struct expression *expr = __alloc_expression(0);
+	struct expression *expr = __alloc_expression(sctx_ 0);
 	expr->type = type;
 	expr->tok = tok;
 	expr->pos = tok;
 	return expr;
 }
 
-static inline struct expression *alloc_const_expression(struct token *tok, int value)
+static inline struct expression *alloc_const_expression(SCTX_ struct token *tok, int value)
 {
-	struct expression *expr = __alloc_expression(0);
+	struct expression *expr = __alloc_expression(sctx_ 0);
 	expr->type = EXPR_VALUE;
 	expr->pos = tok;
 	expr->tok = tok;
@@ -200,27 +200,27 @@ static inline struct expression *alloc_const_expression(struct token *tok, int v
 }
 
 /* Type name parsing */
-struct token *typename(struct token *, struct symbol **, int *);
+struct token *typename(SCTX_ struct token *, struct symbol **, int *);
 
-static inline int lookup_type(struct token *token)
+static inline int lookup_type(SCTX_  struct token *token)
 {
 	if (token->pos.type == TOKEN_IDENT) {
-		struct symbol *sym = lookup_symbol(token->ident, NS_SYMBOL | NS_TYPEDEF);
+		struct symbol *sym = lookup_symbol(sctx_ token->ident, NS_SYMBOL | NS_TYPEDEF);
 		return sym && (sym->namespace & NS_TYPEDEF);
 	}
 	return 0;
 }
 
 /* Statement parsing */
-struct statement *alloc_statement(struct token *tok, int type);
-struct token *initializer(struct expression **tree, struct token *token);
-struct token *compound_statement(struct token *, struct statement *);
+struct statement *alloc_statement(SCTX_ struct token *tok, int type);
+struct token *initializer(SCTX_ struct expression **tree, struct token *token);
+struct token *compound_statement(SCTX_ struct token *, struct statement *);
 
 /* The preprocessor calls this 'constant_expression()' */
 #define constant_expression(token,tree) conditional_expression(token, tree)
 
 /* Cast folding of constant values.. */
-void cast_value(struct expression *expr, struct symbol *newtype,
+void cast_value(SCTX_ struct expression *expr, struct symbol *newtype,
 	struct expression *old, struct symbol *oldtype);
 
 #endif

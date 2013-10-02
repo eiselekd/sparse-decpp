@@ -20,18 +20,18 @@ struct allocator_struct {
 	unsigned int nofree : 1;
 };
 
-extern void protect_allocations(struct allocator_struct *desc);
-extern void drop_all_allocations(struct allocator_struct *desc);
-extern void *allocate(struct allocator_struct *desc, unsigned int size);
-extern void free_one_entry(struct allocator_struct *desc, void *entry);
-extern void show_allocations(struct allocator_struct *);
+extern void protect_allocations(SCTX_ struct allocator_struct *desc);
+extern void drop_all_allocations(SCTX_ struct allocator_struct *desc);
+extern void *allocate(SCTX_ struct allocator_struct *desc, unsigned int size);
+extern void free_one_entry(SCTX_ struct allocator_struct *desc, void *entry);
+extern void show_allocations(SCTX_ struct allocator_struct *);
 
 #define __DECLARE_ALLOCATOR(type, x)		\
-	extern type *__alloc_##x(int);		\
-	extern void __free_##x(type *);		\
-	extern void show_##x##_alloc(void);	\
-	extern void clear_##x##_alloc(void);	\
-	extern void protect_##x##_alloc(void);
+	extern type *__alloc_##x(SCTX_ int);		\
+	extern void __free_##x(SCTX_ type *);		\
+	extern void show_##x##_alloc(SCTX);	\
+	extern void clear_##x##_alloc(SCTX);	\
+	extern void protect_##x##_alloc(SCTX);
 #define DECLARE_ALLOCATOR(x) __DECLARE_ALLOCATOR(struct x, x)
 
 #define __DO_ALLOCATOR(type, objsize, objalign, objname, x, norel)	\
@@ -43,25 +43,25 @@ extern void show_allocations(struct allocator_struct *);
 	};							\
 	type *__alloc_##x(SCTX_ int extra)			\
 	{							\
-		return allocate(&x##_allocator, objsize+extra);	\
+		return allocate(sctx_ &x##_allocator, objsize+extra);	\
 	}							\
 	void __free_##x(SCTX_  type *entry)			\
 	{							\
 		if ((!x##_allocator.nofree))			\
-			free_one_entry(&x##_allocator, entry);	\
+			free_one_entry(sctx_  &x##_allocator, entry);	\
 	}							\
 	void show_##x##_alloc(SCTX)				\
 	{							\
-		show_allocations(&x##_allocator);		\
+		show_allocations(sctx_ &x##_allocator);		\
 	}							\
 	void clear_##x##_alloc(SCTX)				\
 	{							\
 		if ((!x##_allocator.nofree))			\
-			drop_all_allocations(&x##_allocator);	\
+			drop_all_allocations(sctx_ &x##_allocator);	\
 	}							\
 	void protect_##x##_alloc(SCTX)				\
 	{							\
-		protect_allocations(&x##_allocator);		\
+		protect_allocations(sctx_ &x##_allocator);		\
 	}
 
 #define __ALLOCATOR(t, n, x, norel) 					\

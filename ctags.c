@@ -18,11 +18,11 @@
 
 static struct symbol_list *taglist = NULL;
 
-static void examine_symbol(struct symbol *sym);
+static void examine_symbol(SCTX_ struct symbol *sym);
 
 #define MAX(_x,_y) ((_x) > (_y) ? (_x) : (_y))
 
-static int cmp_sym(const void *m, const void *n)
+static int cmp_sym(SCTX_ const void *m, const void *n)
 {
 	const struct ident *a = ((const struct symbol *)m)->ident;
 	const struct ident *b = ((const struct symbol *)n)->ident;
@@ -31,15 +31,15 @@ static int cmp_sym(const void *m, const void *n)
 		const struct position a_pos = ((const struct symbol *)m)->pos->pos;
 		const struct position b_pos = ((const struct symbol *)n)->pos->pos;
 
-		ret = strcmp(stream_name(a_pos.stream),
-		             stream_name(b_pos.stream));
+		ret = strcmp(stream_name(sctx_ a_pos.stream),
+		             stream_name(sctx_ b_pos.stream));
 		if (!ret)
 			return a_pos.line < b_pos.line;
 	}
 	return ret;
 }
 
-static void show_tag_header(FILE *fp)
+static void show_tag_header(SCTX_ FILE *fp)
 {
 	fprintf(fp, "!_TAG_FILE_FORMAT\t2\t/extended format; --format=1 will not append ;\" to lines/\n");
 	fprintf(fp, "!_TAG_FILE_SORTED\t0\t/0=unsorted, 1=sorted, 2=foldcase/\n");
@@ -49,13 +49,13 @@ static void show_tag_header(FILE *fp)
 	fprintf(fp, "!_TAG_PROGRAM_VERSION\t0.01\t//\n");
 }
 
-static inline void show_symbol_tag(FILE *fp, struct symbol *sym)
+static inline void show_symbol_tag(SCTX_ FILE *fp, struct symbol *sym)
 {
-	fprintf(fp, "%s\t%s\t%d;\"\t%c\tfile:\n", show_ident(sym->ident),
-	       stream_name(sym->pos->pos.stream), sym->pos->pos.line, (int)sym->kind);
+	fprintf(fp, "%s\t%s\t%d;\"\t%c\tfile:\n", show_ident(sctx_ sym->ident),
+	       stream_name(sctx_ sym->pos->pos.stream), sym->pos->pos.line, (int)sym->kind);
 }
 
-static void show_tags(struct symbol_list *list)
+static void show_tags(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 	struct ident *ident = NULL;
@@ -71,39 +71,39 @@ static void show_tags(struct symbol_list *list)
 		perror("open tags file");
 		return;
 	}
-	show_tag_header(fp);
+	show_tag_header(sctx_ fp);
 	FOR_EACH_PTR(list, sym) {
 		if (ident == sym->ident && pos.line == sym->pos->pos.line &&
-		    !strcmp(filename, stream_name(sym->pos->pos.stream)))
+		    !strcmp(filename, stream_name(sctx_ sym->pos->pos.stream)))
 			continue;
 
-		show_symbol_tag(fp, sym);
+		show_symbol_tag(sctx_ fp, sym);
 		ident = sym->ident;
 		pos = sym->pos->pos;
-		filename = stream_name(sym->pos->pos.stream);
+		filename = stream_name(sctx_ sym->pos->pos.stream);
 	} END_FOR_EACH_PTR(sym);
 	fclose(fp);
 }
 
-static inline void add_tag(struct symbol *sym)
+static inline void add_tag(SCTX_ struct symbol *sym)
 {
 	if (sym->ident && !sym->visited) {
 		sym->visited = 1;
-		add_symbol(&taglist, sym);
+		add_symbol(sctx_ &taglist, sym);
 	}
 }
 
-static inline void examine_members(struct symbol_list *list)
+static inline void examine_members(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 
 	FOR_EACH_PTR(list, sym) {
 		sym->kind = 'm';
-		examine_symbol(sym);
+		examine_symbol(sctx_ sym);
 	} END_FOR_EACH_PTR(sym);
 }
 
-static void examine_symbol(struct symbol *sym)
+static void examine_symbol(SCTX_ struct symbol *sym)
 {
 	struct symbol *base = sym;
 
@@ -114,22 +114,22 @@ static void examine_symbol(struct symbol *sym)
 	if (sym->type == SYM_KEYWORD || sym->type == SYM_PREPROCESSOR)
 		return;
 
-	add_tag(sym);
+	add_tag(sctx_ sym);
 	base = sym->ctype.base_type;
 
 	switch (sym->type) {
 	case SYM_NODE:
 		if (base->type == SYM_FN)
 			sym->kind = 'f';
-		examine_symbol(base);
+		examine_symbol(sctx_ base);
 		break;
 	case SYM_STRUCT:
 		sym->kind = 's';
-		examine_members(sym->symbol_list);
+		examine_members(sctx_ sym->symbol_list);
 		break;
 	case SYM_UNION:
 		sym->kind = 'u';
-		examine_members(sym->symbol_list);
+		examine_members(sctx_ sym->symbol_list);
 		break;
 	case SYM_ENUM:
 		sym->kind = 'e';
@@ -138,13 +138,13 @@ static void examine_symbol(struct symbol *sym)
 	case SYM_BITFIELD:
 	case SYM_FN:
 	case SYM_ARRAY:
-		examine_symbol(sym->ctype.base_type);
+		examine_symbol(sctx_ sym->ctype.base_type);
 		break;
 	case SYM_BASETYPE:
 		break;
 
 	default:
-		sparse_die("unknown symbol %s namespace:%d type:%d\n", show_ident(sym->ident),
+		sparse_die(sctx_ "unknown symbol %s namespace:%d type:%d\n", show_ident(sctx_ sym->ident),
 		    sym->namespace, sym->type);
 	}
 	if (!sym->kind)
@@ -152,7 +152,7 @@ static void examine_symbol(struct symbol *sym)
 	return;
 }
 
-static void examine_namespace(struct symbol *sym)
+static void examine_namespace(SCTX_ struct symbol *sym)
 {
 	if (sym->visited)
 		return;
@@ -174,38 +174,38 @@ static void examine_namespace(struct symbol *sym)
 		sym->kind = 't';
 	case NS_SYMBOL:
 	case NS_STRUCT:
-		examine_symbol(sym);
+		examine_symbol(sctx_ sym);
 		break;
 	default:
-		sparse_die("unknown namespace %d symbol:%s type:%d\n", sym->namespace,
-		    show_ident(sym->ident), sym->type);
+		sparse_die(sctx_ "unknown namespace %d symbol:%s type:%d\n", sym->namespace,
+		    show_ident(sctx_ sym->ident), sym->type);
 	}
-	add_tag(sym);
+	add_tag(sctx_ sym);
 }
 
-static inline void examine_symbol_list(struct symbol_list *list)
+static inline void examine_symbol_list(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 
 	if (!list)
 		return;
 	FOR_EACH_PTR(list, sym) {
-		examine_namespace(sym);
+		examine_namespace(sctx_ sym);
 	} END_FOR_EACH_PTR(sym);
 }
 
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file;
+	char *file; struct sparse_ctx sctx;
 
-	examine_symbol_list(sparse_initialize(argc, argv, &filelist));
+	examine_symbol_list(&sctx,sparse_initialize(&sctx,argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		sparse(file);
-		examine_symbol_list(file_scope->symbols);
+		sparse(&sctx,file);
+		examine_symbol_list(&sctx,file_scope->symbols);
 	} END_FOR_EACH_PTR_NOTAG(file);
-	examine_symbol_list(global_scope->symbols);
-	sort_list((struct ptr_list **)&taglist, cmp_sym);
-	show_tags(taglist);
+	examine_symbol_list(&sctx,global_scope->symbols);
+	sort_list(&sctx,(struct ptr_list **)&taglist, cmp_sym);
+	show_tags(&sctx,taglist);
 	return 0;
 }

@@ -48,13 +48,13 @@ struct token *parens_expression(SCTX_ struct token *token, struct expression **e
 {
 	token = expect(sctx_ token, '(', where);
 	if (match_op(token, '{')) {
-		struct expression *e = alloc_expression(token, EXPR_STATEMENT);
-		struct statement *stmt = alloc_statement(token, STMT_COMPOUND);
+		struct expression *e = alloc_expression(sctx_ token, EXPR_STATEMENT);
+		struct statement *stmt = alloc_statement(sctx_ token, STMT_COMPOUND);
 		*expr = e;
 		e->statement = stmt;
-		start_symbol_scope(sctx_ );
-		token = compound_statement(token->next, stmt);
-		end_symbol_scope(sctx_ );
+		start_symbol_scope(sctx );
+		token = compound_statement(sctx_ token->next, stmt);
+		end_symbol_scope(sctx);
 		token = expect(sctx_ token, '}', "at end of statement expression");
 	} else
 		token = parse_expression(sctx_ token, expr);
@@ -101,10 +101,10 @@ static struct symbol *handle_func(SCTX_ struct token *token)
 	string->data[len] = 0;
 	string->length = len + 1;
 
-	decl->initializer = alloc_expression(token, EXPR_STRING);
+	decl->initializer = alloc_expression(sctx_ token, EXPR_STRING);
 	decl->initializer->string = string;
 	decl->initializer->ctype = decl;
-	decl->array_size = alloc_const_expression(token, len + 1);
+	decl->array_size = alloc_const_expression(sctx_  token, len + 1);
 	array->array_size = decl->array_size;
 	decl->bit_size = array->bit_size = bytes_to_bits(len + 1);
 
@@ -114,9 +114,9 @@ static struct symbol *handle_func(SCTX_ struct token *token)
 static struct token *parse_type(SCTX_ struct token *token, struct expression **tree)
 {
 	struct symbol *sym;
-	*tree = alloc_expression(token, EXPR_TYPE);
+	*tree = alloc_expression(sctx_ token, EXPR_TYPE);
 	(*tree)->flags = Int_const_expr; /* sic */
-	token = typename(token, &sym, NULL);
+	token = typename(sctx_ token, &sym, NULL);
 	if (sym->ident)
 		sparse_error(sctx_ token->pos,
 			     "type expression should not include identifier "
@@ -128,7 +128,7 @@ static struct token *parse_type(SCTX_ struct token *token, struct expression **t
 static struct token *builtin_types_compatible_p_expr(SCTX_ struct token *token,
 						     struct expression **tree)
 {
-	struct expression *expr = alloc_expression(
+	struct expression *expr = alloc_expression(sctx_ 
 		token, EXPR_COMPARE);
 	expr->flags = Int_const_expr;
 	expr->op = SPECIAL_EQUAL;
@@ -165,7 +165,7 @@ static struct token *builtin_offsetof_expr(SCTX_ struct token *token,
 		return expect(sctx_ token, '(', "after __builtin_offset");
 
 	token = token->next;
-	token = typename(token, &sym, NULL);
+	token = typename(sctx_ token, &sym, NULL);
 	if (sym->ident)
 		sparse_error(sctx_ token->pos,
 			     "type expression should not include identifier "
@@ -183,7 +183,7 @@ static struct token *builtin_offsetof_expr(SCTX_ struct token *token,
 		default:
 			return expect(sctx_ token, ')', "at end of __builtin_offset");
 		case SPECIAL_DEREFERENCE:
-			e = alloc_expression(token, EXPR_OFFSETOF);
+			e = alloc_expression(sctx_ token, EXPR_OFFSETOF);
 			e->flags = Int_const_expr;
 			e->op = '[';
 			*p = e;
@@ -191,7 +191,7 @@ static struct token *builtin_offsetof_expr(SCTX_ struct token *token,
 			/* fall through */
 		case '.':
 			token = token->next;
-			e = alloc_expression(token, EXPR_OFFSETOF);
+			e = alloc_expression(sctx_ token, EXPR_OFFSETOF);
 			e->flags = Int_const_expr;
 			e->op = '.';
 			if (token_type(token) != TOKEN_IDENT) {
@@ -203,7 +203,7 @@ static struct token *builtin_offsetof_expr(SCTX_ struct token *token,
 			break;
 		case '[':
 			token = token->next;
-			e = alloc_expression(token, EXPR_OFFSETOF);
+			e = alloc_expression(sctx_ token, EXPR_OFFSETOF);
 			e->flags = Int_const_expr;
 			e->op = '[';
 			token = parse_expression(sctx_ token, &e->index);
@@ -321,7 +321,7 @@ got_it:
 			show_token(sctx_ token));
         expr->type = EXPR_VALUE;
 	expr->flags = Int_const_expr;
-        expr->ctype = ctype_integer(size, want_unsigned);
+        expr->ctype = ctype_integer(sctx_ size, want_unsigned);
         expr->value = value;
 	return;
 Eoverflow:
@@ -359,7 +359,7 @@ struct token *primary_expression(SCTX_ struct token *token, struct expression **
 
 	switch (token_type(token)) {
 	case TOKEN_CHAR ... TOKEN_WIDE_CHAR_EMBEDDED_3:
-		expr = alloc_expression(token, EXPR_VALUE);   
+		expr = alloc_expression(sctx_ token, EXPR_VALUE);   
 		expr->flags = Int_const_expr;
 		expr->ctype = token_type(token) < TOKEN_WIDE_CHAR ? &int_ctype : &long_ctype;
 		get_char_constant(sctx_ token, &expr->value);
@@ -367,13 +367,13 @@ struct token *primary_expression(SCTX_ struct token *token, struct expression **
 		break;
 
 	case TOKEN_NUMBER:
-		expr = alloc_expression(token, EXPR_VALUE);
+		expr = alloc_expression(sctx_ token, EXPR_VALUE);
 		get_number_value(sctx_ expr, token); /* will see if it's an integer */
 		token = token->next;
 		break;
 
 	case TOKEN_ZERO_IDENT: {
-		expr = alloc_expression(token, EXPR_SYMBOL);
+		expr = alloc_expression(sctx_ token, EXPR_SYMBOL);
 		expr->flags = Int_const_expr;
 		expr->ctype = &int_ctype;
 		expr->symbol = &zero_int;
@@ -397,7 +397,7 @@ struct token *primary_expression(SCTX_ struct token *token, struct expression **
 				break;
 			}
 		} else if (sym->enum_member) {
-			expr = alloc_expression(token, EXPR_VALUE);
+			expr = alloc_expression(sctx_ token, EXPR_VALUE);
 			*expr = *sym->initializer;
 			/* we want the right position reported, thus the copy */
 			expr->pos = token;
@@ -406,7 +406,7 @@ struct token *primary_expression(SCTX_ struct token *token, struct expression **
 			break;
 		}
 
-		expr = alloc_expression(token, EXPR_SYMBOL);
+		expr = alloc_expression(sctx_ token, EXPR_SYMBOL);
 
 		/*
 		 * We support types as real first-class citizens, with type
@@ -426,23 +426,23 @@ struct token *primary_expression(SCTX_ struct token *token, struct expression **
 
 	case TOKEN_STRING:
 	case TOKEN_WIDE_STRING:
-		expr = alloc_expression(token, EXPR_STRING);
+		expr = alloc_expression(sctx_ token, EXPR_STRING);
 		token = get_string_constant(sctx_ token, expr);
 		break;
 
 	case TOKEN_SPECIAL:
 		if (token->special == '(') {
-			expr = alloc_expression(token, EXPR_PREOP);
+			expr = alloc_expression(sctx_ token, EXPR_PREOP);
 			expr->op = '(';
 			token = parens_expression(sctx_ token, &expr->unop, "in expression");
 			if (expr->unop)
 				expr->flags = expr->unop->flags;
 			break;
 		}
-		if (token->special == '[' && lookup_type(token->next)) {
-			expr = alloc_expression(token, EXPR_TYPE);
+		if (token->special == '[' && lookup_type(sctx_ token->next)) {
+			expr = alloc_expression(sctx_ token, EXPR_TYPE);
 			expr->flags = Int_const_expr; /* sic */
-			token = typename(token->next, &expr->symbol, NULL);
+			token = typename(sctx_ token->next, &expr->symbol, NULL);
 			token = expect(sctx_ token, ']', "in type expression");
 			break;
 		}
@@ -461,7 +461,7 @@ static struct token *expression_list(SCTX_ struct token *token, struct expressio
 		token = assignment_expression(sctx_ token, &expr);
 		if (!expr)
 			break;
-		add_expression(list, expr);
+		add_expression(sctx_ list, expr);
 		if (!match_op(token, ','))
 			break;
 		token = token->next;
@@ -483,8 +483,8 @@ static struct token *postfix_expression(SCTX_ struct token *token, struct expres
 	while (expr && token_type(token) == TOKEN_SPECIAL) {
 		switch (token->special) {
 		case '[': {			/* Array dereference */
-			struct expression *deref = alloc_expression(token, EXPR_PREOP);
-			struct expression *add = alloc_expression(token, EXPR_BINOP);
+			struct expression *deref = alloc_expression(sctx_ token, EXPR_PREOP);
+			struct expression *add = alloc_expression(sctx_ token, EXPR_BINOP);
 
 			deref->op = '*';
 			deref->unop = add;
@@ -498,7 +498,7 @@ static struct token *postfix_expression(SCTX_ struct token *token, struct expres
 		}
 		case SPECIAL_INCREMENT:		/* Post-increment */
 		case SPECIAL_DECREMENT:	{	/* Post-decrement */
-			struct expression *post = alloc_expression(token, EXPR_POSTOP);
+			struct expression *post = alloc_expression(sctx_ token, EXPR_POSTOP);
 			post->op = token->special;
 			post->unop = expr;
 			expr = post;
@@ -507,14 +507,14 @@ static struct token *postfix_expression(SCTX_ struct token *token, struct expres
 		}
 		case SPECIAL_DEREFERENCE: {	/* Structure pointer member dereference */
 			/* "x->y" is just shorthand for "(*x).y" */
-			struct expression *inner = alloc_expression(token, EXPR_PREOP);
+			struct expression *inner = alloc_expression(sctx_ token, EXPR_PREOP);
 			inner->op = '*';
 			inner->unop = expr;
 			expr = inner;
 		}
 		/* Fall through!! */
 		case '.': {			/* Structure member dereference */
-			struct expression *deref = alloc_expression(token, EXPR_DEREF);
+			struct expression *deref = alloc_expression(sctx_ token, EXPR_DEREF);
 			deref->op = '.';
 			deref->deref = expr;
 			token = token->next;
@@ -529,7 +529,7 @@ static struct token *postfix_expression(SCTX_ struct token *token, struct expres
 		}
 
 		case '(': {			/* Function call */
-			struct expression *call = alloc_expression(token, EXPR_CALL);
+			struct expression *call = alloc_expression(sctx_ token, EXPR_CALL);
 			call->op = '(';
 			call->fn = expr;
 			token = expression_list(sctx_ token->next, &call->args);
@@ -553,16 +553,16 @@ static struct token *unary_expression(SCTX_ struct token *token, struct expressi
 static struct token *type_info_expression(SCTX_ struct token *token,
 	struct expression **tree, int type)
 {
-	struct expression *expr = alloc_expression(token, type);
+	struct expression *expr = alloc_expression(sctx_ token, type);
 	struct token *p;
 
 	*tree = expr;
 	expr->flags = Int_const_expr; /* XXX: VLA support will need that changed */
 	token = token->next;
-	if (!match_op(token, '(') || !lookup_type(token->next))
+	if (!match_op(token, '(') || !lookup_type(sctx_ token->next))
 		return unary_expression(sctx_ token, &expr->cast_expression);
 	p = token;
-	token = typename(token->next, &expr->cast_type, NULL);
+	token = typename(sctx_ token->next, &expr->cast_type, NULL);
 
 	if (!match_op(token, ')')) {
 		static const char * error[] = {
@@ -579,11 +579,11 @@ static struct token *type_info_expression(SCTX_ struct token *token,
 	 * of a typed initializer expression..
 	 */
 	if (match_op(token, '{')) {
-		struct expression *cast = alloc_expression(p, EXPR_CAST);
+		struct expression *cast = alloc_expression(sctx_ p, EXPR_CAST);
 		cast->cast_type = expr->cast_type;
 		expr->cast_type = NULL;
 		expr->cast_expression = cast;
-		token = initializer(&cast->cast_expression, token);
+		token = initializer(sctx_ &cast->cast_expression, token);
 		token = postfix_expression(sctx_ token, &expr->cast_expression, cast);
 	}
 	return token;
@@ -625,7 +625,7 @@ static struct token *unary_expression(SCTX_ struct token *token, struct expressi
 				*tree = NULL;
 				return next;
 			}
-			unary = alloc_expression(token, EXPR_PREOP);
+			unary = alloc_expression(sctx_ token, EXPR_PREOP);
 			unary->op = token->special;
 			unary->unop = unop;
 			*tree = unary;
@@ -643,7 +643,7 @@ static struct token *unary_expression(SCTX_ struct token *token, struct expressi
 				*tree = NULL;
 				return next;
 			}
-			unary = alloc_expression(token, EXPR_PREOP);
+			unary = alloc_expression(sctx_ token, EXPR_PREOP);
 			unary->op = token->special;
 			unary->unop = unop;
 			unary->flags = unop->flags & Int_const_expr;
@@ -653,11 +653,11 @@ static struct token *unary_expression(SCTX_ struct token *token, struct expressi
 		/* Gcc extension: &&label gives the address of a label */
 		if (match_op(token, SPECIAL_LOGICAL_AND) &&
 		    token_type(token->next) == TOKEN_IDENT) {
-			struct expression *label = alloc_expression(token, EXPR_LABEL);
-			struct symbol *sym = label_symbol(token->next);
+			struct expression *label = alloc_expression(sctx_ token, EXPR_LABEL);
+			struct symbol *sym = label_symbol(sctx_ token->next);
 			if (!(sym->ctype.modifiers & MOD_ADDRESSABLE)) {
 				sym->ctype.modifiers |= MOD_ADDRESSABLE;
-				add_symbol(&function_computed_target_list, sym);
+				add_symbol(sctx_ &function_computed_target_list, sym);
 			}
 			label->label_symbol = sym;
 			*tree = label;
@@ -681,20 +681,20 @@ static struct token *cast_expression(SCTX_ struct token *token, struct expressio
 {
 	if (match_op(token, '(')) {
 		struct token *next = token->next;
-		if (lookup_type(next)) {
-			struct expression *cast = alloc_expression(next, EXPR_CAST);
+		if (lookup_type(sctx_ next)) {
+			struct expression *cast = alloc_expression(sctx_ next, EXPR_CAST);
 			struct expression *v;
 			struct symbol *sym;
 			int is_force;
 
-			token = typename(next, &sym, &is_force);
+			token = typename(sctx_ next, &sym, &is_force);
 			cast->cast_type = sym;
 			token = expect(sctx_ token, ')', "at end of cast operator");
 			if (match_op(token, '{')) {
 				if (is_force)
 					warning(sctx_ sym->pos->pos,
 						"[force] in compound literal");
-				token = initializer(&cast->cast_expression, token);
+				token = initializer(sctx_ &cast->cast_expression, token);
 				return postfix_expression(sctx_ token, tree, cast);
 			}
 			*tree = cast;
@@ -729,7 +729,7 @@ static struct token *cast_expression(SCTX_ struct token *token, struct expressio
 
 #define LR_BINOP_EXPRESSION(__token, tree, type, inner, compare)	\
 	struct expression *left = NULL;					\
-	struct token * next = inner(__token, &left);			\
+	struct token * next = inner(sctx_ __token, &left);		\
 									\
 	if (left) {							\
 		while (token_type(next) == TOKEN_SPECIAL) {		\
@@ -738,10 +738,10 @@ static struct token *cast_expression(SCTX_ struct token *token, struct expressio
 									\
 			if (!(compare))					\
 				goto out;				\
-			top = alloc_expression(next, type);		\
-			next = inner(next->next, &right);		\
+			top = alloc_expression(sctx_ next, type);		\
+			next = inner(sctx_ next->next, &right);		\
 			if (!right) {					\
-				sparse_error(next->pos, "No right hand side of '%s'-expression", show_special(op));	\
+				sparse_error(sctx_ next->pos, "No right hand side of '%s'-expression", show_special(sctx_ op));	\
 				break;					\
 			}						\
 			top->flags = left->flags & right->flags		\
@@ -841,7 +841,7 @@ struct token *conditional_expression(SCTX_ struct token *token, struct expressio
 {
 	token = logical_or_expression(sctx_ token, tree);
 	if (*tree && match_op(token, '?')) {
-		struct expression *expr = alloc_expression(token, EXPR_CONDITIONAL);
+		struct expression *expr = alloc_expression(sctx_ token, EXPR_CONDITIONAL);
 		expr->op = token->special;
 		expr->left = *tree;
 		*tree = expr;
@@ -874,7 +874,7 @@ struct token *assignment_expression(SCTX_ struct token *token, struct expression
 		int i, op = token->special;
 		for (i = 0; i < ARRAY_SIZE(assignments); i++)
 			if (assignments[i] == op) {
-				struct expression * expr = alloc_expression(token, EXPR_ASSIGNMENT);
+				struct expression * expr = alloc_expression(sctx_ token, EXPR_ASSIGNMENT);
 				expr->left = *tree;
 				expr->op = op;
 				*tree = expr;

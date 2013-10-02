@@ -36,7 +36,7 @@ static void remove_phisrc_defines(SCTX_ struct instruction *phisrc)
 	struct basic_block *bb = phisrc->bb;
 
 	FOR_EACH_PTR(phisrc->phi_users, phi) {
-		remove_pseudo(&bb->defines, phi->target);
+		remove_pseudo(sctx_ &bb->defines, phi->target);
 	} END_FOR_EACH_PTR(phi);
 }
 
@@ -50,12 +50,12 @@ static void replace_phi_node(SCTX_ struct instruction *phi)
 	tmp->def = NULL;		// defined by all the phisrc
 	
 	// update the current liveness
-	remove_pseudo(&phi->bb->needs, phi->target);
-	add_pseudo(&phi->bb->needs, tmp);
+	remove_pseudo(sctx_ &phi->bb->needs, phi->target);
+	add_pseudo(sctx_ &phi->bb->needs, tmp);
 	track_phi_uses(sctx_ phi);
 
 	phi->opcode = OP_COPY;
-	use_pseudo(phi, tmp, &phi->src);
+	use_pseudo(sctx_ phi, tmp, &phi->src);
 
 	// FIXME: free phi->phi_list;
 }
@@ -115,7 +115,7 @@ static void rewrite_phisrc_bb(SCTX_ struct basic_block *bb)
 			// update the liveness info
 			remove_phisrc_defines(sctx_ insn);
 			// FIXME: should really something like add_pseudo_exclusive()
-			add_pseudo(&bb->defines, tmp);
+			add_pseudo(sctx_ &bb->defines, tmp);
 
 			i++;
 		} END_FOR_EACH_PTR(phi);

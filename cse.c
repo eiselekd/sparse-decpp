@@ -120,7 +120,7 @@ static void clean_up_one_instruction(SCTX_ struct basic_block *bb, struct instru
 	}
 	hash += hash >> 16;
 	hash &= INSN_HASH_SIZE-1;
-	add_instruction(insn_hash_table + hash, insn);
+	add_instruction(sctx_ insn_hash_table + hash, insn);
 }
 
 static void clean_up_insns(SCTX_ struct entrypoint *ep)
@@ -295,27 +295,27 @@ static struct basic_block *trivial_common_parent(SCTX_ struct basic_block *bb1, 
 {
 	struct basic_block *parent;
 
-	if (bb_list_size(bb1->parents) != 1)
+	if (bb_list_size(sctx_ bb1->parents) != 1)
 		return NULL;
-	parent = first_basic_block(bb1->parents);
-	if (bb_list_size(bb2->parents) != 1)
+	parent = first_basic_block(sctx_ bb1->parents);
+	if (bb_list_size(sctx_ bb2->parents) != 1)
 		return NULL;
-	if (first_basic_block(bb2->parents) != parent)
+	if (first_basic_block(sctx_ bb2->parents) != parent)
 		return NULL;
 	return parent;
 }
 
-static inline void remove_instruction(struct instruction_list **list, struct instruction *insn, int count)
+static inline void remove_instruction(SCTX_ struct instruction_list **list, struct instruction *insn, int count)
 {
-	delete_ptr_list_entry((struct ptr_list **)list, insn, count);
+	delete_ptr_list_entry(sctx_ (struct ptr_list **)list, insn, count);
 }
 
 static void add_instruction_to_end(SCTX_ struct instruction *insn, struct basic_block *bb)
 {
-	struct instruction *br = delete_last_instruction(&bb->insns);
+	struct instruction *br = delete_last_instruction(sctx_ &bb->insns);
 	insn->bb = bb;
-	add_instruction(&bb->insns, insn);
-	add_instruction(&bb->insns, br);
+	add_instruction(sctx_ &bb->insns, insn);
+	add_instruction(sctx_ &bb->insns, br);
 }
 
 static struct instruction * try_to_cse(SCTX_ struct entrypoint *ep, struct instruction *i1, struct instruction *i2)
@@ -354,7 +354,7 @@ static struct instruction * try_to_cse(SCTX_ struct entrypoint *ep, struct instr
 	common = trivial_common_parent(sctx_ b1, b2);
 	if (common) {
 		i1 = cse_one_instruction(sctx_ i2, i1);
-		remove_instruction(&b1->insns, i1, 1);
+		remove_instruction(sctx_ &b1->insns, i1, 1);
 		add_instruction_to_end(sctx_ i1, common);
 	}
 
@@ -372,7 +372,7 @@ repeat:
 	for (i = 0; i < INSN_HASH_SIZE; i++) {
 		struct instruction_list **list = insn_hash_table + i;
 		if (*list) {
-			if (instruction_list_size(*list) > 1) {
+			if (instruction_list_size(sctx_ *list) > 1) {
 				struct instruction *insn, *last;
 
 				sort_instruction_list(sctx_ list);

@@ -458,8 +458,8 @@ static enum token_type combine(SCTX_ struct token *left, struct token *right, ch
 	if (t2 != TOKEN_IDENT && t2 != TOKEN_NUMBER && t2 != TOKEN_SPECIAL)
 		return TOKEN_ERROR;
 
-	strcpy(p, show_token(sctx_ sctx_ left));
-	strcat(p, show_token(sctx_ sctx_ right));
+	strcpy(p, show_token(sctx_ left));
+	strcat(p, show_token(sctx_ right));
 	len = strlen(p);
 
 	if (len >= 256)
@@ -1556,7 +1556,7 @@ static int expression_value(SCTX_ struct token **where)
 		list = &p->next;
 	}
 
-	p = constant_expression(*where, &expr);
+	p = constant_expression(sctx_ *where, &expr);
 	if (!eof_token(p))
 		sparse_error(sctx_ p->pos, "garbage at end: %s", show_token_sequence(sctx_ p, 0));
 	value = get_expression_value(sctx_ expr);
@@ -1872,13 +1872,13 @@ static int handle_nondirective(SCTX_ struct stream *stream, struct token **line,
 }
 
 
-static void init_preprocessor(SCTX_ void)
+static void init_preprocessor(SCTX)
 {
 	int i;
 	int stream = init_stream(sctx_ "preprocessor", -1, includepath);
 	static struct {
 		const char *name;
-		int (*handler)(struct stream *, struct token **, struct token *);
+		int (*handler)(SCTX_ struct stream *, struct token **, struct token *);
 	} normal[] = {
 		{ "define",		handle_define },
 		{ "weak_define",	handle_weak_define },
@@ -1926,7 +1926,7 @@ static void init_preprocessor(SCTX_ void)
 
 static void handle_preprocessor_line(SCTX_ struct stream *stream, struct token **line, struct token *start)
 {
-	int (*handler)(struct stream *, struct token **, struct token *);
+	int (*handler)(SCTX_ struct stream *, struct token **, struct token *);
 	struct token *token = start->next;
 	struct expansion *e;
 	int is_normal = 1;
@@ -1959,7 +1959,7 @@ static void handle_preprocessor_line(SCTX_ struct stream *stream, struct token *
 		if (false_nesting)
 			goto out;
 	}
-	if (!handler(stream, line, token))	/* all set */
+	if (!handler(sctx_ stream, line, token))	/* all set */
 		return;
 
 out:
@@ -2032,7 +2032,7 @@ static struct token *do_preprocess(SCTX_ struct token **list)
 struct token * preprocess(SCTX_ struct expansion *e)
 {
 	preprocessing = 1;
-	init_preprocessor(sctx_ );
+	init_preprocessor(sctx );
 
 	e->d = dup_list_e(sctx_ e->s, e);
 	do_preprocess(sctx_ &e->d);

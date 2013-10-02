@@ -192,7 +192,7 @@ static void prepend_cnt(SCTX_ struct type_name *name, const char *buffer, int n)
 	}
 }
 
-static void FORMAT_ATTR(2) prepend(SCTX_ struct type_name *name, const char *fmt, ...)
+static void FORMAT_ATTR(2+SCTXCNT) prepend(SCTX_ struct type_name *name, const char *fmt, ...)
 {
 	static char buffer[512];
 	int n;
@@ -223,7 +223,7 @@ static void append_cnt(SCTX_ struct type_name *name, const char *buffer, int n)
 	}
 }
 
-static void FORMAT_ATTR(2) append(SCTX_ struct type_name *name, const char *fmt, ...)
+static void FORMAT_ATTR(2+SCTXCNT) append(SCTX_ struct type_name *name, const char *fmt, ...)
 {
 	static char buffer[512];
 	int n;
@@ -524,13 +524,13 @@ void show_symbol(SCTX_ struct symbol *sym)
 
 static int show_symbol_init(SCTX_ struct symbol *sym);
 
-static int new_pseudo(SCTX_ void)
+static int new_pseudo(SCTX)
 {
 	static int nr = 0;
 	return ++nr;
 }
 
-static int new_label(SCTX_ void)
+static int new_label(SCTX)
 {
 	static int label = 0;
 	return ++label;
@@ -620,7 +620,7 @@ int show_statement(SCTX_ struct statement *stmt)
 			printf(".L%p:\n", stmt->ret);
 			addr = show_symbol_expr(sctx_ stmt->ret);
 			bits = stmt->ret->bit_size;
-			last = new_pseudo(sctx_ );
+			last = new_pseudo(sctx );
 			printf("\tld.%d\t\tv%d,[v%d]\n", bits, last, addr);
 		}
 		if (stmt->inline_fn)
@@ -645,11 +645,11 @@ int show_statement(SCTX_ struct statement *stmt)
 		}
 #endif
 		val = show_expression(sctx_ cond);
-		target = new_label(sctx_ );
+		target = new_label(sctx );
 		printf("\tje\t\tv%d,.L%d\n", val, target);
 		show_statement(sctx_ stmt->if_true);
 		if (stmt->if_false) {
-			int last = new_label(sctx_ );
+			int last = new_label(sctx );
 			printf("\tjmp\t\t.L%d\n", last);
 			printf(".L%d:\n", target);
 			target = last;
@@ -680,17 +680,17 @@ int show_statement(SCTX_ struct statement *stmt)
 		if (pre_condition) {
 			if (pre_condition->type == EXPR_VALUE) {
 				if (!pre_condition->value) {
-					loop_bottom = new_label(sctx_ );   
+					loop_bottom = new_label(sctx);   
 					printf("\tjmp\t\t.L%d\n", loop_bottom);
 				}
 			} else {
-				loop_bottom = new_label(sctx_ );
+				loop_bottom = new_label(sctx);
 				val = show_expression(sctx_ pre_condition);
 				printf("\tje\t\tv%d, .L%d\n", val, loop_bottom);
 			}
 		}
 		if (!post_condition || post_condition->type != EXPR_VALUE || post_condition->value) {
-			loop_top = new_label(sctx_ );
+			loop_top = new_label(sctx);
 			printf(".L%d:\n", loop_top);
 		}
 		show_statement(sctx_ statement);
@@ -787,7 +787,7 @@ static int show_call_expression(SCTX_ struct expression *expr)
 	if (framesize)
 		printf("\tadd.%d\t\tvSP,vSP,$%d\n", bits_in_pointer, framesize);
 
-	retval = new_pseudo(sctx_ );
+	retval = new_pseudo(sctx );
 	printf("\tmov.%d\t\tv%d,retval\n", expr->ctype->bit_size, retval);
 	return retval;
 }
@@ -802,7 +802,7 @@ static int show_binop(SCTX_ struct expression *expr)
 {
 	int left = show_expression(sctx_ expr->left);
 	int right = show_expression(sctx_ expr->right);
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx );
 	const char *opname;
 	static const char *name[] = {
 		['+'] = "add", ['-'] = "sub",
@@ -824,7 +824,7 @@ static int show_binop(SCTX_ struct expression *expr)
 static int show_slice(SCTX_ struct expression *expr)
 {
 	int target = show_expression(sctx_ expr->base);
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx );
 	printf("\tslice.%d\t\tv%d,v%d,%d\n", expr->r_nrbits, target, new, expr->r_bitpos);
 	return new;
 }
@@ -832,7 +832,7 @@ static int show_slice(SCTX_ struct expression *expr)
 static int show_regular_preop(SCTX_ struct expression *expr)
 {
 	int target = show_expression(sctx_ expr->unop);
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx );
 	static const char *name[] = {
 		['!'] = "nonzero", ['-'] = "neg",
 		['~'] = "not",
@@ -858,7 +858,7 @@ static int show_address_gen(SCTX_ struct expression *expr)
 
 static int show_load_gen(SCTX_ int bits, struct expression *expr, int addr)
 {
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx);
 
 	printf("\tld.%d\t\tv%d,[v%d]\n", bits, new, addr);
 	return new;
@@ -932,7 +932,7 @@ static int show_inc_dec(SCTX_ struct expression *expr, int postop)
 	retval = show_load_gen(sctx_ bits, expr->unop, addr);
 	new = retval;
 	if (postop)
-		new = new_pseudo(sctx_ );
+		new = new_pseudo(sctx );
 	printf("\t%s.%d\t\tv%d,v%d,$1\n", opname, bits, new, retval);
 	show_store_gen(sctx_ bits, new, expr->unop, addr);
 	return retval;
@@ -959,7 +959,7 @@ static int show_postop(SCTX_ struct expression *expr)
 
 static int show_symbol_expr(SCTX_ struct symbol *sym)
 {
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx );
 
 	if (sym->initializer && sym->initializer->type == EXPR_STRING)
 		return show_string_expr(sctx_ sym->initializer);
@@ -1014,7 +1014,7 @@ static int show_cast_expr(SCTX_ struct expression *expr)
 	newbits = new_type->bit_size;
 	if (oldbits >= newbits)
 		return op;
-	new = new_pseudo(sctx_ );
+	new = new_pseudo(sctx );
 	is_signed = type_is_signed(sctx_ old_type);
 	if (is_signed) {
 		printf("\tsext%d.%d\tv%d,v%d\n", oldbits, newbits, new, op);
@@ -1026,7 +1026,7 @@ static int show_cast_expr(SCTX_ struct expression *expr)
 
 static int show_value(SCTX_ struct expression *expr)
 {
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx );
 	unsigned long long value = expr->value;
 
 	printf("\tmovi.%d\t\tv%d,$%llu\n", expr->ctype->bit_size, new, value);
@@ -1035,7 +1035,7 @@ static int show_value(SCTX_ struct expression *expr)
 
 static int show_fvalue(SCTX_ struct expression *expr)
 {
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx );
 	long double value = expr->fvalue;
 
 	printf("\tmovf.%d\t\tv%d,$%Lf\n", expr->ctype->bit_size, new, value);
@@ -1044,7 +1044,7 @@ static int show_fvalue(SCTX_ struct expression *expr)
 
 static int show_string_expr(SCTX_ struct expression *expr)
 {
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx);
 
 	printf("\tmovi.%d\t\tv%d,&%s\n", bits_in_pointer, new, show_string(sctx_ expr->string));
 	return new;
@@ -1052,7 +1052,7 @@ static int show_string_expr(SCTX_ struct expression *expr)
 
 static int show_label_expr(SCTX_ struct expression *expr)
 {
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx);
 	printf("\tmovi.%d\t\tv%d,.L%p\n",bits_in_pointer, new, expr->label_symbol);
 	return new;
 }
@@ -1062,7 +1062,7 @@ static int show_conditional_expr(SCTX_ struct expression *expr)
 	int cond = show_expression(sctx_ expr->conditional);
 	int true_sim = show_expression(sctx_ expr->cond_true);
 	int false_sim = show_expression(sctx_ expr->cond_false);
-	int new = new_pseudo(sctx_ );
+	int new = new_pseudo(sctx);
 
 	printf("[v%d]\tcmov.%d\t\tv%d,v%d,v%d\n", cond, expr->ctype->bit_size, new, true_sim, false_sim);
 	return new;

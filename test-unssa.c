@@ -7,7 +7,7 @@
 #include "flow.h"
 
 
-static void output_bb(struct basic_block *bb, unsigned long generation)
+static void output_bb(SCTX_ struct basic_block *bb, unsigned long generation)
 {
 	struct instruction *insn;
 
@@ -17,55 +17,55 @@ static void output_bb(struct basic_block *bb, unsigned long generation)
 	FOR_EACH_PTR(bb->insns, insn) {
 		if (!insn->bb)
 			continue;
-		printf("\t%s\n", show_instruction(insn));
+		printf("\t%s\n", show_instruction(sctx_ insn));
 	}
 	END_FOR_EACH_PTR(insn);
 
 	printf("\n");
 }
 
-static void output_fn(struct entrypoint *ep)
+static void output_fn(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 	unsigned long generation = ++bb_generation;
 	struct symbol *sym = ep->name;
-	const char *name = show_ident(sym->ident);
+	const char *name = show_ident(sctx_ sym->ident);
 
 	if (sym->ctype.modifiers & MOD_STATIC)
 		printf("\n\n%s:\n", name);
 	else
 		printf("\n\n.globl %s\n%s:\n", name, name);
 
-	unssa(ep);
+	unssa(sctx_ ep);
 
 	FOR_EACH_PTR(ep->bbs, bb) {
 		if (bb->generation == generation)
 			continue;
-		output_bb(bb, generation);
+		output_bb(sctx_ bb, generation);
 	}
 	END_FOR_EACH_PTR(bb);
 }
 
-static int output_data(struct symbol *sym)
+static int output_data(SCTX_ struct symbol *sym)
 {
-	printf("symbol %s:\n", show_ident(sym->ident));
+	printf("symbol %s:\n", show_ident(sctx_ sym->ident));
 	printf("\ttype = %d\n", sym->ctype.base_type->type);
 	printf("\tmodif= %lx\n", sym->ctype.modifiers);
 
 	return 0;
 }
 
-static int compile(struct symbol_list *list)
+static int compile(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 	FOR_EACH_PTR(list, sym) {
 		struct entrypoint *ep;
-		expand_symbol(sym);
-		ep = linearize_symbol(sym);
+		expand_symbol(sctx_ sym);
+		ep = linearize_symbol(sctx_ sym);
 		if (ep)
-			output_fn(ep);
+			output_fn(sctx_ ep);
 		else
-			output_data(sym);
+			output_data(sctx_ sym);
 	}
 	END_FOR_EACH_PTR(sym);
 
@@ -75,11 +75,11 @@ static int compile(struct symbol_list *list)
 int main(int argc, char **argv)
 {
 	struct string_list * filelist = NULL;
-	char *file;
+	char *file; struct sparse_ctx sctx;
 
-	compile(sparse_initialize(argc, argv, &filelist));
+	compile(&sctx, sparse_initialize(&sctx, argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		compile(sparse(file));
+		compile(&sctx, sparse(&sctx, file));
 	} END_FOR_EACH_PTR_NOTAG(file);
 
 	return 0;

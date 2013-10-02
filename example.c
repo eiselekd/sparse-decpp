@@ -114,7 +114,7 @@ struct hardreg {
 /* Our "switch" generation is very very stupid. */
 #define SWITCH_REG (1)
 
-static void output_bb(struct basic_block *bb, unsigned long generation);
+static void output_bb(SCTX_ struct basic_block *bb, unsigned long generation);
 
 /*
  * We only know about the caller-clobbered registers
@@ -170,7 +170,7 @@ struct operand {
 	};
 };
 
-static const char *show_op(struct bb_state *state, struct operand *op)
+static const char *show_op(SCTX_ struct bb_state *state, struct operand *op)
 {
 	static char buf[256][4];
 	static int bufnr;
@@ -196,7 +196,7 @@ static const char *show_op(struct bb_state *state, struct operand *op)
 		if (op->sym)
 			p += sprintf(p, "%s%s",
 				op->offset ? "+" : "",
-				show_ident(op->sym->ident));
+				show_ident(sctx_ op->sym->ident));
 		if (op->base || op->index) {
 			p += sprintf(p, "(%s%s%s",
 				op->base ? op->base->name : "",
@@ -212,7 +212,7 @@ static const char *show_op(struct bb_state *state, struct operand *op)
 	return ret;
 }
 
-static struct storage_hash *find_storage_hash(pseudo_t pseudo, struct storage_hash_list *list)
+static struct storage_hash *find_storage_hash(SCTX_ pseudo_t pseudo, struct storage_hash_list *list)
 {
 	struct storage_hash *entry;
 	FOR_EACH_PTR(list, entry) {
@@ -222,13 +222,13 @@ static struct storage_hash *find_storage_hash(pseudo_t pseudo, struct storage_ha
 	return NULL;
 }
 
-static struct storage_hash *find_or_create_hash(pseudo_t pseudo, struct storage_hash_list **listp)
+static struct storage_hash *find_or_create_hash(SCTX_ pseudo_t pseudo, struct storage_hash_list **listp)
 {
 	struct storage_hash *entry;
 
-	entry = find_storage_hash(pseudo, *listp);
+	entry = find_storage_hash(sctx_ pseudo, *listp);
 	if (!entry) {
-		entry = alloc_storage_hash(alloc_storage());
+		entry = alloc_storage_hash(sctx_ alloc_storage(sctx));
 		entry->pseudo = pseudo;
 		add_ptr_list(listp, entry);
 	}
@@ -236,7 +236,7 @@ static struct storage_hash *find_or_create_hash(pseudo_t pseudo, struct storage_
 }
 
 /* Eventually we should just build it up in memory */
-static void FORMAT_ATTR(2) output_line(struct bb_state *state, const char *fmt, ...)
+static void FORMAT_ATTR(2+SCTXCNT) output_line(SCTX_ struct bb_state *state, const char *fmt, ...)
 {
 	va_list args;
 
@@ -245,7 +245,7 @@ static void FORMAT_ATTR(2) output_line(struct bb_state *state, const char *fmt, 
 	va_end(args);
 }
 
-static void FORMAT_ATTR(2) output_label(struct bb_state *state, const char *fmt, ...)
+static void FORMAT_ATTR(2+SCTXCNT) output_label(SCTX_ struct bb_state *state, const char *fmt, ...)
 {
 	static char buffer[512];
 	va_list args;
@@ -254,10 +254,10 @@ static void FORMAT_ATTR(2) output_label(struct bb_state *state, const char *fmt,
 	vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
 
-	output_line(state, "%s:\n", buffer);
+	output_line(sctx_ state, "%s:\n", buffer);
 }
 
-static void FORMAT_ATTR(2) output_insn(struct bb_state *state, const char *fmt, ...)
+static void FORMAT_ATTR(2+SCTXCNT) output_insn(SCTX_ struct bb_state *state, const char *fmt, ...)
 {
 	static char buffer[512];
 	va_list args;
@@ -266,13 +266,13 @@ static void FORMAT_ATTR(2) output_insn(struct bb_state *state, const char *fmt, 
 	vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
 
-	output_line(state, "\t%s\n", buffer);
+	output_line(sctx_ state, "\t%s\n", buffer);
 }
 
 #define output_insn(state, fmt, arg...) \
 	output_insn(state, fmt "\t\t# %s" , ## arg , __FUNCTION__)
 
-static void FORMAT_ATTR(2) output_comment(struct bb_state *state, const char *fmt, ...)
+static void FORMAT_ATTR(2+SCTXCNT) output_comment(SCTX_ struct bb_state *state, const char *fmt, ...)
 {
 	static char buffer[512];
 	va_list args;
@@ -283,10 +283,10 @@ static void FORMAT_ATTR(2) output_comment(struct bb_state *state, const char *fm
 	vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
 
-	output_line(state, "\t# %s\n", buffer);
+	output_line(sctx_ state, "\t# %s\n", buffer);
 }
 
-static const char *show_memop(struct storage *storage)
+static const char *show_memop(SCTX_ struct storage *storage)
 {
 	static char buffer[1000];
 
@@ -302,22 +302,22 @@ static const char *show_memop(struct storage *storage)
 	case REG_REG:
 		return hardregs[storage->regno].name;
 	default:
-		return show_storage(storage);
+		return show_storage(sctx_ storage);
 	}
 	return buffer;
 }
 
-static int alloc_stack_offset(int size)
+static int alloc_stack_offset(SCTX_ int size)
 {
 	int ret = stack_offset;
 	stack_offset = ret + size;
 	return ret;
 }
 
-static void alloc_stack(struct bb_state *state, struct storage *storage)
+static void alloc_stack(SCTX_ struct bb_state *state, struct storage *storage)
 {
 	storage->type = REG_STACK;
-	storage->offset = alloc_stack_offset(4);
+	storage->offset = alloc_stack_offset(sctx_ 4);
 }
 
 /*
@@ -327,7 +327,7 @@ static void alloc_stack(struct bb_state *state, struct storage *storage)
  *  - pseudos we got as input in non-registers
  *  - pseudos we've already saved off earlier..
  */
-static int can_regenerate(struct bb_state *state, pseudo_t pseudo)
+static int can_regenerate(SCTX_ struct bb_state *state, pseudo_t pseudo)
 {
 	struct storage_hash *in;
 
@@ -337,30 +337,30 @@ static int can_regenerate(struct bb_state *state, pseudo_t pseudo)
 		return 1;
 
 	default:
-		in = find_storage_hash(pseudo, state->inputs);
+		in = find_storage_hash(sctx_ pseudo, state->inputs);
 		if (in && in->storage->type != REG_REG)
 			return 1;
-		in = find_storage_hash(pseudo, state->internal);
+		in = find_storage_hash(sctx_ pseudo, state->internal);
 		if (in)
 			return 1;
 	}
 	return 0;
 }
 
-static void flush_one_pseudo(struct bb_state *state, struct hardreg *hardreg, pseudo_t pseudo)
+static void flush_one_pseudo(SCTX_ struct bb_state *state, struct hardreg *hardreg, pseudo_t pseudo)
 {
 	struct storage_hash *out;
 	struct storage *storage;
 
-	if (can_regenerate(state, pseudo))
+	if (can_regenerate(sctx_ state, pseudo))
 		return;
 
-	output_comment(state, "flushing %s from %s", show_pseudo(pseudo), hardreg->name);
-	out = find_storage_hash(pseudo, state->internal);
+	output_comment(sctx_ state, "flushing %s from %s", show_pseudo(sctx_ pseudo), hardreg->name);
+	out = find_storage_hash(sctx_ pseudo, state->internal);
 	if (!out) {
-		out = find_storage_hash(pseudo, state->outputs);
+		out = find_storage_hash(sctx_ pseudo, state->outputs);
 		if (!out)
-			out = find_or_create_hash(pseudo, &state->internal);
+			out = find_or_create_hash(sctx_ pseudo, &state->internal);
 	}
 	storage = out->storage;
 	switch (storage->type) {
@@ -370,25 +370,25 @@ static void flush_one_pseudo(struct bb_state *state, struct hardreg *hardreg, ps
 		 * need to flush it to memory in between. Which means that
 		 * we need to allocate an internal one, dammit..
 		 */
-		out = find_or_create_hash(pseudo, &state->internal);
+		out = find_or_create_hash(sctx_ pseudo, &state->internal);
 		storage = out->storage;
 		/* Fall through */
 	case REG_UDEF:
-		alloc_stack(state, storage);
+		alloc_stack(sctx_ state, storage);
 		/* Fall through */
 	case REG_STACK:
-		output_insn(state, "movl %s,%s", hardreg->name, show_memop(storage));
+		output_insn(sctx_ state, "movl %s,%s", hardreg->name, show_memop(sctx_ storage));
 		break;
 	}
 }
 
 /* Flush a hardreg out to the storage it has.. */
-static void flush_reg(struct bb_state *state, struct hardreg *reg)
+static void flush_reg(SCTX_ struct bb_state *state, struct hardreg *reg)
 {
 	pseudo_t pseudo;
 
 	if (reg->busy)
-		output_comment(state, "reg %s flushed while busy is %d!", reg->name, reg->busy);
+		output_comment(sctx_ state, "reg %s flushed while busy is %d!", reg->name, reg->busy);
 	if (!reg->contains)
 		return;
 	reg->dead = 0;
@@ -398,20 +398,20 @@ static void flush_reg(struct bb_state *state, struct hardreg *reg)
 			continue;
 		if (!(CURRENT_TAG(pseudo) & TAG_DIRTY))
 			continue;
-		flush_one_pseudo(state, reg, pseudo);
+		flush_one_pseudo(sctx_ state, reg, pseudo);
 	} END_FOR_EACH_PTR(pseudo);
 	free_ptr_list(&reg->contains);
 }
 
-static struct storage_hash *find_pseudo_storage(struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
+static struct storage_hash *find_pseudo_storage(SCTX_ struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
 {
 	struct storage_hash *src;
 
-	src = find_storage_hash(pseudo, state->internal);
+	src = find_storage_hash(sctx_ pseudo, state->internal);
 	if (!src) {
-		src = find_storage_hash(pseudo, state->inputs);
+		src = find_storage_hash(sctx_ pseudo, state->inputs);
 		if (!src) {
-			src = find_storage_hash(pseudo, state->outputs);
+			src = find_storage_hash(sctx_ pseudo, state->outputs);
 			/* Undefined? Screw it! */
 			if (!src)
 				return NULL;
@@ -437,12 +437,12 @@ static struct storage_hash *find_pseudo_storage(struct bb_state *state, pseudo_t
 			src->storage->regno = reg - hardregs;
 			return NULL;
 		}
-		alloc_stack(state, src->storage);
+		alloc_stack(sctx_ state, src->storage);
 	}
 	return src;
 }
 
-static void mark_reg_dead(struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
+static void mark_reg_dead(SCTX_ struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
 {
 	pseudo_t p;
 
@@ -451,23 +451,23 @@ static void mark_reg_dead(struct bb_state *state, pseudo_t pseudo, struct hardre
 			continue;
 		if (CURRENT_TAG(p) & TAG_DEAD)
 			continue;
-		output_comment(state, "marking pseudo %s in reg %s dead", show_pseudo(pseudo), reg->name);
+		output_comment(sctx_ state, "marking pseudo %s in reg %s dead", show_pseudo(sctx_ pseudo), reg->name);
 		TAG_CURRENT(p, TAG_DEAD);
 		reg->dead++;
 	} END_FOR_EACH_PTR(p);
 }
 
-static void add_pseudo_reg(struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
+static void add_pseudo_reg(SCTX_ struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
 {
-	output_comment(state, "added pseudo %s to reg %s", show_pseudo(pseudo), reg->name);
+	output_comment(sctx_ state, "added pseudo %s to reg %s", show_pseudo(sctx_ pseudo), reg->name);
 	add_ptr_list_tag(&reg->contains, pseudo, TAG_DIRTY);
 }
 
-static struct hardreg *preferred_reg(struct bb_state *state, pseudo_t target)
+static struct hardreg *preferred_reg(SCTX_ struct bb_state *state, pseudo_t target)
 {
 	struct storage_hash *dst;
 
-	dst = find_storage_hash(target, state->outputs);
+	dst = find_storage_hash(sctx_ target, state->outputs);
 	if (dst) {
 		struct storage *storage = dst->storage;
 		if (storage->type == REG_REG)
@@ -476,7 +476,7 @@ static struct hardreg *preferred_reg(struct bb_state *state, pseudo_t target)
 	return NULL;
 }
 
-static struct hardreg *empty_reg(struct bb_state *state)
+static struct hardreg *empty_reg(SCTX_ struct bb_state *state)
 {
 	int i;
 	struct hardreg *reg = hardregs;
@@ -488,18 +488,18 @@ static struct hardreg *empty_reg(struct bb_state *state)
 	return NULL;
 }
 
-static struct hardreg *target_reg(struct bb_state *state, pseudo_t pseudo, pseudo_t target)
+static struct hardreg *target_reg(SCTX_ struct bb_state *state, pseudo_t pseudo, pseudo_t target)
 {
 	int i;
 	int unable_to_find_reg = 0;
 	struct hardreg *reg;
 
 	/* First, see if we have a preferred target register.. */
-	reg = preferred_reg(state, target);
+	reg = preferred_reg(sctx_ state, target);
 	if (reg && !reg->contains)
 		goto found;
 
-	reg = empty_reg(state);
+	reg = empty_reg(sctx_ state);
 	if (reg)
 		goto found;
 
@@ -510,7 +510,7 @@ static struct hardreg *target_reg(struct bb_state *state, pseudo_t pseudo, pseud
 			i = 0;
 		reg = hardregs + i;
 		if (!reg->busy) {
-			flush_reg(state, reg);
+			flush_reg(sctx_ state, reg);
 			last_reg = i;
 			goto found;
 		}
@@ -518,11 +518,11 @@ static struct hardreg *target_reg(struct bb_state *state, pseudo_t pseudo, pseud
 	assert(unable_to_find_reg);
 
 found:
-	add_pseudo_reg(state, pseudo, reg);
+	add_pseudo_reg(sctx_ state, pseudo, reg);
 	return reg;
 }
 
-static struct hardreg *find_in_reg(struct bb_state *state, pseudo_t pseudo)
+static struct hardreg *find_in_reg(SCTX_ struct bb_state *state, pseudo_t pseudo)
 {
 	int i;
 	struct hardreg *reg;
@@ -534,7 +534,7 @@ static struct hardreg *find_in_reg(struct bb_state *state, pseudo_t pseudo)
 		FOR_EACH_PTR(reg->contains, p) {
 			if (p == pseudo) {
 				last_reg = i;
-				output_comment(state, "found pseudo %s in reg %s (busy=%d)", show_pseudo(pseudo), reg->name, reg->busy);
+				output_comment(sctx_ state, "found pseudo %s in reg %s (busy=%d)", show_pseudo(sctx_ pseudo), reg->name, reg->busy);
 				return reg;
 			}
 		} END_FOR_EACH_PTR(p);
@@ -542,24 +542,24 @@ static struct hardreg *find_in_reg(struct bb_state *state, pseudo_t pseudo)
 	return NULL;
 }
 
-static void flush_pseudo(struct bb_state *state, pseudo_t pseudo, struct storage *storage)
+static void flush_pseudo(SCTX_ struct bb_state *state, pseudo_t pseudo, struct storage *storage)
 {
-	struct hardreg *reg = find_in_reg(state, pseudo);
+	struct hardreg *reg = find_in_reg(sctx_ state, pseudo);
 
 	if (reg)
-		flush_reg(state, reg);
+		flush_reg(sctx_ state, reg);
 }
 
-static void flush_cc_cache_to_reg(struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
+static void flush_cc_cache_to_reg(SCTX_ struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
 {
 	int opcode = state->cc_opcode;
 
 	state->cc_opcode = 0;
 	state->cc_target = NULL;
-	output_insn(state, "%s %s", opcodes[opcode], reg->name);
+	output_insn(sctx_ state, "%s %s", opcodes[opcode], reg->name);
 }
 
-static void flush_cc_cache(struct bb_state *state)
+static void flush_cc_cache(SCTX_ struct bb_state *state)
 {
 	pseudo_t pseudo = state->cc_target;
 
@@ -569,55 +569,55 @@ static void flush_cc_cache(struct bb_state *state)
 		state->cc_target = NULL;
 
 		if (!state->cc_dead) {
-			dst = target_reg(state, pseudo, pseudo);
-			flush_cc_cache_to_reg(state, pseudo, dst);
+			dst = target_reg(sctx_ state, pseudo, pseudo);
+			flush_cc_cache_to_reg(sctx_ state, pseudo, dst);
 		}
 	}
 }
 
-static void add_cc_cache(struct bb_state *state, int opcode, pseudo_t pseudo)
+static void add_cc_cache(SCTX_ struct bb_state *state, int opcode, pseudo_t pseudo)
 {
 	assert(!state->cc_target);
 	state->cc_target = pseudo;
 	state->cc_opcode = opcode;
 	state->cc_dead = 0;
-	output_comment(state, "caching %s", opcodes[opcode]);
+	output_comment(sctx_ state, "caching %s", opcodes[opcode]);
 }
 
 /* Fill a hardreg with the pseudo it has */
-static struct hardreg *fill_reg(struct bb_state *state, struct hardreg *hardreg, pseudo_t pseudo)
+static struct hardreg *fill_reg(SCTX_ struct bb_state *state, struct hardreg *hardreg, pseudo_t pseudo)
 {
 	struct storage_hash *src;
 	struct instruction *def;
 
 	if (state->cc_target == pseudo) {
-		flush_cc_cache_to_reg(state, pseudo, hardreg);
+		flush_cc_cache_to_reg(sctx_ state, pseudo, hardreg);
 		return hardreg;
 	}
 
 	switch (pseudo->type) {
 	case PSEUDO_VAL:
-		output_insn(state, "movl $%lld,%s", pseudo->value, hardreg->name);
+		output_insn(sctx_ state, "movl $%lld,%s", pseudo->value, hardreg->name);
 		break;
 	case PSEUDO_SYM:
-		src = find_pseudo_storage(state, pseudo, NULL);
+		src = find_pseudo_storage(sctx_ state, pseudo, NULL);
 		/* Static thing? */
 		if (!src) {
-			output_insn(state, "movl $<%s>,%s", show_pseudo(pseudo), hardreg->name);
+			output_insn(sctx_ state, "movl $<%s>,%s", show_pseudo(sctx_ pseudo), hardreg->name);
 			break;
 		}
 		switch (src->storage->type) {
 		case REG_REG:
 			/* Aiaiaiaiaii! Need to flush it to temporary memory */
-			src = find_or_create_hash(pseudo, &state->internal);
+			src = find_or_create_hash(sctx_ pseudo, &state->internal);
 			/* Fall through */
 		default:
-			alloc_stack(state, src->storage);
+			alloc_stack(sctx_ state, src->storage);
 			/* Fall through */
 		case REG_STACK:
 		case REG_FRAME:
-			flush_pseudo(state, pseudo, src->storage);
-			output_insn(state, "leal %s,%s", show_memop(src->storage), hardreg->name);
+			flush_pseudo(sctx_ state, pseudo, src->storage);
+			output_insn(sctx_ state, "leal %s,%s", show_memop(sctx_ src->storage), hardreg->name);
 			break;
 		}
 		break;
@@ -625,40 +625,40 @@ static struct hardreg *fill_reg(struct bb_state *state, struct hardreg *hardreg,
 	case PSEUDO_REG:
 		def = pseudo->def;
 		if (def && def->opcode == OP_SETVAL) {
-			output_insn(state, "movl $<%s>,%s", show_pseudo(def->target), hardreg->name);
+			output_insn(sctx_ state, "movl $<%s>,%s", show_pseudo(sctx_ def->target), hardreg->name);
 			break;
 		}
-		src = find_pseudo_storage(state, pseudo, hardreg);
+		src = find_pseudo_storage(sctx_ state, pseudo, hardreg);
 		if (!src)
 			break;
 		if (src->flags & TAG_DEAD)
-			mark_reg_dead(state, pseudo, hardreg);
-		output_insn(state, "mov.%d %s,%s", 32, show_memop(src->storage), hardreg->name);
+			mark_reg_dead(sctx_ state, pseudo, hardreg);
+		output_insn(sctx_ state, "mov.%d %s,%s", 32, show_memop(sctx_ src->storage), hardreg->name);
 		break;
 	default:
-		output_insn(state, "reload %s from %s", hardreg->name, show_pseudo(pseudo));
+		output_insn(sctx_ state, "reload %s from %s", hardreg->name, show_pseudo(sctx_ pseudo));
 		break;
 	}
 	return hardreg;
 }
 
-static struct hardreg *getreg(struct bb_state *state, pseudo_t pseudo, pseudo_t target)
+static struct hardreg *getreg(SCTX_ struct bb_state *state, pseudo_t pseudo, pseudo_t target)
 {
 	struct hardreg *reg;
 
-	reg = find_in_reg(state, pseudo);
+	reg = find_in_reg(sctx_ state, pseudo);
 	if (reg)
 		return reg;
-	reg = target_reg(state, pseudo, target);
-	return fill_reg(state, reg, pseudo);
+	reg = target_reg(sctx_ state, pseudo, target);
+	return fill_reg(sctx_ state, reg, pseudo);
 }
 
-static void move_reg(struct bb_state *state, struct hardreg *src, struct hardreg *dst)
+static void move_reg(SCTX_ struct bb_state *state, struct hardreg *src, struct hardreg *dst)
 {
-	output_insn(state, "movl %s,%s", src->name, dst->name);
+	output_insn(sctx_ state, "movl %s,%s", src->name, dst->name);
 }
 
-static struct hardreg *copy_reg(struct bb_state *state, struct hardreg *src, pseudo_t target)
+static struct hardreg *copy_reg(SCTX_ struct bb_state *state, struct hardreg *src, pseudo_t target)
 {
 	int i;
 	struct hardreg *reg;
@@ -671,27 +671,27 @@ static struct hardreg *copy_reg(struct bb_state *state, struct hardreg *src, pse
 	if (src->busy == 1 && src->dead == 1)
 		return src;
 
-	reg = preferred_reg(state, target);
+	reg = preferred_reg(sctx_ state, target);
 	if (reg && !reg->contains) {
-		output_comment(state, "copying %s to preferred target %s", show_pseudo(target), reg->name);
-		move_reg(state, src, reg);
+		output_comment(sctx_ state, "copying %s to preferred target %s", show_pseudo(sctx_ target), reg->name);
+		move_reg(sctx_ state, src, reg);
 		return reg;
 	}
 
 	for (i = 0; i < REGNO; i++) {
 		reg = hardregs + i;
 		if (!reg->contains) {
-			output_comment(state, "copying %s to %s", show_pseudo(target), reg->name);
-			output_insn(state, "movl %s,%s", src->name, reg->name);
+			output_comment(sctx_ state, "copying %s to %s", show_pseudo(sctx_ target), reg->name);
+			output_insn(sctx_ state, "movl %s,%s", src->name, reg->name);
 			return reg;
 		}
 	}
 
-	flush_reg(state, src);
+	flush_reg(sctx_ state, src);
 	return src;
 }
 
-static void put_operand(struct bb_state *state, struct operand *op)
+static void put_operand(SCTX_ struct bb_state *state, struct operand *op)
 {
 	switch (op->type) {
 	case OP_REG:
@@ -709,33 +709,33 @@ static void put_operand(struct bb_state *state, struct operand *op)
 	}
 }
 
-static struct operand *alloc_op(void)
+static struct operand *alloc_op(SCTX)
 {
 	struct operand *op = malloc(sizeof(*op));
 	memset(op, 0, sizeof(*op));
 	return op;
 }
 
-static struct operand *get_register_operand(struct bb_state *state, pseudo_t pseudo, pseudo_t target)
+static struct operand *get_register_operand(SCTX_ struct bb_state *state, pseudo_t pseudo, pseudo_t target)
 {
-	struct operand *op = alloc_op();
+	struct operand *op = alloc_op(sctx);
 	op->type = OP_REG;
-	op->reg = getreg(state, pseudo, target);
+	op->reg = getreg(sctx_ state, pseudo, target);
 	op->reg->busy++;
 	return op;
 }
 
-static int get_sym_frame_offset(struct bb_state *state, pseudo_t pseudo)
+static int get_sym_frame_offset(SCTX_ struct bb_state *state, pseudo_t pseudo)
 {
 	int offset = pseudo->nr;
 	if (offset < 0) {
-		offset = alloc_stack_offset(4);
+		offset = alloc_stack_offset(sctx_ 4);
 		pseudo->nr = offset;
 	}
 	return offset;
 }
 
-static struct operand *get_generic_operand(struct bb_state *state, pseudo_t pseudo)
+static struct operand *get_generic_operand(SCTX_ struct bb_state *state, pseudo_t pseudo)
 {
 	struct hardreg *reg;
 	struct storage *src;
@@ -757,19 +757,19 @@ static struct operand *get_generic_operand(struct bb_state *state, pseudo_t pseu
 			break;
 		}
 		op->base = hardregs + REG_EBP;
-		op->offset = get_sym_frame_offset(state, pseudo);
+		op->offset = get_sym_frame_offset(sctx_ state, pseudo);
 		break;
 	}
 
 	default:
-		reg = find_in_reg(state, pseudo);
+		reg = find_in_reg(sctx_ state, pseudo);
 		if (reg) {
 			op->type = OP_REG;
 			op->reg = reg;
 			reg->busy++;
 			break;
 		}
-		hash = find_pseudo_storage(state, pseudo, NULL);
+		hash = find_pseudo_storage(sctx_ state, pseudo, NULL);
 		if (!hash)
 			break;
 		src = hash->storage;
@@ -797,10 +797,10 @@ static struct operand *get_generic_operand(struct bb_state *state, pseudo_t pseu
 }
 
 /* Callers should be made to use the proper "operand" formats */
-static const char *generic(struct bb_state *state, pseudo_t pseudo)
+static const char *generic(SCTX_ struct bb_state *state, pseudo_t pseudo)
 {
 	struct hardreg *reg;
-	struct operand *op = get_generic_operand(state, pseudo);
+	struct operand *op = get_generic_operand(sctx_ state, pseudo);
 	static char buf[100];
 	const char *str;
 
@@ -809,36 +809,36 @@ static const char *generic(struct bb_state *state, pseudo_t pseudo)
 		if (!op->offset && op->base && !op->sym)
 			return op->base->name;
 		if (op->sym && !op->base) {
-			int len = sprintf(buf, "$ %s", show_op(state, op));
+			int len = sprintf(buf, "$ %s", show_op(sctx_ state, op));
 			if (op->offset)
 				sprintf(buf + len, " + %d", op->offset);
 			return buf;
 		}
-		str = show_op(state, op);
-		put_operand(state, op);
-		reg = target_reg(state, pseudo, NULL);
-		output_insn(state, "lea %s,%s", show_op(state, op), reg->name);
+		str = show_op(sctx_ state, op);
+		put_operand(sctx_ state, op);
+		reg = target_reg(sctx_ state, pseudo, NULL);
+		output_insn(sctx_ state, "lea %s,%s", show_op(sctx_ state, op), reg->name);
 		return reg->name;		
 
 	default:
-		str = show_op(state, op);
+		str = show_op(sctx_ state, op);
 	}
-	put_operand(state, op);
+	put_operand(sctx_ state, op);
 	return str;
 }
 
-static struct operand *get_address_operand(struct bb_state *state, struct instruction *memop)
+static struct operand *get_address_operand(SCTX_ struct bb_state *state, struct instruction *memop)
 {
 	struct hardreg *base;
-	struct operand *op = get_generic_operand(state, memop->src);
+	struct operand *op = get_generic_operand(sctx_ state, memop->src);
 
 	switch (op->type) {
 	case OP_ADDR:
 		op->offset += memop->offset;
 		break;
 	default:
-		put_operand(state, op);
-		base = getreg(state, memop->src, NULL);
+		put_operand(sctx_ state, op);
+		base = getreg(sctx_ state, memop->src, NULL);
 		op->type = OP_ADDR;
 		op->base = base;
 		base->busy++;
@@ -848,25 +848,25 @@ static struct operand *get_address_operand(struct bb_state *state, struct instru
 	return op;
 }
 
-static const char *address(struct bb_state *state, struct instruction *memop)
+static const char *address(SCTX_ struct bb_state *state, struct instruction *memop)
 {
-	struct operand *op = get_address_operand(state, memop);
-	const char *str = show_op(state, op);
-	put_operand(state, op);
+	struct operand *op = get_address_operand(sctx_ state, memop);
+	const char *str = show_op(sctx_ state, op);
+	put_operand(sctx_ state, op);
 	return str;
 }
 
-static const char *reg_or_imm(struct bb_state *state, pseudo_t pseudo)
+static const char *reg_or_imm(SCTX_ struct bb_state *state, pseudo_t pseudo)
 {
 	switch(pseudo->type) {
 	case PSEUDO_VAL:
-		return show_pseudo(pseudo);
+		return show_pseudo(sctx_ pseudo);
 	default:
-		return getreg(state, pseudo, NULL)->name;
+		return getreg(sctx_ state, pseudo, NULL)->name;
 	}
 }
 
-static void kill_dead_reg(struct hardreg *reg)
+static void kill_dead_reg(SCTX_ struct hardreg *reg)
 {
 	if (reg->dead) {
 		pseudo_t p;
@@ -882,33 +882,33 @@ static void kill_dead_reg(struct hardreg *reg)
 	}
 }
 
-static struct hardreg *target_copy_reg(struct bb_state *state, struct hardreg *src, pseudo_t target)
+static struct hardreg *target_copy_reg(SCTX_ struct bb_state *state, struct hardreg *src, pseudo_t target)
 {
-	kill_dead_reg(src);
-	return copy_reg(state, src, target);
+	kill_dead_reg(sctx_ src);
+	return copy_reg(sctx_ state, src, target);
 }
 
-static void do_binop(struct bb_state *state, struct instruction *insn, pseudo_t val1, pseudo_t val2)
+static void do_binop(SCTX_ struct bb_state *state, struct instruction *insn, pseudo_t val1, pseudo_t val2)
 {
 	const char *op = opcodes[insn->opcode];
-	struct operand *src = get_register_operand(state, val1, insn->target);
-	struct operand *src2 = get_generic_operand(state, val2);
+	struct operand *src = get_register_operand(sctx_ state, val1, insn->target);
+	struct operand *src2 = get_generic_operand(sctx_ state, val2);
 	struct hardreg *dst;
 
-	dst = target_copy_reg(state, src->reg, insn->target);
-	output_insn(state, "%s.%d %s,%s", op, insn->size, show_op(state, src2), dst->name);
-	put_operand(state, src);
-	put_operand(state, src2);
-	add_pseudo_reg(state, insn->target, dst);
+	dst = target_copy_reg(sctx_ state, src->reg, insn->target);
+	output_insn(sctx_ state, "%s.%d %s,%s", op, insn->size, show_op(sctx_ state, src2), dst->name);
+	put_operand(sctx_ state, src);
+	put_operand(sctx_ state, src2);
+	add_pseudo_reg(sctx_ state, insn->target, dst);
 }
 
-static void generate_binop(struct bb_state *state, struct instruction *insn)
+static void generate_binop(SCTX_ struct bb_state *state, struct instruction *insn)
 {
-	flush_cc_cache(state);
-	do_binop(state, insn, insn->src1, insn->src2);
+	flush_cc_cache(sctx_ state);
+	do_binop(sctx_ state, insn, insn->src1, insn->src2);
 }
 
-static int is_dead_reg(struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
+static int is_dead_reg(SCTX_ struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
 {
 	pseudo_t p;
 	FOR_EACH_PTR(reg->contains, p) {
@@ -923,34 +923,34 @@ static int is_dead_reg(struct bb_state *state, pseudo_t pseudo, struct hardreg *
  * sources around to satisfy the target register, or to avoid having
  * to load one of them into a register..
  */
-static void generate_commutative_binop(struct bb_state *state, struct instruction *insn)
+static void generate_commutative_binop(SCTX_ struct bb_state *state, struct instruction *insn)
 {
 	pseudo_t src1, src2;
 	struct hardreg *reg1, *reg2;
 
-	flush_cc_cache(state);
+	flush_cc_cache(sctx_ state);
 	src1 = insn->src1;
 	src2 = insn->src2;
-	reg2 = find_in_reg(state, src2);
+	reg2 = find_in_reg(sctx_ state, src2);
 	if (!reg2)
 		goto dont_switch;
-	reg1 = find_in_reg(state, src1);
+	reg1 = find_in_reg(sctx_ state, src1);
 	if (!reg1)
 		goto do_switch;
-	if (!is_dead_reg(state, src2, reg2))
+	if (!is_dead_reg(sctx_ state, src2, reg2))
 		goto dont_switch;
-	if (!is_dead_reg(state, src1, reg1))
+	if (!is_dead_reg(sctx_ state, src1, reg1))
 		goto do_switch;
 
 	/* Both are dead. Is one preferable? */
-	if (reg2 != preferred_reg(state, insn->target))
+	if (reg2 != preferred_reg(sctx_ state, insn->target))
 		goto dont_switch;
 
 do_switch:
 	src1 = src2;
 	src2 = insn->src1;
 dont_switch:
-	do_binop(state, insn, src1, src2);
+	do_binop(sctx_ state, insn, src1, src2);
 }
 
 /*
@@ -958,50 +958,50 @@ dont_switch:
  * still has its value), but it's scheduled to be killed after the next
  * "sequence point" when we call "kill_read_pseudos()"
  */
-static void mark_pseudo_dead(struct bb_state *state, pseudo_t pseudo)
+static void mark_pseudo_dead(SCTX_ struct bb_state *state, pseudo_t pseudo)
 {
 	int i;
 	struct storage_hash *src;
 
 	if (state->cc_target == pseudo)
 		state->cc_dead = 1;
-	src = find_pseudo_storage(state, pseudo, NULL);
+	src = find_pseudo_storage(sctx_ state, pseudo, NULL);
 	if (src)
 		src->flags |= TAG_DEAD;
 	for (i = 0; i < REGNO; i++)
-		mark_reg_dead(state, pseudo, hardregs + i);
+		mark_reg_dead(sctx_ state, pseudo, hardregs + i);
 }
 
-static void kill_dead_pseudos(struct bb_state *state)
+static void kill_dead_pseudos(SCTX_ struct bb_state *state)
 {
 	int i;
 
 	for (i = 0; i < REGNO; i++) {
-		kill_dead_reg(hardregs + i);
+		kill_dead_reg(sctx_ hardregs + i);
 	}
 }
 
-static void generate_store(struct instruction *insn, struct bb_state *state)
+static void generate_store(SCTX_ struct instruction *insn, struct bb_state *state)
 {
-	output_insn(state, "mov.%d %s,%s", insn->size, reg_or_imm(state, insn->target), address(state, insn));
+	output_insn(sctx_ state, "mov.%d %s,%s", insn->size, reg_or_imm(sctx_ state, insn->target), address(sctx_ state, insn));
 }
 
-static void generate_load(struct instruction *insn, struct bb_state *state)
+static void generate_load(SCTX_ struct instruction *insn, struct bb_state *state)
 {
-	const char *input = address(state, insn);
+	const char *input = address(sctx_ state, insn);
 	struct hardreg *dst;
 
-	kill_dead_pseudos(state);
-	dst = target_reg(state, insn->target, NULL);
-	output_insn(state, "mov.%d %s,%s", insn->size, input, dst->name);
+	kill_dead_pseudos(sctx_ state);
+	dst = target_reg(sctx_ state, insn->target, NULL);
+	output_insn(sctx_ state, "mov.%d %s,%s", insn->size, input, dst->name);
 }
 
-static void kill_pseudo(struct bb_state *state, pseudo_t pseudo)
+static void kill_pseudo(SCTX_ struct bb_state *state, pseudo_t pseudo)
 {
 	int i;
 	struct hardreg *reg;
 
-	output_comment(state, "killing pseudo %s", show_pseudo(pseudo));
+	output_comment(sctx_ state, "killing pseudo %s", show_pseudo(sctx_ pseudo));
 	for (i = 0; i < REGNO; i++) {
 		pseudo_t p;
 
@@ -1011,24 +1011,24 @@ static void kill_pseudo(struct bb_state *state, pseudo_t pseudo)
 				continue;
 			if (CURRENT_TAG(p) & TAG_DEAD)
 				reg->dead--;
-			output_comment(state, "removing pseudo %s from reg %s", 
-				show_pseudo(pseudo), reg->name);
+			output_comment(sctx_ state, "removing pseudo %s from reg %s", 
+				show_pseudo(sctx_ pseudo), reg->name);
 			DELETE_CURRENT_PTR(p);
 		} END_FOR_EACH_PTR(p);
 		PACK_PTR_LIST(&reg->contains);
 	}
 }
 
-static void generate_copy(struct bb_state *state, struct instruction *insn)
+static void generate_copy(SCTX_ struct bb_state *state, struct instruction *insn)
 {
-	struct hardreg *src = getreg(state, insn->src, insn->target);
-	kill_pseudo(state, insn->target);
-	add_pseudo_reg(state, insn->target, src);
+	struct hardreg *src = getreg(sctx_ state, insn->src, insn->target);
+	kill_pseudo(sctx_ state, insn->target);
+	add_pseudo_reg(sctx_ state, insn->target, src);
 }
 
-static void generate_cast(struct bb_state *state, struct instruction *insn)
+static void generate_cast(SCTX_ struct bb_state *state, struct instruction *insn)
 {
-	struct hardreg *src = getreg(state, insn->src, insn->target);
+	struct hardreg *src = getreg(sctx_ state, insn->src, insn->target);
 	struct hardreg *dst;
 	unsigned int old = insn->orig_type ? insn->orig_type->bit_size : 0;
 	unsigned int new = insn->size;
@@ -1038,24 +1038,24 @@ static void generate_cast(struct bb_state *state, struct instruction *insn)
 	 * just keep both pseudos in the same register.
 	 */
 	if (old >= new) {
-		add_pseudo_reg(state, insn->target, src);
+		add_pseudo_reg(sctx_ state, insn->target, src);
 		return;
 	}
 
-	dst = target_copy_reg(state, src, insn->target);
+	dst = target_copy_reg(sctx_ state, src, insn->target);
 
 	if (insn->orig_type && (insn->orig_type->ctype.modifiers & MOD_SIGNED)) {
-		output_insn(state, "sext.%d.%d %s", old, new, dst->name);
+		output_insn(sctx_ state, "sext.%d.%d %s", old, new, dst->name);
 	} else {
 		unsigned long long mask;
 		mask = ~(~0ULL << old);
 		mask &= ~(~0ULL << new);
-		output_insn(state, "andl.%d $%#llx,%s", insn->size, mask, dst->name);
+		output_insn(sctx_ state, "andl.%d $%#llx,%s", insn->size, mask, dst->name);
 	}
-	add_pseudo_reg(state, insn->target, dst);
+	add_pseudo_reg(sctx_ state, insn->target, dst);
 }
 
-static void generate_output_storage(struct bb_state *state);
+static void generate_output_storage(SCTX_ struct bb_state *state);
 
 static const char *conditional[] = {
 	[OP_SET_EQ] = "e",
@@ -1071,7 +1071,7 @@ static const char *conditional[] = {
 };
 	
 
-static void generate_branch(struct bb_state *state, struct instruction *br)
+static void generate_branch(SCTX_ struct bb_state *state, struct instruction *br)
 {
 	const char *cond = "XXX";
 	struct basic_block *target;
@@ -1080,82 +1080,82 @@ static void generate_branch(struct bb_state *state, struct instruction *br)
 		if (state->cc_target == br->cond) {
 			cond = conditional[state->cc_opcode];
 		} else {
-			struct hardreg *reg = getreg(state, br->cond, NULL);
-			output_insn(state, "testl %s,%s", reg->name, reg->name);
+			struct hardreg *reg = getreg(sctx_ state, br->cond, NULL);
+			output_insn(sctx_ state, "testl %s,%s", reg->name, reg->name);
 			cond = "ne";
 		}
 	}
-	generate_output_storage(state);
+	generate_output_storage(sctx_ state);
 	target = br->bb_true;
 	if (br->cond) {
-		output_insn(state, "j%s .L%p", cond, target);
+		output_insn(sctx_ state, "j%s .L%p", cond, target);
 		target = br->bb_false;
 	}
-	output_insn(state, "jmp .L%p", target);
+	output_insn(sctx_ state, "jmp .L%p", target);
 }
 
 /* We've made sure that there is a dummy reg live for the output */
-static void generate_switch(struct bb_state *state, struct instruction *insn)
+static void generate_switch(SCTX_ struct bb_state *state, struct instruction *insn)
 {
 	struct hardreg *reg = hardregs + SWITCH_REG;
 
-	generate_output_storage(state);
-	output_insn(state, "switch on %s", reg->name);
-	output_insn(state, "unimplemented: %s", show_instruction(insn));
+	generate_output_storage(sctx_ state);
+	output_insn(sctx_ state, "switch on %s", reg->name);
+	output_insn(sctx_ state, "unimplemented: %s", show_instruction(sctx_ insn));
 }
 
-static void generate_ret(struct bb_state *state, struct instruction *ret)
+static void generate_ret(SCTX_ struct bb_state *state, struct instruction *ret)
 {
 	if (ret->src && ret->src != VOID) {
 		struct hardreg *wants = hardregs+0;
-		struct hardreg *reg = getreg(state, ret->src, NULL);
+		struct hardreg *reg = getreg(sctx_ state, ret->src, NULL);
 		if (reg != wants)
-			output_insn(state, "movl %s,%s", reg->name, wants->name);
+			output_insn(sctx_ state, "movl %s,%s", reg->name, wants->name);
 	}
-	output_insn(state, "ret");
+	output_insn(sctx_ state, "ret");
 }
 
 /*
  * Fake "call" linearization just as a taster..
  */
-static void generate_call(struct bb_state *state, struct instruction *insn)
+static void generate_call(SCTX_ struct bb_state *state, struct instruction *insn)
 {
 	int offset = 0;
 	pseudo_t arg;
 
 	FOR_EACH_PTR(insn->arguments, arg) {
-		output_insn(state, "pushl %s", generic(state, arg));
+		output_insn(sctx_ state, "pushl %s", generic(sctx_ state, arg));
 		offset += 4;
 	} END_FOR_EACH_PTR(arg);
-	flush_reg(state, hardregs+0);
-	flush_reg(state, hardregs+1);
-	flush_reg(state, hardregs+2);
-	output_insn(state, "call %s", show_pseudo(insn->func));
+	flush_reg(sctx_ state, hardregs+0);
+	flush_reg(sctx_ state, hardregs+1);
+	flush_reg(sctx_ state, hardregs+2);
+	output_insn(sctx_ state, "call %s", show_pseudo(sctx_ insn->func));
 	if (offset)
-		output_insn(state, "addl $%d,%%esp", offset);
+		output_insn(sctx_ state, "addl $%d,%%esp", offset);
 	if (insn->target && insn->target != VOID)
-		add_pseudo_reg(state, insn->target, hardregs+0);
+		add_pseudo_reg(sctx_ state, insn->target, hardregs+0);
 }
 
-static void generate_select(struct bb_state *state, struct instruction *insn)
+static void generate_select(SCTX_ struct bb_state *state, struct instruction *insn)
 {
 	const char *cond;
 	struct hardreg *src1, *src2, *dst;
 
-	src1 = getreg(state, insn->src2, NULL);
-	dst = copy_reg(state, src1, insn->target);
-	add_pseudo_reg(state, insn->target, dst);
-	src2 = getreg(state, insn->src3, insn->target);
+	src1 = getreg(sctx_ state, insn->src2, NULL);
+	dst = copy_reg(sctx_ state, src1, insn->target);
+	add_pseudo_reg(sctx_ state, insn->target, dst);
+	src2 = getreg(sctx_ state, insn->src3, insn->target);
 
 	if (state->cc_target == insn->src1) {
 		cond = conditional[state->cc_opcode];
 	} else {
-		struct hardreg *reg = getreg(state, insn->src1, NULL);
-		output_insn(state, "testl %s,%s", reg->name, reg->name);
+		struct hardreg *reg = getreg(sctx_ state, insn->src1, NULL);
+		output_insn(sctx_ state, "testl %s,%s", reg->name, reg->name);
 		cond = "ne";
 	}
 
-	output_insn(state, "sel%s %s,%s", cond, src2->name, dst->name);
+	output_insn(sctx_ state, "sel%s %s,%s", cond, src2->name, dst->name);
 }
 
 struct asm_arg {
@@ -1165,7 +1165,7 @@ struct asm_arg {
 	struct hardreg *reg;
 };
 
-static void replace_asm_arg(char **dst_p, struct asm_arg *arg)
+static void replace_asm_arg(SCTX_ char **dst_p, struct asm_arg *arg)
 {
 	char *dst = *dst_p;
 	int len = strlen(arg->value);
@@ -1174,7 +1174,7 @@ static void replace_asm_arg(char **dst_p, struct asm_arg *arg)
 	*dst_p = dst + len;
 }
 
-static void replace_asm_percent(const char **src_p, char **dst_p, struct asm_arg *args, int nr)
+static void replace_asm_percent(SCTX_ const char **src_p, char **dst_p, struct asm_arg *args, int nr)
 {
 	const char *src = *src_p;
 	char c;
@@ -1185,14 +1185,14 @@ static void replace_asm_percent(const char **src_p, char **dst_p, struct asm_arg
 	case '0' ... '9':
 		index = c - '0';
 		if (index < nr)
-			replace_asm_arg(dst_p, args+index);
+			replace_asm_arg(sctx_ dst_p, args+index);
 		break;
 	}	
 	*src_p = src;
 	return;
 }
 
-static void replace_asm_named(const char **src_p, char **dst_p, struct asm_arg *args, int nr)
+static void replace_asm_named(SCTX_ const char **src_p, char **dst_p, struct asm_arg *args, int nr)
 {
 	const char *src = *src_p;
 	const char *end = src;
@@ -1213,14 +1213,14 @@ static void replace_asm_named(const char **src_p, char **dst_p, struct asm_arg *
 				len = ident->len;
 				if (memcmp(src, ident->name, len))
 					continue;
-				replace_asm_arg(dst_p, args+i);
+				replace_asm_arg(sctx_ dst_p, args+i);
 				return;
 			}
 		}
 	}
 }
 
-static const char *replace_asm_args(const char *str, struct asm_arg *args, int nr)
+static const char *replace_asm_args(SCTX_ const char *str, struct asm_arg *args, int nr)
 {
 	static char buffer[1000];
 	char *p = buffer;
@@ -1238,10 +1238,10 @@ static const char *replace_asm_args(const char *str, struct asm_arg *args, int n
 				p++;
 				continue;
 			}
-			replace_asm_percent(&str, &p, args, nr);
+			replace_asm_percent(sctx_ &str, &p, args, nr);
 			continue;
 		case '[':
-			replace_asm_named(&str, &p, args, nr);
+			replace_asm_named(sctx_ &str, &p, args, nr);
 			continue;
 		default:
 			break;
@@ -1253,7 +1253,7 @@ static const char *replace_asm_args(const char *str, struct asm_arg *args, int n
 #define MAX_ASM_ARG (50)
 static struct asm_arg asm_arguments[MAX_ASM_ARG];
 
-static struct asm_arg *generate_asm_inputs(struct bb_state *state, struct asm_constraint_list *list, struct asm_arg *arg)
+static struct asm_arg *generate_asm_inputs(SCTX_ struct bb_state *state, struct asm_constraint_list *list, struct asm_arg *arg)
 {
 	struct asm_constraint *entry;
 
@@ -1267,24 +1267,24 @@ static struct asm_arg *generate_asm_inputs(struct bb_state *state, struct asm_co
 		string = "undef";
 		switch (*constraint) {
 		case 'r':
-			string = getreg(state, pseudo, NULL)->name;
+			string = getreg(sctx_ state, pseudo, NULL)->name;
 			break;
 		case '0' ... '9':
 			index = *constraint - '0';
 			reg = asm_arguments[index].reg;
-			orig = find_in_reg(state, pseudo);
+			orig = find_in_reg(sctx_ state, pseudo);
 			if (orig)
-				move_reg(state, orig, reg);
+				move_reg(sctx_ state, orig, reg);
 			else
-				fill_reg(state, reg, pseudo);
+				fill_reg(sctx_ state, reg, pseudo);
 			string = reg->name;
 			break;
 		default:
-			string = generic(state, pseudo);
+			string = generic(sctx_ state, pseudo);
 			break;
 		}
 
-		output_insn(state, "# asm input \"%s\": %s : %s", constraint, show_pseudo(pseudo), string);
+		output_insn(sctx_ state, "# asm input \"%s\": %s : %s", constraint, show_pseudo(sctx_ pseudo), string);
 
 		arg->name = entry->ident;
 		arg->value = string;
@@ -1295,7 +1295,7 @@ static struct asm_arg *generate_asm_inputs(struct bb_state *state, struct asm_co
 	return arg;
 }
 
-static struct asm_arg *generate_asm_outputs(struct bb_state *state, struct asm_constraint_list *list, struct asm_arg *arg)
+static struct asm_arg *generate_asm_outputs(SCTX_ struct bb_state *state, struct asm_constraint_list *list, struct asm_arg *arg)
 {
 	struct asm_constraint *entry;
 
@@ -1312,14 +1312,14 @@ static struct asm_arg *generate_asm_outputs(struct bb_state *state, struct asm_c
 		switch (*constraint) {
 		case 'r':
 		default:
-			reg = target_reg(state, pseudo, NULL);
+			reg = target_reg(sctx_ state, pseudo, NULL);
 			arg->pseudo = pseudo;
 			arg->reg = reg;
 			string = reg->name;
 			break;
 		}
 
-		output_insn(state, "# asm output \"%s\": %s : %s", constraint, show_pseudo(pseudo), string);
+		output_insn(sctx_ state, "# asm output \"%s\": %s : %s", constraint, show_pseudo(sctx_ pseudo), string);
 
 		arg->name = entry->ident;
 		arg->value = string;
@@ -1328,50 +1328,50 @@ static struct asm_arg *generate_asm_outputs(struct bb_state *state, struct asm_c
 	return arg;
 }
 
-static void generate_asm(struct bb_state *state, struct instruction *insn)
+static void generate_asm(SCTX_ struct bb_state *state, struct instruction *insn)
 {
 	const char *str = insn->string;
 
 	if (insn->asm_rules->outputs || insn->asm_rules->inputs) {
 		struct asm_arg *arg;
 
-		arg = generate_asm_outputs(state, insn->asm_rules->outputs, asm_arguments);
-		arg = generate_asm_inputs(state, insn->asm_rules->inputs, arg);
-		str = replace_asm_args(str, asm_arguments, arg - asm_arguments);
+		arg = generate_asm_outputs(sctx_ state, insn->asm_rules->outputs, asm_arguments);
+		arg = generate_asm_inputs(sctx_ state, insn->asm_rules->inputs, arg);
+		str = replace_asm_args(sctx_ str, asm_arguments, arg - asm_arguments);
 	}
-	output_insn(state, "%s", str);
+	output_insn(sctx_ state, "%s", str);
 }
 
-static void generate_compare(struct bb_state *state, struct instruction *insn)
+static void generate_compare(SCTX_ struct bb_state *state, struct instruction *insn)
 {
 	struct hardreg *src;
 	const char *src2;
 	int opcode;
 
-	flush_cc_cache(state);
+	flush_cc_cache(sctx_ state);
 	opcode = insn->opcode;
 
 	/*
 	 * We should try to switch these around if necessary,
 	 * and update the opcode to match..
 	 */
-	src = getreg(state, insn->src1, insn->target);
-	src2 = generic(state, insn->src2);
+	src = getreg(sctx_ state, insn->src1, insn->target);
+	src2 = generic(sctx_ state, insn->src2);
 
-	output_insn(state, "cmp.%d %s,%s", insn->size, src2, src->name);
+	output_insn(sctx_ state, "cmp.%d %s,%s", insn->size, src2, src->name);
 
-	add_cc_cache(state, opcode, insn->target);
+	add_cc_cache(sctx_ state, opcode, insn->target);
 }
 
-static void generate_one_insn(struct instruction *insn, struct bb_state *state)
+static void generate_one_insn(SCTX_ struct instruction *insn, struct bb_state *state)
 {
 	if (verbose)
-		output_comment(state, "%s", show_instruction(insn));
+		output_comment(sctx_ state, "%s", show_instruction(sctx_ insn));
 
 	switch (insn->opcode) {
 	case OP_ENTRY: {
 		struct symbol *sym = insn->bb->ep->name;
-		const char *name = show_ident(sym->ident);
+		const char *name = show_ident(sctx_ sym->ident);
 		if (sym->ctype.modifiers & MOD_STATIC)
 			printf("\n\n%s:\n", name);
 		else
@@ -1388,78 +1388,78 @@ static void generate_one_insn(struct instruction *insn, struct bb_state *state)
 		break;
 
 	case OP_STORE:
-		generate_store(insn, state);
+		generate_store(sctx_ insn, state);
 		break;
 
 	case OP_LOAD:
-		generate_load(insn, state);
+		generate_load(sctx_ insn, state);
 		break;
 
 	case OP_DEATHNOTE:
-		mark_pseudo_dead(state, insn->target);
+		mark_pseudo_dead(sctx_ state, insn->target);
 		return;
 
 	case OP_COPY:
-		generate_copy(state, insn);
+		generate_copy(sctx_ state, insn);
 		break;
 
 	case OP_ADD_LIN: case OP_MULU: case OP_MULS:
 	case OP_AND_LIN: case OP_OR_LIN: case OP_XOR_LIN:
 	case OP_AND_BOOL: case OP_OR_BOOL:
-		generate_commutative_binop(state, insn);
+		generate_commutative_binop(sctx_ state, insn);
 		break;
 
 	case OP_SUB: case OP_DIVU: case OP_DIVS:
 	case OP_MODU: case OP_MODS:
 	case OP_SHL: case OP_LSR: case OP_ASR:
- 		generate_binop(state, insn);
+ 		generate_binop(sctx_ state, insn);
 		break;
 
 	case OP_BINCMP ... OP_BINCMP_END:
-		generate_compare(state, insn);
+		generate_compare(sctx_ state, insn);
 		break;
 
 	case OP_CAST: case OP_SCAST: case OP_FPCAST: case OP_PTRCAST:
-		generate_cast(state, insn);
+		generate_cast(sctx_ state, insn);
 		break;
 
 	case OP_SEL:
-		generate_select(state, insn);
+		generate_select(sctx_ state, insn);
 		break;
 
 	case OP_BR:
-		generate_branch(state, insn);
+		generate_branch(sctx_ state, insn);
 		break;
 
 	case OP_SWITCH:
-		generate_switch(state, insn);
+		generate_switch(sctx_ state, insn);
 		break;
 
 	case OP_CALL:
-		generate_call(state, insn);
+		generate_call(sctx_ state, insn);
 		break;
 
 	case OP_RET:
-		generate_ret(state, insn);
+		generate_ret(sctx_ state, insn);
 		break;
 
 	case OP_ASM:
-		generate_asm(state, insn);
+		generate_asm(sctx_ state, insn);
 		break;
 
 	case OP_PHI:
 	case OP_PHISOURCE:
 	default:
-		output_insn(state, "unimplemented: %s", show_instruction(insn));
+		output_insn(sctx_ state, "unimplemented: %s", show_instruction(sctx_ insn));
 		break;
 	}
-	kill_dead_pseudos(state);
+	kill_dead_pseudos(sctx_ state);
 }
 
 #define VERY_BUSY 1000
 #define REG_FIXED 2000
 
-static void write_reg_to_storage(struct bb_state *state, struct hardreg *reg, pseudo_t pseudo, struct storage *storage)
+static void write_reg_to_storage(SCTX_ struct bb_state *state, struct hardreg *reg, pseudo_t pseudo, struct storage *storage)
 {
 	int i;
 	struct hardreg *out;
@@ -1469,7 +1469,7 @@ static void write_reg_to_storage(struct bb_state *state, struct hardreg *reg, ps
 		out = hardregs + storage->regno;
 		if (reg == out)
 			return;
-		output_insn(state, "movl %s,%s", reg->name, out->name);
+		output_insn(sctx_ state, "movl %s,%s", reg->name, out->name);
 		return;
 	case REG_UDEF:
 		if (reg->busy < VERY_BUSY) {
@@ -1484,7 +1484,7 @@ static void write_reg_to_storage(struct bb_state *state, struct hardreg *reg, ps
 			out = hardregs + i;
 			if (out->contains)
 				continue;
-			output_insn(state, "movl %s,%s", reg->name, out->name);
+			output_insn(sctx_ state, "movl %s,%s", reg->name, out->name);
 			storage->type = REG_REG;
 			storage->regno = i;
 			out->busy = REG_FIXED;
@@ -1492,31 +1492,31 @@ static void write_reg_to_storage(struct bb_state *state, struct hardreg *reg, ps
 		}
 
 		/* Fall back on stack allocation ... */
-		alloc_stack(state, storage);
+		alloc_stack(sctx_ state, storage);
 		/* Fall through */
 	default:
-		output_insn(state, "movl %s,%s", reg->name, show_memop(storage));
+		output_insn(sctx_ state, "movl %s,%s", reg->name, show_memop(sctx_ storage));
 		return;
 	}
 }
 
-static void write_val_to_storage(struct bb_state *state, pseudo_t src, struct storage *storage)
+static void write_val_to_storage(SCTX_ struct bb_state *state, pseudo_t src, struct storage *storage)
 {
 	struct hardreg *out;
 
 	switch (storage->type) {
 	case REG_UDEF:
-		alloc_stack(state, storage);
+		alloc_stack(sctx_ state, storage);
 	default:
-		output_insn(state, "movl %s,%s", show_pseudo(src), show_memop(storage));
+		output_insn(sctx_ state, "movl %s,%s", show_pseudo(sctx_ src), show_memop(sctx_ storage));
 		break;
 	case REG_REG:
 		out = hardregs + storage->regno;
-		output_insn(state, "movl %s,%s", show_pseudo(src), out->name);
+		output_insn(sctx_ state, "movl %s,%s", show_pseudo(sctx_ src), out->name);
 	}
 }
 
-static void fill_output(struct bb_state *state, pseudo_t pseudo, struct storage *out)
+static void fill_output(SCTX_ struct bb_state *state, pseudo_t pseudo, struct storage *out)
 {
 	int i;
 	struct storage_hash *in;
@@ -1525,12 +1525,12 @@ static void fill_output(struct bb_state *state, pseudo_t pseudo, struct storage 
 	/* Is that pseudo a constant value? */
 	switch (pseudo->type) {
 	case PSEUDO_VAL:
-		write_val_to_storage(state, pseudo, out);
+		write_val_to_storage(sctx_ state, pseudo, out);
 		return;
 	case PSEUDO_REG:
 		def = pseudo->def;
 		if (def && def->opcode == OP_SETVAL) {
-			write_val_to_storage(state, pseudo, out);
+			write_val_to_storage(sctx_ state, pseudo, out);
 			return;
 		}
 	default:
@@ -1544,16 +1544,16 @@ static void fill_output(struct bb_state *state, pseudo_t pseudo, struct storage 
 
 		FOR_EACH_PTR(reg->contains, p) {
 			if (p == pseudo) {
-				write_reg_to_storage(state, reg, pseudo, out);
+				write_reg_to_storage(sctx_ state, reg, pseudo, out);
 				return;
 			}
 		} END_FOR_EACH_PTR(p);
 	}
 
 	/* Do we have it in another storage? */
-	in = find_storage_hash(pseudo, state->internal);
+	in = find_storage_hash(sctx_ pseudo, state->internal);
 	if (!in) {
-		in = find_storage_hash(pseudo, state->inputs);
+		in = find_storage_hash(sctx_ pseudo, state->inputs);
 		/* Undefined? */
 		if (!in)
 			return;
@@ -1563,20 +1563,20 @@ static void fill_output(struct bb_state *state, pseudo_t pseudo, struct storage 
 		*out = *in->storage;
 		break;
 	case REG_REG:
-		output_insn(state, "movl %s,%s", show_memop(in->storage), hardregs[out->regno].name);
+		output_insn(sctx_ state, "movl %s,%s", show_memop(sctx_ in->storage), hardregs[out->regno].name);
 		break;
 	default:
 		if (out == in->storage)
 			break;
 		if ((out->type == in->storage->type) && (out->regno == in->storage->regno))
 			break;
-		output_insn(state, "movl %s,%s", show_memop(in->storage), show_memop(out));
+		output_insn(sctx_ state, "movl %s,%s", show_memop(sctx_ in->storage), show_memop(sctx_ out));
 		break;
 	}
 	return;
 }
 
-static int final_pseudo_flush(struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
+static int final_pseudo_flush(SCTX_ struct bb_state *state, pseudo_t pseudo, struct hardreg *reg)
 {
 	struct storage_hash *hash;
 	struct storage *out;
@@ -1586,7 +1586,7 @@ static int final_pseudo_flush(struct bb_state *state, pseudo_t pseudo, struct ha
 	 * Since this pseudo is live at exit, we'd better have output 
 	 * storage for it..
 	 */
-	hash = find_storage_hash(pseudo, state->outputs);
+	hash = find_storage_hash(sctx_ pseudo, state->outputs);
 	if (!hash)
 		return 1;
 	out = hash->storage;
@@ -1602,7 +1602,7 @@ static int final_pseudo_flush(struct bb_state *state, pseudo_t pseudo, struct ha
 			goto copy_to_dst;
 
 		/* Aiee. Try to keep it in a register.. */
-		dst = empty_reg(state);
+		dst = empty_reg(sctx_ state);
 		if (dst)
 			goto copy_to_dst;
 
@@ -1611,7 +1611,7 @@ static int final_pseudo_flush(struct bb_state *state, pseudo_t pseudo, struct ha
 
 	/* If the output is undefined, let's see if we can put it in a register.. */
 	if (out->type == REG_UDEF) {
-		dst = empty_reg(state);
+		dst = empty_reg(sctx_ state);
 		if (dst) {
 			out->type = REG_REG;
 			out->regno = dst - hardregs;
@@ -1622,14 +1622,14 @@ static int final_pseudo_flush(struct bb_state *state, pseudo_t pseudo, struct ha
 	}
 
 	/* If we know we need to flush it, just do so already .. */
-	output_insn(state, "movl %s,%s", reg->name, show_memop(out));
+	output_insn(sctx_ state, "movl %s,%s", reg->name, show_memop(sctx_ out));
 	return 1;
 
 copy_to_dst:
 	if (reg == dst)
 		return 1;
-	output_insn(state, "movl %s,%s", reg->name, dst->name);
-	add_pseudo_reg(state, pseudo, dst);
+	output_insn(sctx_ state, "movl %s,%s", reg->name, dst->name);
+	add_pseudo_reg(sctx_ state, pseudo, dst);
 	return 1;
 }
 
@@ -1637,7 +1637,7 @@ copy_to_dst:
  * This tries to make sure that we put all the pseudos that are
  * live on exit into the proper storage
  */
-static void generate_output_storage(struct bb_state *state)
+static void generate_output_storage(SCTX_ struct bb_state *state)
 {
 	struct storage_hash *entry;
 
@@ -1659,7 +1659,7 @@ static void generate_output_storage(struct bb_state *state)
 					continue;
 
 				/* Try to write back the pseudo to where it should go ... */
-				if (final_pseudo_flush(state, p, reg)) {
+				if (final_pseudo_flush(sctx_ state, p, reg)) {
 					DELETE_CURRENT_PTR(p);
 					continue;
 				}
@@ -1667,16 +1667,16 @@ static void generate_output_storage(struct bb_state *state)
 			} END_FOR_EACH_PTR(p);
 			PACK_PTR_LIST(&reg->contains);
 			if (flushme > 0)
-				flush_reg(state, reg);
+				flush_reg(sctx_ state, reg);
 		}
 	} END_FOR_EACH_PTR(entry);
 
 	FOR_EACH_PTR(state->outputs, entry) {
-		fill_output(state, entry->pseudo, entry->storage);
+		fill_output(sctx_ state, entry->pseudo, entry->storage);
 	} END_FOR_EACH_PTR(entry);
 }
 
-static void generate(struct basic_block *bb, struct bb_state *state)
+static void generate(SCTX_ struct basic_block *bb, struct bb_state *state)
 {
 	int i;
 	struct storage_hash *entry;
@@ -1691,46 +1691,46 @@ static void generate(struct basic_block *bb, struct bb_state *state)
 
 	FOR_EACH_PTR(state->inputs, entry) {
 		struct storage *storage = entry->storage;
-		const char *name = show_storage(storage);
-		output_comment(state, "incoming %s in %s", show_pseudo(entry->pseudo), name);
+		const char *name = show_storage(sctx_ storage);
+		output_comment(sctx_ state, "incoming %s in %s", show_pseudo(sctx_ entry->pseudo), name);
 		if (storage->type == REG_REG) {
 			int regno = storage->regno;
-			add_pseudo_reg(state, entry->pseudo, hardregs + regno);
+			add_pseudo_reg(sctx_ state, entry->pseudo, hardregs + regno);
 			name = hardregs[regno].name;
 		}
 	} END_FOR_EACH_PTR(entry);
 
-	output_label(state, ".L%p", bb);
+	output_label(sctx_ state, ".L%p", bb);
 	FOR_EACH_PTR(bb->insns, insn) {
 		if (!insn->bb)
 			continue;
-		generate_one_insn(insn, state);
+		generate_one_insn(sctx_ insn, state);
 	} END_FOR_EACH_PTR(insn);
 
 	if (verbose) {
-		output_comment(state, "--- in ---");
+		output_comment(sctx_ state, "--- in ---");
 		FOR_EACH_PTR(state->inputs, entry) {
-			output_comment(state, "%s <- %s", show_pseudo(entry->pseudo), show_storage(entry->storage));
+			output_comment(sctx_ state, "%s <- %s", show_pseudo(sctx_ entry->pseudo), show_storage(sctx_ entry->storage));
 		} END_FOR_EACH_PTR(entry);
-		output_comment(state, "--- spill ---");
+		output_comment(sctx_ state, "--- spill ---");
 		FOR_EACH_PTR(state->internal, entry) {
-			output_comment(state, "%s <-> %s", show_pseudo(entry->pseudo), show_storage(entry->storage));
+			output_comment(sctx_ state, "%s <-> %s", show_pseudo(sctx_ entry->pseudo), show_storage(sctx_ entry->storage));
 		} END_FOR_EACH_PTR(entry);
-		output_comment(state, "--- out ---");
+		output_comment(sctx_ state, "--- out ---");
 		FOR_EACH_PTR(state->outputs, entry) {
-			output_comment(state, "%s -> %s", show_pseudo(entry->pseudo), show_storage(entry->storage));
+			output_comment(sctx_ state, "%s -> %s", show_pseudo(sctx_ entry->pseudo), show_storage(sctx_ entry->storage));
 		} END_FOR_EACH_PTR(entry);
 	}
 	printf("\n");
 }
 
-static void generate_list(struct basic_block_list *list, unsigned long generation)
+static void generate_list(SCTX_ struct basic_block_list *list, unsigned long generation)
 {
 	struct basic_block *bb;
 	FOR_EACH_PTR(list, bb) {
 		if (bb->generation == generation)
 			continue;
-		output_bb(bb, generation);
+		output_bb(sctx_ bb, generation);
 	} END_FOR_EACH_PTR(bb);
 }
 
@@ -1741,12 +1741,12 @@ static void generate_list(struct basic_block_list *list, unsigned long generatio
  * parents to pass in another pseudo in one of those
  * registers that it already uses for another child.
  */
-static void mark_used_registers(struct basic_block *bb, struct bb_state *state)
+static void mark_used_registers(SCTX_ struct basic_block *bb, struct bb_state *state)
 {
 	struct basic_block *parent;
 
 	FOR_EACH_PTR(bb->parents, parent) {
-		struct storage_hash_list *outputs = gather_storage(parent, STOR_OUT);
+		struct storage_hash_list *outputs = gather_storage(sctx_ parent, STOR_OUT);
 		struct storage_hash *entry;
 
 		FOR_EACH_PTR(outputs, entry) {
@@ -1759,32 +1759,32 @@ static void mark_used_registers(struct basic_block *bb, struct bb_state *state)
 	} END_FOR_EACH_PTR(parent);
 }
 
-static void output_bb(struct basic_block *bb, unsigned long generation)
+static void output_bb(SCTX_ struct basic_block *bb, unsigned long generation)
 {
 	struct bb_state state;
 
 	bb->generation = generation;
 
 	/* Make sure all parents have been generated first */
-	generate_list(bb->parents, generation);
+	generate_list(sctx_ bb->parents, generation);
 
 	state.pos = bb->pos->pos;
-	state.inputs = gather_storage(bb, STOR_IN);
-	state.outputs = gather_storage(bb, STOR_OUT);
+	state.inputs = gather_storage(sctx_ bb, STOR_IN);
+	state.outputs = gather_storage(sctx_ bb, STOR_OUT);
 	state.internal = NULL;
 	state.cc_opcode = 0;
 	state.cc_target = NULL;
 
 	/* Mark incoming registers used */
-	mark_used_registers(bb, &state);
+	mark_used_registers(sctx_ bb, &state);
 
-	generate(bb, &state);
+	generate(sctx_ bb, &state);
 
 	free_ptr_list(&state.inputs);
 	free_ptr_list(&state.outputs);
 
 	/* Generate all children... */
-	generate_list(bb->children, generation);
+	generate_list(sctx_ bb->children, generation);
 }
 
 /*
@@ -1798,7 +1798,7 @@ static void output_bb(struct basic_block *bb, unsigned long generation)
  *
  * I should implement the -mregparm=X cmd line option.
  */
-static void set_up_arch_entry(struct entrypoint *ep, struct instruction *entry)
+static void set_up_arch_entry(SCTX_ struct entrypoint *ep, struct instruction *entry)
 {
 	pseudo_t arg;
 	struct symbol *sym, *argtype;
@@ -1813,10 +1813,10 @@ static void set_up_arch_entry(struct entrypoint *ep, struct instruction *entry)
 	offset = 0;
 	PREPARE_PTR_LIST(sym->arguments, argtype);
 	FOR_EACH_PTR(entry->arg_list, arg) {
-		struct storage *in = lookup_storage(entry->bb, arg, STOR_IN);
+		struct storage *in = lookup_storage(sctx_ entry->bb, arg, STOR_IN);
 		if (!in) {
-			in = alloc_storage();
-			add_storage(in, entry->bb, arg, STOR_IN);
+			in = alloc_storage(sctx);
+			add_storage(sctx_ in, entry->bb, arg, STOR_IN);
 		}
 		if (i < regparm) {
 			in->type = REG_REG;
@@ -1846,15 +1846,15 @@ static void set_up_arch_entry(struct entrypoint *ep, struct instruction *entry)
  * but it can help register allocation if the allocator
  * sees that the target register is going to return in %eax.
  */
-static void set_up_arch_exit(struct basic_block *bb, struct instruction *ret)
+static void set_up_arch_exit(SCTX_ struct basic_block *bb, struct instruction *ret)
 {
 	pseudo_t pseudo = ret->src;
 
 	if (pseudo && pseudo != VOID) {
-		struct storage *out = lookup_storage(bb, pseudo, STOR_OUT);
+		struct storage *out = lookup_storage(sctx_ bb, pseudo, STOR_OUT);
 		if (!out) {
-			out = alloc_storage();
-			add_storage(out, bb, pseudo, STOR_OUT);
+			out = alloc_storage(sctx);
+			add_storage(sctx_ out, bb, pseudo, STOR_OUT);
 		}
 		out->type = REG_REG;
 		out->regno = 0;
@@ -1867,35 +1867,35 @@ static void set_up_arch_exit(struct basic_block *bb, struct instruction *ret)
  * when we generate code for switch, so force that by creating
  * a dummy output rule.
  */
-static void set_up_arch_switch(struct basic_block *bb, struct instruction *insn)
+static void set_up_arch_switch(SCTX_ struct basic_block *bb, struct instruction *insn)
 {
 	pseudo_t pseudo = insn->cond;
-	struct storage *out = lookup_storage(bb, pseudo, STOR_OUT);
+	struct storage *out = lookup_storage(sctx_ bb, pseudo, STOR_OUT);
 	if (!out) {
-		out = alloc_storage();
-		add_storage(out, bb, pseudo, STOR_OUT);
+		out = alloc_storage(sctx);
+		add_storage(sctx_ out, bb, pseudo, STOR_OUT);
 	}
 	out->type = REG_REG;
 	out->regno = SWITCH_REG;
 }
 
-static void arch_set_up_storage(struct entrypoint *ep)
+static void arch_set_up_storage(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 
 	/* Argument storage etc.. */
-	set_up_arch_entry(ep, ep->entry);
+	set_up_arch_entry(sctx_ ep, ep->entry);
 
 	FOR_EACH_PTR(ep->bbs, bb) {
-		struct instruction *insn = last_instruction(bb->insns);
+		struct instruction *insn = last_instruction(sctx_ bb->insns);
 		if (!insn)
 			continue;
 		switch (insn->opcode) {
 		case OP_RET:
-			set_up_arch_exit(bb, insn);
+			set_up_arch_exit(sctx_ bb, insn);
 			break;
 		case OP_SWITCH:
-			set_up_arch_switch(bb, insn);
+			set_up_arch_switch(sctx_ bb, insn);
 			break;
 		default:
 			/* nothing */;
@@ -1903,7 +1903,7 @@ static void arch_set_up_storage(struct entrypoint *ep)
 	} END_FOR_EACH_PTR(bb);
 }
 
-static void output(struct entrypoint *ep)
+static void output(SCTX_ struct entrypoint *ep)
 {
 	unsigned long generation = ++bb_generation;
 
@@ -1911,30 +1911,30 @@ static void output(struct entrypoint *ep)
 	stack_offset = 0;
 
 	/* Get rid of SSA form (phinodes etc) */
-	unssa(ep);
+	unssa(sctx_ ep);
 
 	/* Set up initial inter-bb storage links */
-	set_up_storage(ep);
+	set_up_storage(sctx_ ep);
 
 	/* Architecture-specific storage rules.. */
-	arch_set_up_storage(ep);
+	arch_set_up_storage(sctx_ ep);
 
 	/* Show the results ... */
-	output_bb(ep->entry->bb, generation);
+	output_bb(sctx_ ep->entry->bb, generation);
 
 	/* Clear the storage hashes for the next function.. */
-	free_storage();
+	free_storage(sctx );
 }
 
-static int compile(struct symbol_list *list)
+static int compile(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 	FOR_EACH_PTR(list, sym) {
 		struct entrypoint *ep;
-		expand_symbol(sym);
-		ep = linearize_symbol(sym);
+		expand_symbol(sctx_ sym);
+		ep = linearize_symbol(sctx_ sym);
 		if (ep)
-			output(ep);
+			output(sctx_ ep);
 	} END_FOR_EACH_PTR(sym);
 	
 	return 0;
@@ -1943,13 +1943,12 @@ static int compile(struct symbol_list *list)
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file;
+	char *file;struct sparse_ctx sctx;
 
-	compile(sparse_initialize(argc, argv, &filelist));
+	compile(&sctx, sparse_initialize(&sctx, argc, argv, &filelist));
 	dbg_dead = 1;
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		compile(sparse(file));
+		compile(&sctx, sparse(&sctx, file));
 	} END_FOR_EACH_PTR_NOTAG(file);
 	return 0;
 }
-

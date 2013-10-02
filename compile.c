@@ -25,13 +25,13 @@
 #include "expression.h"
 #include "compile.h"
 
-static void clean_up_symbols(struct symbol_list *list)
+static void clean_up_symbols(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 
 	FOR_EACH_PTR(list, sym) {
-		expand_symbol(sym);
-		emit_one_symbol(sym);
+		expand_symbol(sctx_ sym);
+		emit_one_symbol(sctx_ sym);
 	} END_FOR_EACH_PTR(sym);
 }
 
@@ -39,30 +39,31 @@ int main(int argc, char **argv)
 {
 	char *file;
 	struct string_list *filelist = NULL;
+	struct sparse_ctx sctx;
 
-	clean_up_symbols(sparse_initialize(argc, argv, &filelist));
+	clean_up_symbols(&sctx,sparse_initialize(&sctx,argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 		struct symbol_list *list;
 		const char *basename = strrchr(file, '/');
 		basename = basename ?  basename+1 : file;
 
-		list = sparse(file);
+		list = sparse(&sctx,file);
 
 		// Do type evaluation and simplification
-		emit_unit_begin(basename);
-		clean_up_symbols(list);
-		emit_unit_end();
+		emit_unit_begin(&sctx,basename);
+		clean_up_symbols(&sctx,list);
+		emit_unit_end(&sctx);
 	} END_FOR_EACH_PTR_NOTAG(file);
 
 #if 0
 	// And show the allocation statistics
-	show_ident_alloc();
-	show_token_alloc();
-	show_symbol_alloc();
-	show_expression_alloc();
-	show_statement_alloc();
-	show_string_alloc();
-	show_bytes_alloc();
+	show_ident_alloc(&sctx);
+	show_token_alloc(&sctx);
+	show_symbol_alloc(&sctx);
+	show_expression_alloc(&sctx);
+	show_statement_alloc(&sctx);
+	show_string_alloc(&sctx);
+	show_bytes_alloc(&sctx);
 #endif
 	return 0;
 }

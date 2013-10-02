@@ -51,24 +51,24 @@ struct storage_hash {
 
 DECLARE_PTR_LIST(storage_hash_list, struct storage_hash);
 
-extern struct storage_hash_list *gather_storage(struct basic_block *, enum inout_enum);
-extern void free_storage(void);
-extern const char *show_storage(struct storage *);
-extern void set_up_storage(struct entrypoint *);
-struct storage *lookup_storage(struct basic_block *, pseudo_t, enum inout_enum);
-void add_storage(struct storage *, struct basic_block *, pseudo_t, enum inout_enum);
+extern struct storage_hash_list *gather_storage(SCTX_ struct basic_block *, enum inout_enum);
+extern void free_storage(SCTX);
+extern const char *show_storage(SCTX_ struct storage *);
+extern void set_up_storage(SCTX_ struct entrypoint *);
+struct storage *lookup_storage(SCTX_ struct basic_block *, pseudo_t, enum inout_enum);
+void add_storage(SCTX_ struct storage *, struct basic_block *, pseudo_t, enum inout_enum);
 
 DECLARE_ALLOCATOR(storage);
 DECLARE_ALLOCATOR(storage_hash);
 
-static inline struct storage *alloc_storage(void)
+static inline struct storage *alloc_storage(SCTX)
 {
-	return __alloc_storage(0);
+	return __alloc_storage(sctx_ 0);
 }
 
-static inline struct storage_hash *alloc_storage_hash(struct storage *s)
+static inline struct storage_hash *alloc_storage_hash(SCTX_ struct storage *s)
 {
-	struct storage_hash *entry = __alloc_storage_hash(0);
+	struct storage_hash *entry = __alloc_storage_hash(sctx_ 0);
 	struct storage **usep = &entry->storage;
 
 	*usep = s;

@@ -361,7 +361,7 @@ static char **handle_switch_m(SCTX_ char *arg, char **next)
 	return next;
 }
 
-static void handle_arch_m64_finalize(SCTX_ void)
+static void handle_arch_m64_finalize(SCTX)
 {
 	if (arch_m64) {
 		bits_in_long = 64;
@@ -376,7 +376,7 @@ static void handle_arch_m64_finalize(SCTX_ void)
 	}
 }
 
-static void handle_arch_msize_long_finalize(SCTX_ void)
+static void handle_arch_msize_long_finalize(SCTX)
 {
 	if (arch_msize_long) {
 		size_t_ctype = &ulong_ctype;
@@ -384,10 +384,10 @@ static void handle_arch_msize_long_finalize(SCTX_ void)
 	}
 }
 
-static void handle_arch_finalize(SCTX_ void)
+static void handle_arch_finalize(SCTX)
 {
-	handle_arch_m64_finalize(sctx_ );
-	handle_arch_msize_long_finalize(sctx_ );
+	handle_arch_m64_finalize(sctx );
+	handle_arch_msize_long_finalize(sctx );
 }
 
 
@@ -511,7 +511,7 @@ static void handle_onoff_switch_finalize(SCTX_ const struct warning warnings[], 
 	}
 }
 
-static void handle_switch_W_finalize(SCTX_ void)
+static void handle_switch_W_finalize(SCTX)
 {
 	handle_onoff_switch_finalize(sctx_ warnings, ARRAY_SIZE(warnings));
 
@@ -538,7 +538,7 @@ static void handle_switch_W_finalize(SCTX_ void)
 	}
 }
 
-static void handle_switch_v_finalize(SCTX_ void)
+static void handle_switch_v_finalize(SCTX)
 {
 	handle_onoff_switch_finalize(sctx_ debugs, ARRAY_SIZE(debugs));
 }
@@ -662,7 +662,7 @@ static char **handle_version(SCTX_ char *arg, char **next)
 
 struct switches {
 	const char *name;
-	char **(*fn)(char *, char **);
+	char **(*fn)(SCTX_ char *, char **);
 };
 
 static char **handle_long_options(SCTX_ char *arg, char **next)
@@ -675,7 +675,7 @@ static char **handle_long_options(SCTX_ char *arg, char **next)
 
 	while (s->name) {
 		if (!strcmp(s->name, arg))
-			return s->fn(arg, next);
+			return s->fn(sctx_ arg, next);
 		s++;
 	}
 	return next;
@@ -715,7 +715,7 @@ static char **handle_switch(SCTX_ char *arg, char **next)
 	s = cmd;
 	while (s->name) {
 		if (!strcmp(s->name, arg))
-			return s->fn(arg, next);
+			return s->fn(sctx_ arg, next);
 		s++;
 	}
 
@@ -726,7 +726,7 @@ static char **handle_switch(SCTX_ char *arg, char **next)
 	return next;
 }
 
-void declare_builtin_functions(SCTX_ void)
+void declare_builtin_functions(SCTX)
 {
 	/* Gaah. gcc knows tons of builtin <string.h> functions */
 	add_pre_buffer(sctx_ "extern void *__builtin_memcpy(void *, const void *, __SIZE_TYPE__);\n");
@@ -818,7 +818,7 @@ void declare_builtin_functions(SCTX_ void)
 	add_pre_buffer (sctx_ "extern void __builtin_unreachable(void);\n");
 }
 
-void create_builtin_stream(SCTX_ void)
+void create_builtin_stream(SCTX)
 {
 	add_pre_buffer(sctx_ "#weak_define __GNUC__ %d\n", gcc_major);
 	add_pre_buffer(sctx_ "#weak_define __GNUC_MINOR__ %d\n", gcc_minor);
@@ -928,7 +928,7 @@ static struct symbol_list *sparse_tokenstream(SCTX_ struct expansion *e)
 
 	// Parse the resulting C code
 	while (!eof_token(token))
-		token = external_declaration(token, &translation_unit_used_list);
+		token = external_declaration(sctx_ token, &translation_unit_used_list);
 	return translation_unit_used_list;
 }
 
@@ -961,7 +961,7 @@ static struct symbol_list *sparse_file(SCTX_ const char *filename)
  * affect all subsequent files too, i.e. we can have non-local
  * behaviour between files!
  */
-static struct symbol_list *sparse_initial(SCTX_ void)
+static struct symbol_list *sparse_initial(SCTX)
 {
 	int i; struct expansion *e;
 
@@ -985,7 +985,7 @@ struct symbol_list *sparse_initialize(SCTX_ int argc, char **argv, struct string
 	struct symbol_list *list;
 
 	// Initialize symbol stream first, so that we can add defines etc
-	init_symbols(sctx_ );
+	init_symbols(sctx );
 
 	args = argv;
 	for (;;) {
@@ -999,28 +999,28 @@ struct symbol_list *sparse_initialize(SCTX_ int argc, char **argv, struct string
 		}
 		add_ptr_list_notag(filelist, arg);
 	}
-	handle_switch_W_finalize(sctx_ );
-	handle_switch_v_finalize(sctx_ );
+	handle_switch_W_finalize(sctx);
+	handle_switch_v_finalize(sctx);
 
-	handle_arch_finalize(sctx_ );
+	handle_arch_finalize(sctx);
 
 	list = NULL;
 	if (!ptr_list_empty(filelist)) {
 		// Initialize type system
-		init_ctype(sctx_ );
+		init_ctype(sctx);
 
-		create_builtin_stream(sctx_ );
+		create_builtin_stream(sctx);
 		add_pre_buffer(sctx_ "#define __CHECKER__ 1\n");
 		if (!preprocess_only)
-			declare_builtin_functions(sctx_ );
+			declare_builtin_functions(sctx);
 
-		list = sparse_initial(sctx_ );
+		list = sparse_initial(sctx );
 
 		/*
 		 * Protect the initial token allocations, since
 		 * they need to survive all the others
 		 */
-		protect_token_alloc(sctx_ );
+		protect_token_alloc(sctx );
 	}
 	return list;
 }
@@ -1032,7 +1032,7 @@ struct symbol_list * sparse_keep_tokens(SCTX_ char *filename)
 	/* Clear previous symbol list */
 	translation_unit_used_list = NULL;
 
-	new_file_scope(sctx_ );
+	new_file_scope(sctx );
 	res = sparse_file(sctx_ filename);
 
 	/* And return it */
@@ -1047,7 +1047,7 @@ struct symbol_list * __sparse(SCTX_ char *filename)
 	res = sparse_keep_tokens(sctx_ filename);
 
 	/* Drop the tokens for this file after parsing */
-	clear_token_alloc(sctx_ );
+	clear_token_alloc(sctx );
 
 	/* And return it */
 	return res;

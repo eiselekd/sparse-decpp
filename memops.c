@@ -22,7 +22,7 @@ static int find_dominating_parents_mem(SCTX_ pseudo_t pseudo, struct instruction
 {
 	struct basic_block *parent;
 
-	if (bb_list_size(bb->parents) > 1)
+	if (bb_list_size(sctx_ bb->parents) > 1)
 		loads = 0;
 	FOR_EACH_PTR(bb->parents, parent) {
 		struct instruction *one;
@@ -55,11 +55,11 @@ no_dominance:
 		continue;
 
 found_dominator:
-		br = delete_last_instruction(&parent->insns);
+		br = delete_last_instruction(sctx_ &parent->insns);
 		phi = alloc_phi(sctx_ parent, one->target, one->size);
 		phi->ident = phi->ident ? : one->target->ident;
-		add_instruction(&parent->insns, br);
-		use_pseudo(insn, phi, add_pseudo(dominators, phi));
+		add_instruction(sctx_ &parent->insns, br);
+		use_pseudo(sctx_ insn, phi, add_pseudo(sctx_ dominators, phi));
 	} END_FOR_EACH_PTR(parent);
 	return 1;
 }		

@@ -30,20 +30,20 @@ static inline const char *show_mode(unsigned mode)
 	return str;
 }
 
-static void print_usage(struct token *pos, struct symbol *sym, unsigned mode)
+static void print_usage(SCTX_ struct token *pos, struct symbol *sym, unsigned mode)
 {
 	static unsigned curr_stream = -1;
 
 	if (curr_stream != pos->pos.stream) {
 		curr_stream = pos->pos.stream;
-		printf("\nFILE: %s\n\n", stream_name(curr_stream));
+		printf("\nFILE: %s\n\n", stream_name(sctx_ curr_stream));
 	}
 
 	printf("%s%4d:%-3d %c %-5.3s", reporter->indent ? "\t" : "",
 		pos->pos.line, pos->pos.pos, storage(sym), show_mode(mode));
 }
 
-static int isglobal(struct symbol *sym) {
+static int isglobal(SCTX_ struct symbol *sym) {
 	int t = sym->type;
 	unsigned m = sym->ctype.modifiers;
 
@@ -53,7 +53,7 @@ static int isglobal(struct symbol *sym) {
 	return (m & MOD_STATIC) ? 1 : (m & MOD_NONLOCAL) ? 1 : 0;
 }
 
-static int isfunc(struct symbol *sym) {
+static int isfunc(SCTX_ struct symbol *sym) {
 	if (sym->ctype.base_type && sym->ctype.base_type->type == SYM_FN)
 		return 1;
 	return 0;
@@ -85,37 +85,37 @@ static const char *symbol_type_name(enum type type)
 	return type_name[type] ?: "UNKNOWN_TYPE";
 }
 
-static void r_symbol(unsigned mode, struct token *pos, struct symbol *sym)
+static void r_symbol(SCTX_ unsigned mode, struct token *pos, struct symbol *sym)
 {
 	char b[512];
 	
-	if ((!sym->ctype.base_type || sym->ctype.base_type->type != SYM_FN) && !isglobal(sym))
+	if ((!sym->ctype.base_type || sym->ctype.base_type->type != SYM_FN) && !isglobal(sctx_ sym))
 	  return;
 	
-	print_usage(pos, sym, mode);
+	print_usage(sctx_ pos, sym, mode);
 
 	if (!sym->ident)
 		sym->ident = MK_IDENT("__asm__");
 	
 	memcpy(b, sym->ident->name, sym->ident->len);
 	b[sym->ident->len] = 0;
-	if (isfunc(sym))
+	if (isfunc(sctx_ sym))
 		strcat(b, "()");
 	
 	printf("%s%-32.*s %s 0x%x 0x%p %s\n", reporter->indent ? "\t" : "",
 	       (int)strlen(b), b,
-	       show_typename(sym->ctype.base_type),
+	       show_typename(sctx_ sym->ctype.base_type),
 	       (unsigned int )sym->ctype.modifiers, sym, symbol_type_name(sym->type));
 }
 
 
-static void r_member(unsigned mode, struct token *pos, struct symbol *sym, struct symbol *mem)
+static void r_member(SCTX_ unsigned mode, struct token *pos, struct symbol *sym, struct symbol *mem)
 {
 	struct ident *ni, *si, *mi;
 	
 	return;
 	
-	print_usage(pos, sym, mode);
+	print_usage(sctx_ pos, sym, mode);
 
 	ni = MK_IDENT("?");
 	si = sym->ident ?: ni;
@@ -125,19 +125,21 @@ static void r_member(unsigned mode, struct token *pos, struct symbol *sym, struc
 	printf("%s%.*s.%-*.*s %s 0x%x 0x%p %s\n", reporter->indent ? "\t" : "",
 		si->len, si->name,
 		32-1 - si->len, mi->len, mi->name,
-	       show_typename(mem ? mem->ctype.base_type : sym), 
+	       show_typename(sctx_ mem ? mem->ctype.base_type : sym), 
 	       (unsigned int )sym->ctype.modifiers, sym, symbol_type_name(sym->type));
 }
 
-static void r_symdef(struct symbol *sym)
+static void r_symdef(SCTX_ struct symbol *sym)
 {
 	if (sym->type == SYM_STRUCT)
 		return;
-	r_symbol(-1, sym->pos, sym);
+	r_symbol(sctx_ -1, sym->pos, sym);
 }
 
 int main(int argc, char **argv)
 {
+	
+	struct sparse_ctx sctx;
 	static struct reporter reporter = {
 		.r_symdef = r_symdef,
 		.r_symbol = r_symbol,
@@ -146,11 +148,11 @@ int main(int argc, char **argv)
 	struct string_list *filelist = NULL;
 	char *file;
 
-	sparse_initialize(argc, argv, &filelist);
+	sparse_initialize(&sctx, argc, argv, &filelist);
 
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 		dotc_stream = input_stream_nr;
-		dissect(__sparse(file), &reporter);
+		dissect(&sctx, __sparse(&sctx, file), &reporter);
 	} END_FOR_EACH_PTR_NOTAG(file);
 
 	return 0;

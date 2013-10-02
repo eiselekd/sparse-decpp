@@ -24,7 +24,7 @@
 #include "expression.h"
 #include "linearize.h"
 
-static int context_increase(struct basic_block *bb, int entry)
+static int context_increase(SCTX_ struct basic_block *bb, int entry)
 {
 	int sum = 0;
 	struct instruction *insn;
@@ -41,7 +41,7 @@ static int context_increase(struct basic_block *bb, int entry)
 					continue;
 			} else if (current >= val)
 				continue;
-			warning(insn->pos, "context check failure");
+			warning(sctx_ insn->pos, "context check failure");
 			continue;
 		}
 		sum += val;
@@ -49,36 +49,36 @@ static int context_increase(struct basic_block *bb, int entry)
 	return sum;
 }
 
-static int imbalance(struct entrypoint *ep, struct basic_block *bb, int entry, int exit, const char *why)
+static int imbalance(SCTX_ struct entrypoint *ep, struct basic_block *bb, int entry, int exit, const char *why)
 {
 	if (Wcontext) {
 		struct symbol *sym = ep->name;
-		warning(bb->pos->pos, "context imbalance in '%s' - %s", show_ident(sym->ident), why);
+		warning(sctx_ bb->pos->pos, "context imbalance in '%s' - %s", show_ident(sctx_ sym->ident), why);
 	}
 	return -1;
 }
 
-static int check_bb_context(struct entrypoint *ep, struct basic_block *bb, int entry, int exit);
+static int check_bb_context(SCTX_ struct entrypoint *ep, struct basic_block *bb, int entry, int exit);
 
-static int check_children(struct entrypoint *ep, struct basic_block *bb, int entry, int exit)
+static int check_children(SCTX_ struct entrypoint *ep, struct basic_block *bb, int entry, int exit)
 {
 	struct instruction *insn;
 	struct basic_block *child;
 
-	insn = last_instruction(bb->insns);
+	insn = last_instruction(sctx_ bb->insns);
 	if (!insn)
 		return 0;
 	if (insn->opcode == OP_RET)
-		return entry != exit ? imbalance(ep, bb, entry, exit, "wrong count at exit") : 0;
+		return entry != exit ? imbalance(sctx_ ep, bb, entry, exit, "wrong count at exit") : 0;
 
 	FOR_EACH_PTR(bb->children, child) {
-		if (check_bb_context(ep, child, entry, exit))
+		if (check_bb_context(sctx_ ep, child, entry, exit))
 			return -1;
 	} END_FOR_EACH_PTR(child);
 	return 0;
 }
 
-static int check_bb_context(struct entrypoint *ep, struct basic_block *bb, int entry, int exit)
+static int check_bb_context(SCTX_ struct entrypoint *ep, struct basic_block *bb, int entry, int exit)
 {
 	if (!bb)
 		return 0;
@@ -87,17 +87,17 @@ static int check_bb_context(struct entrypoint *ep, struct basic_block *bb, int e
 
 	/* Now that's not good.. */
 	if (bb->context >= 0)
-		return imbalance(ep, bb, entry, bb->context, "different lock contexts for basic block");
+		return imbalance(sctx_ ep, bb, entry, bb->context, "different lock contexts for basic block");
 
 	bb->context = entry;
-	entry += context_increase(bb, entry);
+	entry += context_increase(sctx_ bb, entry);
 	if (entry < 0)
-		return imbalance(ep, bb, entry, exit, "unexpected unlock");
+		return imbalance(sctx_ ep, bb, entry, exit, "unexpected unlock");
 
-	return check_children(ep, bb, entry, exit);
+	return check_children(sctx_ ep, bb, entry, exit);
 }
 
-static void check_cast_instruction(struct instruction *insn)
+static void check_cast_instruction(SCTX_ struct instruction *insn)
 {
 	struct symbol *orig_type = insn->orig_type;
 	if (orig_type) {
@@ -111,54 +111,54 @@ static void check_cast_instruction(struct instruction *insn)
 				return;
 			if (newsigned)
 				return;
-			warning(insn->pos, "cast loses sign");
+			warning(sctx_ insn->pos, "cast loses sign");
 			return;
 		}
 		if (new < old) {
-			warning(insn->pos, "cast drops bits");
+			warning(sctx_ insn->pos, "cast drops bits");
 			return;
 		}
 		if (oldsigned == newsigned) {
-			warning(insn->pos, "cast wasn't removed");
+			warning(sctx_ insn->pos, "cast wasn't removed");
 			return;
 		}
-		warning(insn->pos, "cast changes sign");
+		warning(sctx_ insn->pos, "cast changes sign");
 	}
 }
 
-static void check_range_instruction(struct instruction *insn)
+static void check_range_instruction(SCTX_ struct instruction *insn)
 {
-	warning(insn->pos, "value out of range");
+	warning(sctx_ insn->pos, "value out of range");
 }
 
-static void check_byte_count(struct instruction *insn, pseudo_t count)
+static void check_byte_count(SCTX_ struct instruction *insn, pseudo_t count)
 {
 	if (!count)
 		return;
 	if (count->type == PSEUDO_VAL) {
 		long long val = count->value;
 		if (val <= 0 || val > 100000)
-			warning(insn->pos, "%s with byte count of %lld",
-				show_ident(insn->func->sym->ident), val);
+			warning(sctx_ insn->pos, "%s with byte count of %lld",
+				show_ident(sctx_ insn->func->sym->ident), val);
 		return;
 	}
 	/* OK, we could try to do the range analysis here */
 }
 
-static pseudo_t argument(struct instruction *call, unsigned int argno)
+static pseudo_t argument(SCTX_ struct instruction *call, unsigned int argno)
 {
 	pseudo_t args[8];
 	struct ptr_list *arg_list = (struct ptr_list *) call->arguments;
 
 	argno--;
-	if (linearize_ptr_list(arg_list, (void *)args, 8) > argno)
+	if (linearize_ptr_list(sctx_ arg_list, (void *)args, 8) > argno)
 		return args[argno];
 	return NULL;
 }
 
-static void check_memset(struct instruction *insn)
+static void check_memset(SCTX_ struct instruction *insn)
 {
-	check_byte_count(insn, argument(insn, 3));
+	check_byte_count(sctx_ insn, argument(sctx_ insn, 3));
 }
 
 #define check_memcpy check_memset
@@ -167,10 +167,10 @@ static void check_memset(struct instruction *insn)
 
 struct checkfn {
 	struct ident *id;
-	void (*check)(struct instruction *insn);
+	void (*check)(SCTX_ struct instruction *insn);
 };
 
-static void check_call_instruction(struct instruction *insn)
+static void check_call_instruction(SCTX_ struct instruction *insn)
 {
 	pseudo_t fn = insn->func;
 	struct ident *ident;
@@ -190,48 +190,48 @@ static void check_call_instruction(struct instruction *insn)
 	for (i = 0; i < ARRAY_SIZE(check_fn); i++) {
 		if (check_fn[i].id != ident)
 			continue;
-		check_fn[i].check(insn);
+		check_fn[i].check(sctx_ insn);
 		break;
 	}
 }
 
-static void check_one_instruction(struct instruction *insn)
+static void check_one_instruction(SCTX_ struct instruction *insn)
 {
 	switch (insn->opcode) {
 	case OP_CAST: case OP_SCAST:
 		if (verbose)
-			check_cast_instruction(insn);
+			check_cast_instruction(sctx_ insn);
 		break;
 	case OP_RANGE_LIN:
-		check_range_instruction(insn);
+		check_range_instruction(sctx_ insn);
 		break;
 	case OP_CALL:
-		check_call_instruction(insn);
+		check_call_instruction(sctx_ insn);
 		break;
 	default:
 		break;
 	}
 }
 
-static void check_bb_instructions(struct basic_block *bb)
+static void check_bb_instructions(SCTX_ struct basic_block *bb)
 {
 	struct instruction *insn;
 	FOR_EACH_PTR(bb->insns, insn) {
 		if (!insn->bb)
 			continue;
-		check_one_instruction(insn);
+		check_one_instruction(sctx_ insn);
 	} END_FOR_EACH_PTR(insn);
 }
 
-static void check_instructions(struct entrypoint *ep)
+static void check_instructions(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
 	FOR_EACH_PTR(ep->bbs, bb) {
-		check_bb_instructions(bb);
+		check_bb_instructions(sctx_ bb);
 	} END_FOR_EACH_PTR(bb);
 }
 
-static void check_context(struct entrypoint *ep)
+static void check_context(SCTX_ struct entrypoint *ep)
 {
 	struct symbol *sym = ep->name;
 	struct sym_context *context;
@@ -241,34 +241,34 @@ static void check_context(struct entrypoint *ep)
 		pseudo_t pseudo;
 		FOR_EACH_PTR(ep->entry->bb->needs, pseudo) {
 			if (pseudo->type != PSEUDO_ARG)
-				warning(sym->pos->pos, "%s: possible uninitialized variable (%s)",
-					show_ident(sym->ident), show_pseudo(pseudo));
+				warning(sctx_ sym->pos->pos, "%s: possible uninitialized variable (%s)",
+					show_ident(sctx_ sym->ident), show_pseudo(sctx_ pseudo));
 		} END_FOR_EACH_PTR(pseudo);
 	}
 
-	check_instructions(ep);
+	check_instructions(sctx_ ep);
 
 	FOR_EACH_PTR(sym->ctype.contexts, context) {
 		in_context += context->in;
 		out_context += context->out;
 	} END_FOR_EACH_PTR(context);
-	check_bb_context(ep, ep->entry->bb, in_context, out_context);
+	check_bb_context(sctx_ ep, ep->entry->bb, in_context, out_context);
 }
 
-static void check_symbols(struct symbol_list *list)
+static void check_symbols(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 
 	FOR_EACH_PTR(list, sym) {
 		struct entrypoint *ep;
 
-		expand_symbol(sym);
-		ep = linearize_symbol(sym);
+		expand_symbol(sctx_ sym);
+		ep = linearize_symbol(sctx_ sym);
 		if (ep) {
 			if (dbg_entry)
-				show_entry(ep);
+				show_entry(sctx_ ep);
 
-			check_context(ep);
+			check_context(sctx_ ep);
 		}
 	} END_FOR_EACH_PTR(sym);
 }
@@ -276,12 +276,12 @@ static void check_symbols(struct symbol_list *list)
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file;
+	char *file;struct sparse_ctx sctx;
 
 	// Expand, linearize and show it.
-	check_symbols(sparse_initialize(argc, argv, &filelist));
+	check_symbols(&sctx,sparse_initialize(&sctx,argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		check_symbols(sparse(file));
+	  check_symbols(&sctx,sparse(&sctx, file));
 	} END_FOR_EACH_PTR_NOTAG(file);
 	return 0;
 }

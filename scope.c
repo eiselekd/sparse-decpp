@@ -27,7 +27,7 @@ struct scope	*block_scope = &builtin_scope,		// regular automatic variables etc
 void bind_scope(SCTX_ struct symbol *sym, struct scope *scope)
 {
 	sym->scope = scope;
-	add_symbol(&scope->symbols, sym);
+	add_symbol(sctx_ &scope->symbols, sym);
 }
 
 static void start_scope(SCTX_ struct scope **s)
@@ -38,7 +38,7 @@ static void start_scope(SCTX_ struct scope **s)
 	*s = scope;
 }
 
-void start_file_scope(SCTX_ void)
+void start_file_scope(SCTX)
 {
 	struct scope *scope = __alloc_scope(sctx_ 0);
 
@@ -51,12 +51,12 @@ void start_file_scope(SCTX_ void)
 	block_scope = scope;
 }
 
-void start_symbol_scope(SCTX_ void)
+void start_symbol_scope(SCTX)
 {
 	start_scope(sctx_ &block_scope);
 }
 
-void start_function_scope(SCTX_ void)
+void start_function_scope(SCTX)
 {
 	start_scope(sctx_ &function_scope);
 	start_scope(sctx_ &block_scope);
@@ -84,24 +84,24 @@ static void end_scope(SCTX_ struct scope **s)
 	} END_FOR_EACH_PTR(sym);
 }
 
-void end_file_scope(SCTX_ void)
+void end_file_scope(SCTX)
 {
 	end_scope(sctx_ &file_scope);
 }
 
-void new_file_scope(SCTX_ void)
+void new_file_scope(SCTX)
 {
 	if (file_scope != &builtin_scope)
-		end_file_scope(sctx_ );
-	start_file_scope(sctx_ );
+		end_file_scope(sctx );
+	start_file_scope(sctx);
 }
 
-void end_symbol_scope(SCTX_ void)
+void end_symbol_scope(SCTX)
 {
 	end_scope(sctx_ &block_scope);
 }
 
-void end_function_scope(SCTX_ void)
+void end_function_scope(SCTX)
 {
 	end_scope(sctx_ &block_scope);
 	end_scope(sctx_ &function_scope);

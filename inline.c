@@ -19,14 +19,14 @@
 
 static struct expression * dup_expression(SCTX_ struct expression *expr)
 {
-	struct expression *dup = alloc_expression(expr->tok, expr->type);
+	struct expression *dup = alloc_expression(sctx_ expr->tok, expr->type);
 	*dup = *expr;
 	return dup;
 }
 
 static struct statement * dup_statement(SCTX_ struct statement *stmt)
 {
-	struct statement *dup = alloc_statement(stmt->tok, stmt->type);
+	struct statement *dup = alloc_statement(sctx_ stmt->tok, stmt->type);
 	*dup = *stmt;
 	return dup;
 }
@@ -51,7 +51,7 @@ static struct symbol_list *copy_symbol_list(SCTX_ struct symbol_list *src)
 
 	FOR_EACH_PTR(src, sym) {
 		struct symbol *newsym = copy_symbol(sctx_ sym->pos->pos, sym);
-		add_symbol(&dst, newsym);
+		add_symbol(sctx_ &dst, newsym);
 	} END_FOR_EACH_PTR(sym);
 	return dst;
 }
@@ -175,7 +175,7 @@ static struct expression * copy_expression(SCTX_ struct expression *expr)
 
 	/* Statement expression */
 	case EXPR_STATEMENT: {
-		struct statement *stmt = alloc_statement(expr->tok, STMT_COMPOUND);
+		struct statement *stmt = alloc_statement(sctx_ expr->tok, STMT_COMPOUND);
 		copy_statement(sctx_ expr->statement, stmt);
 		expr = dup_expression(sctx_ expr);
 		expr->statement = stmt;
@@ -192,7 +192,7 @@ static struct expression * copy_expression(SCTX_ struct expression *expr)
 		expr->fn = fn;
 		expr->args = NULL;
 		FOR_EACH_PTR(list, arg) {
-			add_expression(&expr->args, copy_expression(sctx_ arg));
+			add_expression(sctx_ &expr->args, copy_expression(sctx_ arg));
 		} END_FOR_EACH_PTR(arg);
 		break;
 	}
@@ -204,7 +204,7 @@ static struct expression * copy_expression(SCTX_ struct expression *expr)
 		expr = dup_expression(sctx_ expr);
 		expr->expr_list = NULL;
 		FOR_EACH_PTR(list, entry) {
-			add_expression(&expr->expr_list, copy_expression(sctx_ entry));
+			add_expression(sctx_ &expr->expr_list, copy_expression(sctx_ entry));
 		} END_FOR_EACH_PTR(entry);
 		break;
 	}
@@ -272,11 +272,11 @@ static struct expression_list *copy_asm_constraints(SCTX_ struct expression_list
 		case 0: /* identifier */
 		case 1: /* constraint */
 			state++;
-			add_expression(&out, expr);
+			add_expression(sctx_ &out, expr);
 			continue;
 		case 2: /* expression */
 			state = 0;
-			add_expression(&out, copy_expression(sctx_ expr));
+			add_expression(sctx_ &out, copy_expression(sctx_ expr));
 			continue;
 		}
 	} END_FOR_EACH_PTR(expr);
@@ -323,7 +323,7 @@ static struct statement *copy_one_statement(SCTX_ struct statement *stmt)
 			struct symbol *newsym = copy_symbol(sctx_ stmt->pos->pos, sym);
 			if (newsym != sym)
 				newsym->initializer = copy_expression(sctx_ sym->initializer);
-			add_symbol(&newstmt->declaration, newsym);
+			add_symbol(sctx_ &newstmt->declaration, newsym);
 		} END_FOR_EACH_PTR(sym);
 		stmt = newstmt;
 		break;
@@ -346,7 +346,7 @@ static struct statement *copy_one_statement(SCTX_ struct statement *stmt)
 		break;
 	}
 	case STMT_COMPOUND: {
-		struct statement *new = alloc_statement(stmt->tok, STMT_COMPOUND);
+		struct statement *new = alloc_statement(sctx_ stmt->tok, STMT_COMPOUND);
 		copy_statement(sctx_ stmt, new);
 		stmt = new;
 		break;
@@ -457,7 +457,7 @@ void copy_statement(SCTX_ struct statement *src, struct statement *dst)
 	struct statement *stmt;
 
 	FOR_EACH_PTR(src->stmts, stmt) {
-		add_statement(&dst->stmts, copy_one_statement(sctx_ stmt));
+		add_statement(sctx_ &dst->stmts, copy_one_statement(sctx_ stmt));
 	} END_FOR_EACH_PTR(stmt);
 	dst->args = copy_one_statement(sctx_ src->args);
 	dst->ret = copy_symbol(sctx_ src->pos->pos, src->ret);
@@ -485,7 +485,7 @@ static struct symbol_list *create_symbol_list(SCTX_ struct symbol_list *src)
 
 	FOR_EACH_PTR(src, sym) {
 		struct symbol *newsym = create_copy_symbol(sctx_ sym);
-		add_symbol(&dst, newsym);
+		add_symbol(sctx_ &dst, newsym);
 	} END_FOR_EACH_PTR(sym);
 	return dst;
 }
@@ -495,7 +495,7 @@ int inline_function(SCTX_ struct expression *expr, struct symbol *sym)
 	struct symbol_list * fn_symbol_list;
 	struct symbol *fn = sym->ctype.base_type;
 	struct expression_list *arg_list = expr->args;
-	struct statement *stmt = alloc_statement(expr->tok, STMT_COMPOUND);
+	struct statement *stmt = alloc_statement(sctx_ expr->tok, STMT_COMPOUND);
 	struct symbol_list *name_list, *arg_decl;
 	struct symbol *name;
 	struct expression *arg;
@@ -526,10 +526,10 @@ int inline_function(SCTX_ struct expression *expr, struct symbol *sym)
 		if (name) {
 			*a = *name;
 			set_replace(sctx_ name, a);
-			add_symbol(&fn_symbol_list, a);
+			add_symbol(sctx_ &fn_symbol_list, a);
 		}
 		a->initializer = arg;
-		add_symbol(&arg_decl, a);
+		add_symbol(sctx_ &arg_decl, a);
 
 		NEXT_PTR_LIST(name);
 	} END_FOR_EACH_PTR(arg);
@@ -538,7 +538,7 @@ int inline_function(SCTX_ struct expression *expr, struct symbol *sym)
 	copy_statement(sctx_ fn->inline_stmt, stmt);
 
 	if (arg_decl) {
-		struct statement *decl = alloc_statement(expr->tok, STMT_DECLARATION);
+		struct statement *decl = alloc_statement(sctx_ expr->tok, STMT_DECLARATION);
 		decl->declaration = arg_decl;
 		stmt->args = decl;
 	}
@@ -562,7 +562,7 @@ void uninline(SCTX_ struct symbol *sym)
 	FOR_EACH_PTR(arg_list, p) {
 		p->replace = p;
 	} END_FOR_EACH_PTR(p);
-	fn->stmt = alloc_statement(fn->tok, STMT_COMPOUND);
+	fn->stmt = alloc_statement(sctx_ fn->tok, STMT_COMPOUND);
 	copy_statement(sctx_ fn->inline_stmt, fn->stmt);
 	unset_replace_list(sctx_ sym->symbol_list);
 	unset_replace_list(sctx_ arg_list);

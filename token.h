@@ -49,7 +49,7 @@ struct stream {
 extern int input_stream_nr;
 extern struct stream *input_streams;
 extern unsigned int tabstop;
-extern int *hash_stream(const char *name);
+extern int *hash_stream(SCTX_ const char *name);
 
 struct ident {
 	struct ident *next;	/* Hash chain of identifiers */
@@ -231,21 +231,21 @@ static inline struct token *list_e(struct token *l, struct expansion *e)
 	return r;
 }
 
-extern int init_stream(const char *, int fd, const char **next_path);
-extern const char *stream_name(int stream);
-extern struct ident *hash_ident(struct ident *);
-extern struct ident *built_in_ident(const char *);
-extern struct token *built_in_token(int, const char *);
-extern const char *show_special(int);
-extern const char *show_ident(const struct ident *);
-extern const char *show_string(const struct string *string);
-extern const char *show_token(const struct token *);
-extern const char *quote_token(const struct token *);
-extern struct expansion *tokenize(const char *, int, struct token *, const char **next_path);
-extern struct expansion * tokenize_buffer(void *, unsigned long, struct token **);
+extern int init_stream(SCTX_ const char *, int fd, const char **next_path);
+extern const char *stream_name(SCTX_ int stream);
+extern struct ident *hash_ident(SCTX_ struct ident *);
+extern struct ident *built_in_ident(SCTX_ const char *);
+extern struct token *built_in_token(SCTX_ int, const char *);
+extern const char *show_special(SCTX_ int);
+extern const char *show_ident(SCTX_ const struct ident *);
+extern const char *show_string(SCTX_ const struct string *string);
+extern const char *show_token(SCTX_ const struct token *);
+extern const char *quote_token(SCTX_ const struct token *);
+extern struct expansion *tokenize(SCTX_ const char *, int, struct token *, const char **next_path);
+extern struct expansion * tokenize_buffer(SCTX_ void *, unsigned long, struct token **);
 
-extern void show_identifier_stats(void);
-extern struct token *preprocess(struct expansion *);
+extern void show_identifier_stats(SCTX);
+extern struct token *preprocess(SCTX_ struct expansion *);
 
 static inline int match_op(struct token *token, int op)
 {

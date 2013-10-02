@@ -23,22 +23,22 @@ extern struct scope
 		*file_scope,
 		*global_scope;
 
-static inline int toplevel(struct scope *scope)
+static inline int toplevel(SCTX_ struct scope *scope)
 {
 	return scope == file_scope || scope == global_scope;
 }
 
-extern void start_file_scope(void);
-extern void end_file_scope(void);
-extern void new_file_scope(void);
+extern void start_file_scope(SCTX);
+extern void end_file_scope(SCTX);
+extern void new_file_scope(SCTX);
 
-extern void start_symbol_scope(void);
-extern void end_symbol_scope(void);
+extern void start_symbol_scope(SCTX);
+extern void end_symbol_scope(SCTX);
 
-extern void start_function_scope(void);
-extern void end_function_scope(void);
+extern void start_function_scope(SCTX);
+extern void end_function_scope(SCTX);
 
-extern void bind_scope(struct symbol *, struct scope *);
+extern void bind_scope(SCTX_ struct symbol *, struct scope *);
 
-extern int is_outer_scope(struct scope *);
+extern int is_outer_scope(SCTX_ struct scope *);
 #endif

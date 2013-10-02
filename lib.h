@@ -31,7 +31,7 @@ extern int repeat_phase, merge_phi_sources;
 extern int gcc_major, gcc_minor, gcc_patchlevel;
 extern struct token *pp_tokenlist;
 
-extern unsigned int hexval(unsigned int c);
+extern unsigned int hexval(SCTX_ unsigned int c);
 
 struct position {
 	unsigned int type:6,
@@ -65,8 +65,8 @@ DECLARE_PTR_LIST(string_list, char);
 
 typedef struct pseudo *pseudo_t;
 
-struct token *skip_to(struct token *, int);
-struct token *expect(struct token *, int, const char *);
+struct token *skip_to(SCTX_ struct token *, int);
+struct token *expect(SCTX_ struct token *, int, const char *);
 #ifdef __GNUC__
 #define FORMAT_ATTR(pos) __attribute__ ((__format__ (__printf__, pos, pos+1)))
 #define NORETURN_ATTR __attribute__ ((__noreturn__))
@@ -76,14 +76,14 @@ struct token *expect(struct token *, int, const char *);
 #define NORETURN_ATTR
 #define SENTINEL_ATTR
 #endif
-extern void sparse_die(const char *, ...);
-extern void info(struct position, const char *, ...) FORMAT_ATTR(2);
-extern void warning(struct position, const char *, ...) FORMAT_ATTR(2);
-extern void sparse_error(struct position, const char *, ...) FORMAT_ATTR(2);
-extern void error_die(struct position, const char *, ...);
-extern void expression_error(struct expression *, const char *, ...) FORMAT_ATTR(2);
+extern void sparse_die(SCTX_ const char *, ...);
+extern void info(SCTX_ struct position, const char *, ...) FORMAT_ATTR(2+SCTXCNT);
+extern void warning(SCTX_ struct position, const char *, ...) FORMAT_ATTR(2+SCTXCNT);
+extern void sparse_error(SCTX_ struct position, const char *, ...) FORMAT_ATTR(2+SCTXCNT);
+extern void error_die(SCTX_ struct position, const char *, ...);
+extern void expression_error(SCTX_ struct expression *, const char *, ...) FORMAT_ATTR(2+SCTXCNT);
 
-extern void add_pre_buffer(const char *fmt, ...) FORMAT_ATTR(1);
+extern void add_pre_buffer(SCTX_ const char *fmt, ...) FORMAT_ATTR(1+SCTXCNT);
 
 extern int preprocess_only;
 
@@ -118,103 +118,104 @@ extern int dbg_dead;
 extern int arch_m64;
 extern int arch_msize_long;
 
-extern void declare_builtin_functions(void);
-extern void create_builtin_stream(void);
-extern struct symbol_list *sparse_initialize(int argc, char **argv, struct string_list **files);
-extern struct symbol_list *__sparse(char *filename);
-extern struct symbol_list *sparse_keep_tokens(char *filename);
-extern struct symbol_list *sparse(char *filename);
 
-static inline int symbol_list_size(struct symbol_list *list)
+extern void declare_builtin_functions(SCTX);
+extern void create_builtin_stream(SCTX);
+extern struct symbol_list *sparse_initialize(SCTX_ int argc, char **argv, struct string_list **files);
+extern struct symbol_list *__sparse(SCTX_ char *filename);
+extern struct symbol_list *sparse_keep_tokens(SCTX_ char *filename);
+extern struct symbol_list *sparse(SCTX_ char *filename);
+
+static inline int symbol_list_size(SCTX_ struct symbol_list *list)
 {
-	return ptr_list_size((struct ptr_list *)(list));
+	return ptr_list_size(sctx_ (struct ptr_list *)(list));
 }
 
-static inline int statement_list_size(struct statement_list *list)
+static inline int statement_list_size(SCTX_ struct statement_list *list)
 {
-	return ptr_list_size((struct ptr_list *)(list));
+	return ptr_list_size(sctx_ (struct ptr_list *)(list));
 }
 
-static inline int expression_list_size(struct expression_list *list)
+static inline int expression_list_size(SCTX_ struct expression_list *list)
 {
-	return ptr_list_size((struct ptr_list *)(list));
+	return ptr_list_size(sctx_ (struct ptr_list *)(list));
 }
 
-static inline int instruction_list_size(struct instruction_list *list)
+static inline int instruction_list_size(SCTX_ struct instruction_list *list)
 {
-	return ptr_list_size((struct ptr_list *)(list));
+	return ptr_list_size(sctx_ (struct ptr_list *)(list));
 }
 
-static inline int pseudo_list_size(struct pseudo_list *list)
+static inline int pseudo_list_size(SCTX_ struct pseudo_list *list)
 {
-	return ptr_list_size((struct ptr_list *)(list));
+	return ptr_list_size(sctx_ (struct ptr_list *)(list));
 }
 
-static inline int bb_list_size(struct basic_block_list *list)
+static inline int bb_list_size(SCTX_ struct basic_block_list *list)
 {
-	return ptr_list_size((struct ptr_list *)(list));
+	return ptr_list_size(sctx_ (struct ptr_list *)(list));
 }
 
-static inline void free_instruction_list(struct instruction_list **head)
+static inline void free_instruction_list(SCTX_ struct instruction_list **head)
 {
 	free_ptr_list((struct ptr_list **)head);
 }
 
-static inline struct instruction * delete_last_instruction(struct instruction_list **head)
+static inline struct instruction * delete_last_instruction(SCTX_ struct instruction_list **head)
 {
-	return undo_ptr_list_last((struct ptr_list **)head);
+	return undo_ptr_list_last(sctx_ (struct ptr_list **)head);
 }
 
-static inline struct basic_block * delete_last_basic_block(struct basic_block_list **head)
+static inline struct basic_block * delete_last_basic_block(SCTX_ struct basic_block_list **head)
 {
-	return delete_ptr_list_last((struct ptr_list **)head);
+	return delete_ptr_list_last(sctx_ (struct ptr_list **)head);
 }
 
-static inline struct basic_block *first_basic_block(struct basic_block_list *head)
+static inline struct basic_block *first_basic_block(SCTX_ struct basic_block_list *head)
 {
 	return first_ptr_list((struct ptr_list *)head);
 }
-static inline struct instruction *last_instruction(struct instruction_list *head)
+static inline struct instruction *last_instruction(SCTX_ struct instruction_list *head)
 {
 	return last_ptr_list((struct ptr_list *)head);
 }
 
-static inline struct instruction *first_instruction(struct instruction_list *head)
+static inline struct instruction *first_instruction(SCTX_ struct instruction_list *head)
 {
 	return first_ptr_list((struct ptr_list *)head);
 }
 
-static inline pseudo_t first_pseudo(struct pseudo_list *head)
+static inline pseudo_t first_pseudo(SCTX_ struct pseudo_list *head)
 {
 	return first_ptr_list((struct ptr_list *)head);
 }
 
-static inline void concat_symbol_list(struct symbol_list *from, struct symbol_list **to)
+static inline void concat_symbol_list(SCTX_ struct symbol_list *from, struct symbol_list **to)
 {
-	concat_ptr_list((struct ptr_list *)from, (struct ptr_list **)to);
+	concat_ptr_list(sctx_ (struct ptr_list *)from, (struct ptr_list **)to);
 }
 
-static inline void concat_basic_block_list(struct basic_block_list *from, struct basic_block_list **to)
+static inline void concat_basic_block_list(SCTX_ struct basic_block_list *from, struct basic_block_list **to)
 {
-	concat_ptr_list((struct ptr_list *)from, (struct ptr_list **)to);
+	concat_ptr_list(sctx_ (struct ptr_list *)from, (struct ptr_list **)to);
 }
 
-static inline void concat_instruction_list(struct instruction_list *from, struct instruction_list **to)
+static inline void concat_instruction_list(SCTX_ struct instruction_list *from, struct instruction_list **to)
 {
-	concat_ptr_list((struct ptr_list *)from, (struct ptr_list **)to);
+	concat_ptr_list(sctx_ (struct ptr_list *)from, (struct ptr_list **)to);
 }
 
-static inline void add_symbol(struct symbol_list **list, struct symbol *sym)
+static inline void add_symbol(SCTX_ struct symbol_list **list, struct symbol *sym)
 {
 	add_ptr_list(list, sym);
 }
 
-static inline void add_statement(struct statement_list **list, struct statement *stmt)
+static inline void add_statement(SCTX_ struct statement_list **list, struct statement *stmt)
 {
 	add_ptr_list(list, stmt);
 }
 
-static inline void add_expression(struct expression_list **list, struct expression *expr)
+static inline void add_expression(SCTX_ struct expression_list **list, struct expression *expr)
 {
 	add_ptr_list(list, expr);
 }

@@ -69,7 +69,7 @@ struct storage_hash_list *gather_storage(SCTX_ struct basic_block *bb, enum inou
 	return list;
 }
 
-static void name_storage(SCTX_ void)
+static void name_storage(SCTX)
 {
 	int i;
 	int name = 0;
@@ -100,7 +100,7 @@ struct storage *lookup_storage(SCTX_ struct basic_block *bb, pseudo_t pseudo, en
 void add_storage(SCTX_ struct storage *storage, struct basic_block *bb, pseudo_t pseudo, enum inout_enum inout)
 {
 	struct storage_hash_list **listp = storage_hash_table + storage_hash(bb,pseudo,inout);
-	struct storage_hash *hash = alloc_storage_hash(storage);
+	struct storage_hash *hash = alloc_storage_hash(sctx_ storage);
 
 	hash->bb = bb;
 	hash->pseudo = pseudo;
@@ -157,7 +157,7 @@ static void vrfy_storage(SCTX_ struct storage_hash_list **listp)
 	} END_FOR_EACH_PTR(entry);
 }
 
-void free_storage(SCTX_ void)
+void free_storage(SCTX)
 {
 	int i;
 
@@ -238,7 +238,7 @@ static void set_up_bb_storage(SCTX_ struct basic_block *bb)
 				add_storage(sctx_ child_in, bb, pseudo, STOR_OUT);
 				continue;
 			}
-			parent_out = alloc_storage();
+			parent_out = alloc_storage(sctx);
 			add_storage(sctx_ parent_out, bb, pseudo, STOR_OUT);
 			add_storage(sctx_ parent_out, child, pseudo, STOR_IN);
 		} END_FOR_EACH_PTR(pseudo);
@@ -250,7 +250,7 @@ static void set_up_argument_storage(SCTX_ struct entrypoint *ep, struct basic_bl
 	pseudo_t arg;
 
 	FOR_EACH_PTR(bb->needs, arg) {
-		struct storage *storage = alloc_storage();
+		struct storage *storage = alloc_storage(sctx);
 
 		/* FIXME! Totally made-up argument passing conventions */
 		if (arg->type == PSEUDO_ARG) {
@@ -303,5 +303,5 @@ void set_up_storage(SCTX_ struct entrypoint *ep)
 		combine_phi_storage(sctx_ bb);
 	} END_FOR_EACH_PTR(bb);
 
-	name_storage(sctx_ );
+	name_storage(sctx );
 }

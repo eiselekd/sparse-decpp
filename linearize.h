@@ -241,37 +241,37 @@ static inline int is_branch_goto(struct instruction *br)
 	return br && br->opcode==OP_BR && (!br->bb_true || !br->bb_false);
 }
 
-static inline void add_bb(struct basic_block_list **list, struct basic_block *bb)
+static inline void add_bb(SCTX_ struct basic_block_list **list, struct basic_block *bb)
 {
 	add_ptr_list(list, bb);
 }
 
-static inline void add_instruction(struct instruction_list **list, struct instruction *insn)
+static inline void add_instruction(SCTX_ struct instruction_list **list, struct instruction *insn)
 {
 	add_ptr_list(list, insn);
 }
 
-static inline void add_multijmp(struct multijmp_list **list, struct multijmp *multijmp)
+static inline void add_multijmp(SCTX_ struct multijmp_list **list, struct multijmp *multijmp)
 {
 	add_ptr_list(list, multijmp);
 }
 
-static inline pseudo_t *add_pseudo(struct pseudo_list **list, pseudo_t pseudo)
+static inline pseudo_t *add_pseudo(SCTX_ struct pseudo_list **list, pseudo_t pseudo)
 {
 	return add_ptr_list(list, pseudo);
 }
 
-static inline int remove_pseudo(struct pseudo_list **list, pseudo_t pseudo)
+static inline int remove_pseudo(SCTX_ struct pseudo_list **list, pseudo_t pseudo)
 {
-	return delete_ptr_list_entry((struct ptr_list **)list, pseudo, 0) != 0;
+	return delete_ptr_list_entry(sctx_ (struct ptr_list **)list, pseudo, 0) != 0;
 }
 
-static inline int bb_terminated(struct basic_block *bb)
+static inline int bb_terminated(SCTX_ struct basic_block *bb)
 {
 	struct instruction *insn;
 	if (!bb)
 		return 0;
-	insn = last_instruction(bb->insns);
+	insn = last_instruction(sctx_ bb->insns);
 	return insn && insn->opcode >= OP_TERMINATOR
 	            && insn->opcode <= OP_TERMINATOR_END;
 }
@@ -281,12 +281,12 @@ static inline int bb_reachable(struct basic_block *bb)
 	return bb != NULL;
 }
 
-static inline void add_pseudo_ptr(pseudo_t *ptr, struct pseudo_ptr_list **list)
+static inline void add_pseudo_ptr(SCTX_ pseudo_t *ptr, struct pseudo_ptr_list **list)
 {
 	add_ptr_list(list, ptr);
 }
 
-static inline void add_pseudo_user_ptr(struct pseudo_user *user, struct pseudo_user_list **list)
+static inline void add_pseudo_user_ptr(SCTX_ struct pseudo_user *user, struct pseudo_user_list **list)
 {
 	add_ptr_list(list, user);
 }
@@ -296,30 +296,30 @@ static inline int has_use_list(pseudo_t p)
 	return (p && p->type != PSEUDO_VOID && p->type != PSEUDO_VAL);
 }
 
-static inline struct pseudo_user *alloc_pseudo_user(struct instruction *insn, pseudo_t *pp)
+static inline struct pseudo_user *alloc_pseudo_user(SCTX_ struct instruction *insn, pseudo_t *pp)
 {
-	struct pseudo_user *user = __alloc_pseudo_user(0);
+	struct pseudo_user *user = __alloc_pseudo_user(sctx_ 0);
 	user->userp = pp;
 	user->insn = insn;
 	return user;
 }
 
-static inline void use_pseudo(struct instruction *insn, pseudo_t p, pseudo_t *pp)
+static inline void use_pseudo(SCTX_ struct instruction *insn, pseudo_t p, pseudo_t *pp)
 {
 	*pp = p;
 	if (has_use_list(p))
-		add_pseudo_user_ptr(alloc_pseudo_user(insn, pp), &p->users);
+		add_pseudo_user_ptr(sctx_ alloc_pseudo_user(sctx_ insn, pp), &p->users);
 }
 
-static inline void remove_bb_from_list(struct basic_block_list **list, struct basic_block *entry, int count)
+static inline void remove_bb_from_list(SCTX_ struct basic_block_list **list, struct basic_block *entry, int count)
 {
-	delete_ptr_list_entry((struct ptr_list **)list, entry, count);
+	delete_ptr_list_entry(sctx_ (struct ptr_list **)list, entry, count);
 }
 
-static inline void replace_bb_in_list(struct basic_block_list **list,
+static inline void replace_bb_in_list(SCTX_ struct basic_block_list **list,
 	struct basic_block *old, struct basic_block *new, int count)
 {
-	replace_ptr_list_entry((struct ptr_list **)list, old, new, count);
+	replace_ptr_list_entry(sctx_ (struct ptr_list **)list, old, new, count);
 }
 
 struct entrypoint {
@@ -331,19 +331,19 @@ struct entrypoint {
 	struct instruction *entry;
 };
 
-extern void insert_select(struct basic_block *bb, struct instruction *br, struct instruction *phi, pseudo_t if_true, pseudo_t if_false);
-extern void insert_branch(struct basic_block *bb, struct instruction *br, struct basic_block *target);
+extern void insert_select(SCTX_ struct basic_block *bb, struct instruction *br, struct instruction *phi, pseudo_t if_true, pseudo_t if_false);
+extern void insert_branch(SCTX_ struct basic_block *bb, struct instruction *br, struct basic_block *target);
 
-pseudo_t alloc_phi(struct basic_block *source, pseudo_t pseudo, int size);
-pseudo_t alloc_pseudo(struct instruction *def);
-pseudo_t value_pseudo(long long val);
+pseudo_t alloc_phi(SCTX_ struct basic_block *source, pseudo_t pseudo, int size);
+pseudo_t alloc_pseudo(SCTX_ struct instruction *def);
+pseudo_t value_pseudo(SCTX_ long long val);
 
-struct entrypoint *linearize_symbol(struct symbol *sym);
-int unssa(struct entrypoint *ep);
-void show_entry(struct entrypoint *ep);
-const char *show_pseudo(pseudo_t pseudo);
-void show_bb(struct basic_block *bb);
-const char *show_instruction(struct instruction *insn);
+struct entrypoint *linearize_symbol(SCTX_ struct symbol *sym);
+int unssa(SCTX_ struct entrypoint *ep);
+void show_entry(SCTX_ struct entrypoint *ep);
+const char *show_pseudo(SCTX_ pseudo_t pseudo);
+void show_bb(SCTX_ struct basic_block *bb);
+const char *show_instruction(SCTX_ struct instruction *insn);
 
 #endif /* LINEARIZE_H */
 

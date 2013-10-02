@@ -14,7 +14,14 @@ ALL_SRC = tokenize.c pre-process.c symbol.c lib.c scope.c \
 expression.c evaluate.c expand.c  inline.c linearize.c \
 allocate.c ptrlist.c flow.c cse.c simplify.c memops.c \
 liveness.c  storage.c  unssa.c  dissect.c target.c \
-show-parse.c char.c  sort.c compat-linux.c 
+show-parse.c char.c  sort.c compat-linux.c  
+
+
+#sparse-llvm.c
+#example.c
+#compile-i386.c
+#parse.c
+
 
 
 CC = gcc
@@ -225,5 +232,5 @@ clean-check:
 
 
 sparse-sparse:
-	./test-dissect $(ALL_SRC) $(BASIC_CFLAGS)
+	./test-dissect -I/Users/eiselekd/bin/include $(ALL_SRC) $(BASIC_CFLAGS)
 

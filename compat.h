@@ -21,8 +21,8 @@ struct stat;
  */
 #define CHUNK 32768
 
-void *blob_alloc(unsigned long size);
-void blob_free(void *addr, unsigned long size);
-long double string_to_ld(const char *nptr, char **endptr);
+void *blob_alloc(SCTX_ unsigned long size);
+void blob_free(SCTX_ void *addr, unsigned long size);
+long double string_to_ld(SCTX_ const char *nptr, char **endptr);
 
 #endif

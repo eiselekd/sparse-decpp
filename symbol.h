@@ -77,7 +77,7 @@ struct sym_context {
 	unsigned int in, out;
 };
 
-extern struct sym_context *alloc_context(void);
+extern struct sym_context *alloc_context(SCTX);
 
 DECLARE_PTR_LIST(context_list, struct sym_context);
 
@@ -98,22 +98,22 @@ struct decl_state {
 
 struct symbol_op {
 	enum keyword type;
-	int (*evaluate)(struct expression *);
-	int (*expand)(struct expression *, int);
-	int (*args)(struct expression *);
+	int (*evaluate)(SCTX_ struct expression *);
+	int (*expand)(SCTX_ struct expression *, int);
+	int (*args)(SCTX_ struct expression *);
 
 	/* keywords */
-	struct token *(*declarator)(struct token *token, struct decl_state *ctx);
-	struct token *(*statement)(struct token *token, struct statement *stmt);
-	struct token *(*toplevel)(struct token *token, struct symbol_list **list);
-	struct token *(*attribute)(struct token *token, struct symbol *attr, struct decl_state *ctx);
-	struct symbol *(*to_mode)(struct symbol *);
+	struct token *(*declarator)(SCTX_ struct token *token, struct decl_state *ctx);
+	struct token *(*statement)(SCTX_ struct token *token, struct statement *stmt);
+	struct token *(*toplevel)(SCTX_ struct token *token, struct symbol_list **list);
+	struct token *(*attribute)(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx);
+	struct symbol *(*to_mode)(SCTX_ struct symbol *);
 
 	int test, set, class;
 };
 
-extern int expand_safe_p(struct expression *expr, int cost);
-extern int expand_constant_p(struct expression *expr, int cost);
+extern int expand_safe_p(SCTX_ struct expression *expr, int cost);
+extern int expand_constant_p(SCTX_ struct expression *expr, int cost);
 
 #define SYM_ATTR_WEAK		0
 #define SYM_ATTR_NORMAL		1
@@ -144,7 +144,7 @@ struct symbol {
 			struct scope *used_in;
 		};
 		struct /* NS_PREPROCESSOR */ {
-			int (*handler)(struct stream *, struct token **, struct token *);
+			int (*handler)(SCTX_ struct stream *, struct token **, struct token *);
 			int normal;
 		};
 		struct /* NS_SYMBOL */ {
@@ -265,41 +265,41 @@ extern struct symbol	zero_int;
 
 extern struct symbol_list *translation_unit_used_list;
 
-extern void access_symbol(struct symbol *);
+extern void access_symbol(SCTX_ struct symbol *);
 
-extern const char * type_difference(struct ctype *c1, struct ctype *c2,
+extern const char * type_difference(SCTX_ struct ctype *c1, struct ctype *c2,
 	unsigned long mod1, unsigned long mod2);
 
-extern struct symbol *lookup_symbol(struct ident *, enum namespace);
-extern struct symbol *create_symbol(int stream, const char *name, int type, int namespace);
-extern void init_symbols(void);
-extern void init_ctype(void);
-extern struct symbol *alloc_symbol(struct token *tok, int type);
-extern void show_type(struct symbol *);
-extern const char *modifier_string(unsigned long mod);
-extern void show_symbol(struct symbol *);
-extern int show_symbol_expr_init(struct symbol *sym);
-extern void show_type_list(struct symbol *);
-extern void show_symbol_list(struct symbol_list *, const char *);
-extern void add_symbol(struct symbol_list **, struct symbol *);
-extern void bind_symbol(struct symbol *, struct ident *, enum namespace);
+extern struct symbol *lookup_symbol(SCTX_ struct ident *, enum namespace);
+extern struct symbol *create_symbol(SCTX_ int stream, const char *name, int type, int namespace);
+extern void init_symbols(SCTX);
+extern void init_ctype(SCTX);
+extern struct symbol *alloc_symbol(SCTX_ struct token *tok, int type);
+extern void show_type(SCTX_ struct symbol *);
+extern const char *modifier_string(SCTX_ unsigned long mod);
+extern void show_symbol(SCTX_ struct symbol *);
+extern int show_symbol_expr_init(SCTX_ struct symbol *sym);
+extern void show_type_list(SCTX_ struct symbol *);
+extern void show_symbol_list(SCTX_ struct symbol_list *, const char *);
+extern void add_symbol(SCTX_ struct symbol_list **, struct symbol *);
+extern void bind_symbol(SCTX_ struct symbol *, struct ident *, enum namespace);
 
-extern struct symbol *examine_symbol_type(struct symbol *);
-extern struct symbol *examine_pointer_target(struct symbol *);
-extern void examine_simple_symbol_type(struct symbol *);
-extern const char *show_typename(struct symbol *sym);
-extern const char *show_typename_fn(struct symbol *sym);
-extern const char *builtin_typename(struct symbol *sym);
-extern const char *builtin_ctypename(struct ctype *ctype);
-extern const char* get_type_name(enum type type);
+extern struct symbol *examine_symbol_type(SCTX_ struct symbol *);
+extern struct symbol *examine_pointer_target(SCTX_ struct symbol *);
+extern void examine_simple_symbol_type(SCTX_ struct symbol *);
+extern const char *show_typename(SCTX_ struct symbol *sym);
+extern const char *show_typename_fn(SCTX_ struct symbol *sym);
+extern const char *builtin_typename(SCTX_ struct symbol *sym);
+extern const char *builtin_ctypename(SCTX_ struct ctype *ctype);
+extern const char* get_type_name(SCTX_ enum type type);
 
-extern void debug_symbol(struct symbol *);
-extern void merge_type(struct symbol *sym, struct symbol *base_type);
-extern void check_declaration(struct symbol *sym);
+extern void debug_symbol(SCTX_ struct symbol *);
+extern void merge_type(SCTX_ struct symbol *sym, struct symbol *base_type);
+extern void check_declaration(SCTX_ struct symbol *sym);
 
-static inline struct symbol *get_base_type(const struct symbol *sym)
+static inline struct symbol *get_base_type(SCTX_ const struct symbol *sym)
 {
-	return examine_symbol_type(sym->ctype.base_type);
+	return examine_symbol_type(sctx_ sym->ctype.base_type);
 }
 
 static inline int is_int_type(const struct symbol *type)
@@ -378,11 +378,11 @@ static inline int get_sym_type(struct symbol *type)
 	return type->type;
 }
 
-static inline struct symbol *lookup_keyword(struct ident *ident, enum namespace ns)
+static inline struct symbol *lookup_keyword(SCTX_ struct ident *ident, enum namespace ns)
 {
 	if (!ident->keyword)
 		return NULL;
-	return lookup_symbol(ident, ns);
+	return lookup_symbol(sctx_ ident, ns);
 }
 
 #define is_restricted_type(type) (get_sym_type(type) == SYM_RESTRICT)
@@ -390,7 +390,7 @@ static inline struct symbol *lookup_keyword(struct ident *ident, enum namespace 
 #define is_bitfield_type(type)   (get_sym_type(type) == SYM_BITFIELD)
 extern int is_ptr_type(struct symbol *);
 
-void create_fouled(struct symbol *type);
-struct symbol *befoul(struct symbol *type);
+void create_fouled(SCTX_ struct symbol *type);
+struct symbol *befoul(SCTX_ struct symbol *type);
 
 #endif /* SYMBOL_H */

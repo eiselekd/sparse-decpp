@@ -21,9 +21,9 @@ static struct basic_block *phi_parent(SCTX_ struct basic_block *source, pseudo_t
 		if (def->bb == source)
 			return source;
 	}
-	if (bb_list_size(source->children) != 1 || bb_list_size(source->parents) != 1)
+	if (bb_list_size(sctx_ source->children) != 1 || bb_list_size(sctx_ source->parents) != 1)
 		return source;
-	return first_basic_block(source->parents);
+	return first_basic_block(sctx_ source->parents);
 }
 
 static void clear_phi(SCTX_ struct instruction *insn)
@@ -76,7 +76,7 @@ static int if_convert_phi(SCTX_ struct instruction *insn)
 	 * conditional branches. No multijumps or computed
 	 * stuff. Verify that here.
 	 */
-	br = last_instruction(source->insns);
+	br = last_instruction(sctx_ source->insns);
 	if (!br || br->opcode != OP_BR)
 		return 0;
 
@@ -164,12 +164,12 @@ out:
 	return count;
 }
 
-static inline void remove_usage(pseudo_t p, pseudo_t *usep)
+static inline void remove_usage(SCTX_ pseudo_t p, pseudo_t *usep)
 {
 	if (has_use_list(p)) {
-		delete_pseudo_user_list_entry(&p->users, usep, 1);
+		delete_pseudo_user_list_entry(sctx_ &p->users, usep, 1);
 		if (!p->users)
-			kill_instruction(p->def);
+			kill_instruction(sctx_ p->def);
 	}
 }
 
@@ -178,7 +178,7 @@ void kill_use(SCTX_ pseudo_t *usep)
 	if (usep) {
 		pseudo_t p = *usep;
 		*usep = VOID;
-		remove_usage(p, usep);
+		remove_usage(sctx_ p, usep);
 	}
 }
 
@@ -502,10 +502,10 @@ static void switch_pseudo(SCTX_ struct instruction *insn1, pseudo_t *pp1, struct
 {
 	pseudo_t p1 = *pp1, p2 = *pp2;
 
-	use_pseudo(insn1, p2, pp1);
-	use_pseudo(insn2, p1, pp2);
-	remove_usage(p1, pp1);
-	remove_usage(p2, pp2);
+	use_pseudo(sctx_ insn1, p2, pp1);
+	use_pseudo(sctx_ insn2, p1, pp2);
+	remove_usage(sctx_ p1, pp1);
+	remove_usage(sctx_ p2, pp2);
 }
 
 static int canonical_order(SCTX_ pseudo_t p1, pseudo_t p2)
@@ -596,7 +596,7 @@ static int simplify_one_memop(SCTX_ struct instruction *insn, pseudo_t orig)
 		struct instruction *def = addr->def;
 		if (def->opcode == OP_SYMADDR && def->src) {
 			kill_use(sctx_ &insn->src);
-			use_pseudo(insn, def->src, &insn->src);
+			use_pseudo(sctx_ insn, def->src, &insn->src);
 			return REPEAT_CSE | REPEAT_SYMBOL_CLEANUP;
 		}
 		if (def->opcode == OP_ADD_LIN) {
@@ -622,8 +622,8 @@ offset:
 		warning(sctx_ insn->pos, "crazy programmer");
 	}
 	insn->offset += off->value;
-	use_pseudo(insn, new, &insn->src);
-	remove_usage(addr, &insn->src);
+	use_pseudo(sctx_ insn, new, &insn->src);
+	remove_usage(sctx_ addr, &insn->src);
 	return REPEAT_CSE | REPEAT_SYMBOL_CLEANUP;
 }
 
@@ -783,8 +783,8 @@ static int simplify_range(SCTX_ struct instruction *insn)
  */
 static int simplify_cond_branch(SCTX_ struct instruction *br, pseudo_t cond, struct instruction *def, pseudo_t *pp)
 {
-	use_pseudo(br, *pp, &br->cond);
-	remove_usage(cond, &br->cond);
+	use_pseudo(sctx_ br, *pp, &br->cond);
+	remove_usage(sctx_ cond, &br->cond);
 	if (def->opcode == OP_SET_EQ) {
 		struct basic_block *true_sim = br->bb_true;
 		struct basic_block *false_sim = br->bb_false;
@@ -811,8 +811,8 @@ static int simplify_branch(SCTX_ struct instruction *insn)
 	if (insn->bb_true == insn->bb_false) {
 		struct basic_block *bb = insn->bb;
 		struct basic_block *target = insn->bb_false;
-		remove_bb_from_list(&target->parents, bb, 1);
-		remove_bb_from_list(&bb->children, target, 1);
+		remove_bb_from_list(sctx_ &target->parents, bb, 1);
+		remove_bb_from_list(sctx_ &bb->children, target, 1);
 		insn->bb_false = NULL;
 		kill_use(sctx_ &insn->cond);
 		insn->cond = NULL;
@@ -847,16 +847,16 @@ static int simplify_branch(SCTX_ struct instruction *insn)
 					insn->bb_false = true_sim;
 					insn->bb_true = false_sim;
 				}
-				use_pseudo(insn, def->src1, &insn->cond);
-				remove_usage(cond, &insn->cond);
+				use_pseudo(sctx_ insn, def->src1, &insn->cond);
+				remove_usage(sctx_ cond, &insn->cond);
 				return REPEAT_CSE;
 			}
 		}
 		if (def->opcode == OP_CAST || def->opcode == OP_SCAST) {
 			int orig_size = def->orig_type ? def->orig_type->bit_size : 0;
 			if (def->size > orig_size) {
-				use_pseudo(insn, def->src, &insn->cond);
-				remove_usage(cond, &insn->cond);
+				use_pseudo(sctx_ insn, def->src, &insn->cond);
+				remove_usage(sctx_ cond, &insn->cond);
 				return REPEAT_CSE;
 			}
 		}

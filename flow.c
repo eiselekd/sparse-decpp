@@ -36,9 +36,9 @@ static int rewrite_branch(SCTX_ struct basic_block *bb,
 	/* We might find new if-conversions or non-dominating CSEs */
 	repeat_phase |= REPEAT_CSE;
 	*ptr = new;
-	replace_bb_in_list(&bb->children, old, new, 1);
-	remove_bb_from_list(&old->parents, bb, 1);
-	add_bb(&new->parents, bb);
+	replace_bb_in_list(sctx_ &bb->children, old, new, 1);
+	remove_bb_from_list(sctx_ &old->parents, bb, 1);
+	add_bb(sctx_ &new->parents, bb);
 	return 1;
 }
 
@@ -108,7 +108,7 @@ static int try_to_simplify_bb(SCTX_ struct basic_block *bb, struct instruction *
 		pseudo = def->src1;
 		if (!pseudo || !source)
 			continue;
-		br = last_instruction(source->insns);
+		br = last_instruction(sctx_ source->insns);
 		if (!br)
 			continue;
 		if (br->opcode != OP_BR)
@@ -173,7 +173,7 @@ static int simplify_branch_branch(SCTX_ struct basic_block *bb, struct instructi
 
 	if (target == bb)
 		return 0;
-	insn = last_instruction(target->insns);
+	insn = last_instruction(sctx_ target->insns);
 	if (!insn || insn->opcode != OP_BR || insn->cond != br->cond)
 		return 0;
 	/*
@@ -193,7 +193,7 @@ try_to_rewrite_target:
 	 * If we're the only parent, at least we can rewrite the
 	 * now-known second branch.
 	 */
-	if (bb_list_size(target->parents) != 1)
+	if (bb_list_size(sctx_ target->parents) != 1)
 		return retval;
 	insert_branch(sctx_ target, insn, final);
 	kill_instruction(sctx_ insn);
@@ -214,7 +214,7 @@ static int simplify_branch_nodes(SCTX_ struct entrypoint *ep)
 	struct basic_block *bb;
 
 	FOR_EACH_PTR(ep->bbs, bb) {
-		struct instruction *br = last_instruction(bb->insns);
+		struct instruction *br = last_instruction(sctx_ bb->insns);
 
 		if (!br || br->opcode != OP_BR || !br->bb_false)
 			continue;
@@ -231,9 +231,9 @@ int simplify_flow(SCTX_ struct entrypoint *ep)
 	return simplify_branch_nodes(sctx_ ep);
 }
 
-static inline void concat_user_list(struct pseudo_user_list *src, struct pseudo_user_list **dst)
+static inline void concat_user_list(SCTX_ struct pseudo_user_list *src, struct pseudo_user_list **dst)
 {
-	concat_ptr_list((struct ptr_list *)src, (struct ptr_list **)dst);
+	concat_ptr_list(sctx_ (struct ptr_list *)src, (struct ptr_list **)dst);
 }
 
 void convert_instruction_target(SCTX_ struct instruction *insn, pseudo_t src)
@@ -252,7 +252,7 @@ void convert_instruction_target(SCTX_ struct instruction *insn, pseudo_t src)
 			*pu->userp = src;
 		}
 	} END_FOR_EACH_PTR(pu);
-	concat_user_list(target->users, &src->users);
+	concat_user_list(sctx_ target->users, &src->users);
 	target->users = NULL;
 }
 
@@ -325,7 +325,7 @@ static int find_dominating_parents(SCTX_ pseudo_t pseudo, struct instruction *in
 	if (!bb->parents)
 		return !!local;
 
-	if (bb_list_size(bb->parents) > 1)
+	if (bb_list_size(sctx_ bb->parents) > 1)
 		loads = 0;
 	FOR_EACH_PTR(bb->parents, parent) {
 		struct instruction *one;
@@ -358,11 +358,11 @@ no_dominance:
 		continue;
 
 found_dominator:
-		br = delete_last_instruction(&parent->insns);
+		br = delete_last_instruction(sctx_ &parent->insns);
 		phi = alloc_phi(sctx_ parent, one->target, one->size);
 		phi->ident = phi->ident ? : pseudo->ident;
-		add_instruction(&parent->insns, br);
-		use_pseudo(insn, phi, add_pseudo(dominators, phi));
+		add_instruction(sctx_ &parent->insns, br);
+		use_pseudo(sctx_ insn, phi, add_pseudo(sctx_ dominators, phi));
 	} END_FOR_EACH_PTR(parent);
 	return 1;
 }		
@@ -379,7 +379,7 @@ void rewrite_load_instruction(SCTX_ struct instruction *insn, struct pseudo_list
 	 * Check for somewhat common case of duplicate
 	 * phi nodes.
 	 */
-	new = first_pseudo(dominators)->def->src1;
+	new = first_pseudo(sctx_ dominators)->def->src1;
 	FOR_EACH_PTR(dominators, phi) {
 		if (new != phi->def->src1)
 			goto complex_phi;
@@ -761,12 +761,12 @@ void kill_bb(SCTX_ struct basic_block *bb)
 	bb->insns = NULL;
 
 	FOR_EACH_PTR(bb->children, child) {
-		remove_bb_from_list(&child->parents, bb, 0);
+		remove_bb_from_list(sctx_ &child->parents, bb, 0);
 	} END_FOR_EACH_PTR(child);
 	bb->children = NULL;
 
 	FOR_EACH_PTR(bb->parents, parent) {
-		remove_bb_from_list(&parent->children, bb, 0);
+		remove_bb_from_list(sctx_ &parent->children, bb, 0);
 	} END_FOR_EACH_PTR(parent);
 	bb->parents = NULL;
 }
@@ -791,7 +791,7 @@ void kill_unreachable_bbs(SCTX_ struct entrypoint *ep)
 static int rewrite_parent_branch(SCTX_ struct basic_block *bb, struct basic_block *old, struct basic_block *new)
 {
 	int changed = 0;
-	struct instruction *insn = last_instruction(bb->insns);
+	struct instruction *insn = last_instruction(sctx_ bb->insns);
 
 	if (!insn)
 		return 0;
@@ -836,7 +836,7 @@ static struct basic_block * rewrite_branch_bb(SCTX_ struct basic_block *bb, stru
 	 * We can't do FOR_EACH_PTR() here, because the parent list
 	 * may change when we rewrite the parent.
 	 */
-	while ((parent = first_basic_block(bb->parents)) != NULL) {
+	while ((parent = first_basic_block(sctx_ bb->parents)) != NULL) {
 		if (!rewrite_parent_branch(sctx_ parent, bb, target))
 			return NULL;
 	}
@@ -868,7 +868,7 @@ static void vrfy_parents(SCTX_ struct basic_block *bb)
 static void vrfy_children(SCTX_ struct basic_block *bb)
 {
 	struct basic_block *tmp;
-	struct instruction *br = last_instruction(bb->insns);
+	struct instruction *br = last_instruction(sctx_ bb->insns);
 
 	if (!br) {
 		assert(!bb->children);
@@ -985,16 +985,16 @@ out:
 		bb->parents = NULL;
 
 		FOR_EACH_PTR(parent->children, child) {
-			replace_bb_in_list(&child->parents, bb, parent, 0);
+			replace_bb_in_list(sctx_ &child->parents, bb, parent, 0);
 		} END_FOR_EACH_PTR(child);
 
-		kill_instruction(sctx_ delete_last_instruction(&parent->insns));
+		kill_instruction(sctx_ delete_last_instruction(sctx_ &parent->insns));
 		FOR_EACH_PTR(bb->insns, insn) {
 			if (insn->bb) {
 				assert(insn->bb == bb);
 				insn->bb = parent;
 			}
-			add_instruction(&parent->insns, insn);
+			add_instruction(sctx_ &parent->insns, insn);
 		} END_FOR_EACH_PTR(insn);
 		bb->insns = NULL;
 

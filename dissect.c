@@ -120,7 +120,7 @@ static struct symbol *report_member(SCTX_ mode_t mode, struct token *pos,
 	struct symbol *ret = mem->ctype.base_type;
 
 	if (reporter->r_member)
-		reporter->r_member(fix_mode(sctx_ ret, mode), pos, type, mem);
+		reporter->r_member(sctx_ fix_mode(sctx_ ret, mode), pos, type, mem);
 
 	return ret;
 }
@@ -134,22 +134,22 @@ static void report_implicit(SCTX_ usage_t mode, struct token *pos, struct symbol
 		return;
 
 	if (type->ident != NULL)
-		reporter->r_member(mode, pos, type, NULL);
+		reporter->r_member(sctx_ mode, pos, type, NULL);
 
 	DO_LIST(type->symbol_list, mem,
-		report_implicit(mode, pos, base_type_dis(mem)));
+		report_implicit(sctx_ mode, pos, base_type_dis(sctx_ mem)));
 }
 
-static inline struct symbol *expr_symbol(struct expression *expr)
+static inline struct symbol *expr_symbol(SCTX_ struct expression *expr)
 {
 	struct symbol *sym = expr->symbol;
 
 	if (!sym) {
-		sym = lookup_symbol(expr->symbol_name, NS_SYMBOL);
+		sym = lookup_symbol(sctx_ expr->symbol_name, NS_SYMBOL);
 
 		if (!sym) {
-			sym = alloc_symbol(expr->tok, SYM_BAD);
-			bind_symbol(sym, expr->symbol_name, NS_SYMBOL);
+			sym = alloc_symbol(sctx_ expr->tok, SYM_BAD);
+			bind_symbol(sctx_ sym, expr->symbol_name, NS_SYMBOL);
 			sym->ctype.modifiers = MOD_EXTERN;
 		}
 	}
@@ -162,19 +162,19 @@ static inline struct symbol *expr_symbol(struct expression *expr)
 
 static struct symbol *report_symbol(SCTX_ usage_t mode, struct expression *expr)
 {
-	struct symbol *sym = expr_symbol(expr);
+	struct symbol *sym = expr_symbol(sctx_ expr);
 	struct symbol *ret = base_type_dis(sctx_ sym);
 
 	if (0 && ret->type == SYM_ENUM)
 		return report_member(sctx_ mode, expr->pos, ret, expr->symbol);
 
 	if (reporter->r_symbol)
-		reporter->r_symbol(fix_mode(sctx_ ret, mode), expr->pos, sym);
+		reporter->r_symbol(sctx_ fix_mode(sctx_ ret, mode), expr->pos, sym);
 
 	return ret;
 }
 
-static inline struct ident *mk_name(struct ident *root, struct ident *node)
+static inline struct ident *mk_name(SCTX_ struct ident *root, struct ident *node)
 {
 	char name[256];
 
@@ -182,7 +182,7 @@ static inline struct ident *mk_name(struct ident *root, struct ident *node)
 			root ? root->len : 0, root ? root->name : "",
 			node ? node->len : 0, node ? node->name : "");
 
-	return built_in_ident(name);
+	return built_in_ident(sctx_ name);
 }
 
 static void examine_sym_node(SCTX_ struct symbol *node, struct ident *root)
@@ -217,11 +217,11 @@ static void examine_sym_node(SCTX_ struct symbol *node, struct ident *root)
 			base->evaluated = 1;
 
 			if (!base->ident && name)
-				base->ident = mk_name(root, name);
+				base->ident = mk_name(sctx_ root, name);
 			if (base->ident && reporter->r_symdef)
-				reporter->r_symdef(base);
+				reporter->r_symdef(sctx_ base);
 			DO_LIST(base->symbol_list, mem,
-				examine_sym_node(mem, base->ident ?: root));
+				examine_sym_node(sctx_ mem, base->ident ?: root));
 		default:
 			return;
 		}
@@ -338,7 +338,7 @@ again:
 		if (is_ptr(ret))
 			ret = ret->ctype.base_type;
 		DO_2_LIST(ret->arguments, expr->args, arg, val,
-			do_expression(u_lval(base_type_dis(arg)), val));
+			do_expression(sctx_ u_lval(sctx_ base_type_dis(sctx_ arg)), val));
 		ret = ret->type == SYM_FN ? base_type_dis(sctx_ ret)
 			: &bad_ctype;
 
@@ -426,7 +426,7 @@ static void do_asm_xputs(SCTX_ usage_t mode, struct expression_list *xputs)
 
 	DO_LIST(xputs, expr,
 		if (++nr % 3 == 0)
-			do_expression(U_W_AOF | mode, expr));
+			do_expression(sctx_ U_W_AOF | mode, expr));
 }
 
 static struct symbol *do_statement(SCTX_ usage_t mode, struct statement *stmt)
@@ -458,9 +458,9 @@ static struct symbol *do_statement(SCTX_ usage_t mode, struct statement *stmt)
 	break; case STMT_COMPOUND: {
 		int count;
 
-		count = statement_list_size(stmt->stmts);
+		count = statement_list_size(sctx_ stmt->stmts);
 		DO_LIST(stmt->stmts, st,
-			ret = do_statement(--count ? U_VOID : mode, st));
+			ret = do_statement(sctx_ --count ? U_VOID : mode, st));
 	}
 
 	break; case STMT_ITERATOR:
@@ -538,14 +538,14 @@ static struct symbol *do_initializer(SCTX_ struct symbol *type, struct expressio
 	return type;
 }
 
-static inline struct symbol *do_symbol(struct symbol *sym)
+static inline struct symbol *do_symbol(SCTX_ struct symbol *sym)
 {
 	struct symbol *type;
 
-	type = base_type_dis(sym);
+	type = base_type_dis(sctx_ sym);
 
 	if (reporter->r_symdef)
-		reporter->r_symdef(sym);
+		reporter->r_symdef(sctx_ sym);
 
 	reporter->indent++;
 	switch (type->type) {
@@ -553,13 +553,13 @@ static inline struct symbol *do_symbol(struct symbol *sym)
 		if (!sym->initializer)
 			break;
 		if (reporter->r_symbol)
-			reporter->r_symbol(U_W_VAL, sym->pos, sym);
-		do_initializer(type, sym->initializer);
+			reporter->r_symbol(sctx_ U_W_VAL, sym->pos, sym);
+		do_initializer(sctx_ type, sym->initializer);
 		
 	break; case SYM_FN:
-		do_sym_list(type->arguments);
-		return_type = base_type_dis(type);
-		do_statement(U_VOID, sym->ctype.modifiers & MOD_INLINE
+		do_sym_list(sctx_ type->arguments);
+		return_type = base_type_dis(sctx_ type);
+		do_statement(sctx_ U_VOID, sym->ctype.modifiers & MOD_INLINE
 					? type->inline_stmt
 					: type->stmt);
 	}
@@ -570,7 +570,7 @@ static inline struct symbol *do_symbol(struct symbol *sym)
 
 static void do_sym_list(SCTX_ struct symbol_list *list)
 {
-	DO_LIST(list, sym, do_symbol(sym));
+	DO_LIST(list, sym, do_symbol(sctx_ sym));
 }
 
 void dissect(SCTX_ struct symbol_list *list, struct reporter *rep)

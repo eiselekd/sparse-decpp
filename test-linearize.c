@@ -22,28 +22,28 @@
 #include "expression.h"
 #include "linearize.h"
 
-static void clean_up_symbols(struct symbol_list *list)
+static void clean_up_symbols(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 
 	FOR_EACH_PTR(list, sym) {
 		struct entrypoint *ep;
 
-		expand_symbol(sym);
-		ep = linearize_symbol(sym);
+		expand_symbol(sctx_ sym);
+		ep = linearize_symbol(sctx_ sym);
 		if (ep)
-			show_entry(ep);
+			show_entry(sctx_ ep);
 	} END_FOR_EACH_PTR(sym);
 }
 
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file;
+	char *file;struct sparse_ctx sctx;
 
-	clean_up_symbols(sparse_initialize(argc, argv, &filelist));
+	clean_up_symbols(&sctx, sparse_initialize(&sctx, argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		clean_up_symbols(sparse(file));
+		clean_up_symbols(&sctx, sparse(&sctx, file));
 	} END_FOR_EACH_PTR_NOTAG(file);
 	return 0;
 }

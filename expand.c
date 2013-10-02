@@ -797,7 +797,7 @@ static int expand_symbol_call(SCTX_ struct expression *expr, int cost)
 		return SIDE_EFFECTS;
 
 	if (ctype->op && ctype->op->expand)
-		return ctype->op->expand(expr, cost);
+		return ctype->op->expand(sctx_ expr, cost);
 
 	if (ctype->ctype.modifiers & MOD_PURE)
 		return 0;
@@ -866,7 +866,7 @@ static int expand_pos_expression(SCTX_ struct expression *expr)
 						 * with bitfields that are all at offset
 						 * zero..
 						 */
-						reuse = alloc_expression(entry->tok, EXPR_POS);
+						reuse = alloc_expression(sctx_ entry->tok, EXPR_POS);
 					}
 					reuse->type = EXPR_POS;
 					reuse->ctype = entry->ctype;
@@ -923,7 +923,7 @@ static void verify_nonoverlapping(SCTX_ struct expression_list **list)
 	FOR_EACH_PTR(*list, b) {
 		if (!b->ctype || !b->ctype->bit_size)
 			continue;
-		if (a && bit_offset(sctx_ sctx_ a) == bit_offset(b)) {
+		if (a && bit_offset(sctx_ a) == bit_offset(sctx_ b)) {
 			warning(sctx_ a->pos->pos, "Initializer entry defined twice");
 			info(sctx_ b->pos->pos, "  also defined here");
 			return;

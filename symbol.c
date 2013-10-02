@@ -33,7 +33,7 @@ void access_symbol(SCTX_ struct symbol *sym)
 {
 	if (sym->ctype.modifiers & MOD_INLINE) {
 		if (!(sym->ctype.modifiers & MOD_ACCESSED)) {
-			add_symbol(&translation_unit_used_list, sym);
+			add_symbol(sctx_ &translation_unit_used_list, sym);
 			sym->ctype.modifiers |= MOD_ACCESSED;
 		}
 	}
@@ -52,7 +52,7 @@ struct symbol *lookup_symbol(SCTX_ struct ident *ident, enum namespace ns)
 	return NULL;
 }
 
-struct sym_context *alloc_context(SCTX_ void)
+struct sym_context *alloc_context(SCTX)
 {
 	return __alloc_sym_context(sctx_ 0);
 }
@@ -171,12 +171,12 @@ static struct symbol * examine_struct_union_type(SCTX_ struct symbol *sym, int a
 		.align_size = 1
 	};
 	unsigned long bit_size, bit_align;
-	void (*fn)(struct symbol *, struct struct_union_info *);
+	void (*fn)(SCTX_ struct symbol *, struct struct_union_info *);
 	struct symbol *member;
 
 	fn = advance ? lay_out_struct : lay_out_union;
 	FOR_EACH_PTR(sym->symbol_list, member) {
-		fn(member, &info);
+		fn(sctx_ member, &info);
 	} END_FOR_EACH_PTR(member);
 
 	if (!sym->ctype.alignment)
@@ -490,8 +490,8 @@ void create_fouled(SCTX_ struct symbol *type)
 		new->bit_size = bits_in_int;
 		new->type = SYM_FOULED;
 		new->ctype.base_type = type;
-		add_symbol(&restr, type);
-		add_symbol(&fouled, new);
+		add_symbol(sctx_ &restr, type);
+		add_symbol(sctx_ &fouled, new);
 	}
 }
 
@@ -564,7 +564,7 @@ void bind_symbol(SCTX_ struct symbol *sym, struct ident *ident, enum namespace n
 	sym->bound = 1;
 
 	scope = block_scope;
-	if (ns == NS_SYMBOL && toplevel(scope)) {
+	if (ns == NS_SYMBOL && toplevel(sctx_ scope)) {
 		unsigned mod = MOD_ADDRESSABLE | MOD_TOPLEVEL;
 
 		scope = global_scope;
@@ -771,16 +771,16 @@ struct symbol	zero_int;
 
 #include "ident-list.h"
 
-void init_symbols(SCTX_ void)
+void init_symbols(SCTX)
 {
 	int stream = init_stream(sctx_ "builtin", -1, includepath);
 	struct sym_init *ptr;
 
 #define __IDENT(n,str,res) \
-	hash_ident(&n)
+	hash_ident(sctx_ &n)
 #include "ident-list.h"
 
-	init_parser(stream);
+	init_parser(sctx_ stream);
 
 	builtin_fn_type.variadic = 1;
 	for (ptr = eval_init_table; ptr->name; ptr++) {
@@ -843,7 +843,7 @@ static const struct ctype_declare {
 #undef MOD_LL
 #undef MOD_ESIGNED
 
-void init_ctype(SCTX_ void)
+void init_ctype(SCTX)
 {
 	const struct ctype_declare *ctype;
 

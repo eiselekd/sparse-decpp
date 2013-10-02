@@ -1,6 +1,7 @@
 #ifndef PTR_LIST_H
 #define PTR_LIST_H
 
+#include "ctx.h"
 #include <stdlib.h>
 
 /*
@@ -33,17 +34,17 @@ struct ptr_list {
 
 #define ptr_list_empty(x) ((x) == NULL)
 
-void * undo_ptr_list_last(struct ptr_list **head);
-void * delete_ptr_list_last(struct ptr_list **head);
-int delete_ptr_list_entry(struct ptr_list **, void *, int);
-int replace_ptr_list_entry(struct ptr_list **, void *old, void *new, int);
-extern void sort_list(struct ptr_list **, int (*)(const void *, const void *));
+void * undo_ptr_list_last(SCTX_ struct ptr_list **head);
+void * delete_ptr_list_last(SCTX_ struct ptr_list **head);
+int delete_ptr_list_entry(SCTX_ struct ptr_list **, void *, int);
+int replace_ptr_list_entry(SCTX_ struct ptr_list **, void *old, void *new, int);
+extern void sort_list(SCTX_ struct ptr_list **, int (*)(SCTX_ const void *, const void *));
 
-extern void **__add_ptr_list(struct ptr_list **, void *, unsigned long);
-extern void concat_ptr_list(struct ptr_list *a, struct ptr_list **b);
-extern void __free_ptr_list(struct ptr_list **);
-extern int ptr_list_size(struct ptr_list *);
-extern int linearize_ptr_list(struct ptr_list *, void **, int);
+extern void **__add_ptr_list(SCTX_ struct ptr_list **, void *, unsigned long);
+extern void concat_ptr_list(SCTX_ struct ptr_list *a, struct ptr_list **b);
+extern void __free_ptr_list(SCTX_ struct ptr_list **);
+extern int ptr_list_size(SCTX_ struct ptr_list *);
+extern int linearize_ptr_list(SCTX_ struct ptr_list *, void **, int);
 
 /*
  * Hey, who said that you can't do overloading in C?
@@ -52,15 +53,15 @@ extern int linearize_ptr_list(struct ptr_list *, void **, int);
  * extensions..
  */
 #define add_ptr_list_tag(list,entry,tag) \
-	MKTYPE(*(list), (CHECK_TYPE(*(list),(entry)),__add_ptr_list((struct ptr_list **)(list), (entry), (tag))))
+	MKTYPE(*(list), (CHECK_TYPE(*(list),(entry)),__add_ptr_list(sctx_ (struct ptr_list **)(list), (entry), (tag))))
 #define add_ptr_list_notag(list,entry)										\
-	MKTYPE(*(list), (CHECK_TYPE(*(list),(entry)),__add_ptr_list((struct ptr_list **)(list),			\
+	MKTYPE(*(list), (CHECK_TYPE(*(list),(entry)),__add_ptr_list(sctx_ (struct ptr_list **)(list),			\
 								    (void *)((unsigned long)(entry) & ~3UL), 	\
 								    (unsigned long)(entry) & 3)))
 #define add_ptr_list(list,entry) \
 	add_ptr_list_tag(list,entry,0)
-#define free_ptr_list(list) \
-	do { VRFY_PTR_LIST(*(list)); __free_ptr_list((struct ptr_list **)(list)); } while (0)
+#define free_ptr_list(list)					\
+	do { VRFY_PTR_LIST(*(list)); __free_ptr_list(sctx_ (struct ptr_list **)(list)); } while (0)
 
 #define PTR_ENTRY_NOTAG(h,i)	((h)->list[i])
 #define PTR_ENTRY(h,i)	(void *)(~3UL & (unsigned long)PTR_ENTRY_NOTAG(h,i))
@@ -217,10 +218,10 @@ static inline void *last_ptr_list(struct ptr_list *list)
 #define THIS_ADDRESS(ptr) \
 	DO_THIS_ADDRESS(ptr, __head##ptr, __list##ptr, __nr##ptr)
 
-extern void split_ptr_list_head(struct ptr_list *);
+extern void split_ptr_list_head(SCTX_ struct ptr_list *);
 
 #define DO_SPLIT(ptr, __head, __list, __nr) do {					\
-	split_ptr_list_head(__list);							\
+	split_ptr_list_head(sctx_ __list);							\
 	if (__nr >= __list->nr) {							\
 		__nr -= __list->nr;							\
 		__list = __list->next;							\
@@ -261,9 +262,9 @@ extern void split_ptr_list_head(struct ptr_list *);
 #define REPLACE_CURRENT_PTR(ptr, new_ptr)						\
 	do { *THIS_ADDRESS(ptr) = (new_ptr); } while (0)
 
-extern void pack_ptr_list(struct ptr_list **);
+extern void pack_ptr_list(SCTX_ struct ptr_list **);
 
-#define PACK_PTR_LIST(x) pack_ptr_list((struct ptr_list **)(x))
+#define PACK_PTR_LIST(x) pack_ptr_list(sctx_ (struct ptr_list **)(x))
 
 static inline void update_tag(void *p, unsigned long tag)
 {

@@ -45,18 +45,18 @@ static unsigned char been_there[256];
 //
 // I would use libc qsort for this, but its comparison function
 // gets a pointer indirection extra.
-static void array_sort(SCTX_ void **ptr, int nr, int (*cmp)(const void *, const void *))
+static void array_sort(SCTX_ void **ptr, int nr, int (*cmp)(SCTX_ const void *, const void *))
 {
 	int i;
 	for (i = 1; i < nr; i++) {
 		void *p = ptr[i];
-		if (cmp(ptr[i-1],p) > 0) {
+		if (cmp(sctx_ ptr[i-1],p) > 0) {
 			int j = i;
 			do {
 				ptr[j] = ptr[j-1];
 				if (!--j)
 					break;
-			} while (cmp(ptr[j-1], p) > 0);
+			} while (cmp(sctx_ ptr[j-1], p) > 0);
 			ptr[j] = p;
 		}
 	}
@@ -118,7 +118,7 @@ static void verify_seq_sorted (struct ptr_list *l, int n,
 static struct ptr_list *
 merge_block_seqs (SCTX_ struct ptr_list *b1, int n,
 		  struct ptr_list *b2, int m,
-		  int (*cmp)(const void *, const void *))
+		  int (*cmp)(SCTX_ const void *, const void *))
 {
 	int i1 = 0, i2 = 0;
 	const void *buffer[2 * LIST_NODE_NR];
@@ -140,7 +140,7 @@ merge_block_seqs (SCTX_ struct ptr_list *b1, int n,
 	// Do a quick skip in case entire blocks from b1 are
 	// already less than smallest element in b2.
 	while (b1->nr == 0 ||
-	       cmp (PTR_ENTRY(b1, b1->nr - 1), PTR_ENTRY(b2,0)) < 0) {
+	       cmp (sctx_ PTR_ENTRY(b1, b1->nr - 1), PTR_ENTRY(b2,0)) < 0) {
 		// printf ("Skipping whole block.\n");
 		BEEN_THERE('H');
 		b1 = b1->next;
@@ -160,7 +160,7 @@ merge_block_seqs (SCTX_ struct ptr_list *b1, int n,
 		assert (n > 0);
 		assert (m > 0);
 
-		if (cmp (d1, d2) <= 0) {
+		if (cmp (sctx_ d1, d2) <= 0) {
 			BEEN_THERE('J');
 			buffer[nbuf++] = d1;
 			// Element from b1 is smaller
@@ -224,7 +224,7 @@ merge_block_seqs (SCTX_ struct ptr_list *b1, int n,
 }
 
 
-void sort_list(SCTX_ struct ptr_list **plist, int (*cmp)(const void *, const void *))
+void sort_list(SCTX_ struct ptr_list **plist, int (*cmp)(SCTX_ const void *, const void *))
 {
 	struct ptr_list *head = *plist, *list = head;
 	int blocks = 1;

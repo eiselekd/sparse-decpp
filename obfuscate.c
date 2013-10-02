@@ -24,37 +24,37 @@
 #include "expression.h"
 #include "linearize.h"
 
-static void emit_entrypoint(struct entrypoint *ep)
+static void emit_entrypoint(SCTX_ struct entrypoint *ep)
 {
 	
 }
 
-static void emit_symbol(struct symbol *sym)
+static void emit_symbol(SCTX_ struct symbol *sym)
 {
 	struct entrypoint *ep;
-	ep = linearize_symbol(sym);
+	ep = linearize_symbol(sctx_ sym);
 	if (ep)
-		emit_entrypoint(ep);
+		emit_entrypoint(sctx_ ep);
 }
 
-static void emit_symbol_list(struct symbol_list *list)
+static void emit_symbol_list(SCTX_ struct symbol_list *list)
 {
 	struct symbol *sym;
 
 	FOR_EACH_PTR(list, sym) {
-		expand_symbol(sym);
-		emit_symbol(sym);
+		expand_symbol(sctx_ sym);
+		emit_symbol(sctx_ sym);
 	} END_FOR_EACH_PTR(sym);
 }
 
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file;
+	char *file;struct sparse_ctx sctx;
 
-	emit_symbol_list(sparse_initialize(argc, argv, &filelist));
+	emit_symbol_list(&sctx, sparse_initialize(&sctx, argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		emit_symbol_list(sparse(file));
+		emit_symbol_list(&sctx, sparse(&sctx, file));
 	} END_FOR_EACH_PTR_NOTAG(file);
 	return 0;
 }

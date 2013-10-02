@@ -44,13 +44,13 @@ static struct symbol *evaluate_symbol_expression(SCTX_ struct expression *expr)
 
 	examine_symbol_type(sctx_ sym);
 
-	base_type = get_base_type(sym);
+	base_type = get_base_type(sctx_ sym);
 	if (!base_type) {
 		expression_error(sctx_ expr, "identifier '%s' has no type", show_ident(sctx_ expr->symbol_name));
 		return NULL;
 	}
 
-	addr = alloc_expression(expr->tok, EXPR_SYMBOL);
+	addr = alloc_expression(sctx_ expr->tok, EXPR_SYMBOL);
 	addr->symbol = sym;
 	addr->symbol_name = expr->symbol_name;
 	addr->ctype = &lazy_ptr_ctype;	/* Lazy evaluation: we need to do a proper job if somebody does &sym */
@@ -67,11 +67,11 @@ static struct symbol *evaluate_string(SCTX_ struct expression *expr)
 {
 	struct symbol *sym = alloc_symbol(sctx_ expr->tok, SYM_NODE);
 	struct symbol *array = alloc_symbol(sctx_ expr->tok, SYM_ARRAY);
-	struct expression *addr = alloc_expression(expr->tok, EXPR_SYMBOL);
-	struct expression *initstr = alloc_expression(expr->tok, EXPR_STRING);
+	struct expression *addr = alloc_expression(sctx_ expr->tok, EXPR_SYMBOL);
+	struct expression *initstr = alloc_expression(sctx_ expr->tok, EXPR_STRING);
 	unsigned int length = expr->string->length;
 
-	sym->array_size = alloc_const_expression(expr->tok, length);
+	sym->array_size = alloc_const_expression(sctx_ expr->tok, length);
 	sym->bit_size = bytes_to_bits(length);
 	sym->ctype.alignment = 1;
 	sym->string = 1;
@@ -305,7 +305,7 @@ static struct expression * cast_to(SCTX_ struct expression *old, struct symbol *
 		/* nothing */;
 	}
 
-	expr = alloc_expression(old->tok, EXPR_IMPLIED_CAST);
+	expr = alloc_expression(sctx_ old->tok, EXPR_IMPLIED_CAST);
 	expr->flags = old->flags;
 	expr->ctype = type;
 	expr->cast_type = type;
@@ -324,7 +324,7 @@ enum {
 	TYPE_FN = 128,
 };
 
-static inline int classify_type(struct symbol *type, struct symbol **base)
+static inline int classify_type(SCTX_ struct symbol *type, struct symbol **base)
 {
 	static int type_class[SYM_BAD + 1] = {
 		[SYM_PTR] = TYPE_PTR,
@@ -339,7 +339,7 @@ static inline int classify_type(struct symbol *type, struct symbol **base)
 	if (type->type == SYM_NODE)
 		type = type->ctype.base_type;
 	if (type->type == SYM_TYPEOF) {
-		type = evaluate_expression(type->initializer);
+		type = evaluate_expression(sctx_ type->initializer);
 		if (!type)
 			type = &bad_ctype;
 		else if (type->type == SYM_NODE)
@@ -429,7 +429,7 @@ static int restricted_unop(SCTX_ int op, struct symbol **type)
 }
 
 /* type should be SYM_FOULED */
-static inline struct symbol *unfoul(struct symbol *type)
+static inline struct symbol *unfoul(SCTX_ struct symbol *type)
 {
 	return type->ctype.base_type;
 }
@@ -447,10 +447,10 @@ static struct symbol *restricted_binop_type(SCTX_ int op,
 			if (ltype == rtype) {
 				ctype = ltype;
 			} else if (lclass & TYPE_FOULED) {
-				if (unfoul(ltype) == rtype)
+				if (unfoul(sctx_ ltype) == rtype)
 					ctype = ltype;
 			} else if (rclass & TYPE_FOULED) {
-				if (unfoul(rtype) == ltype)
+				if (unfoul(sctx_ rtype) == ltype)
 					ctype = rtype;
 			}
 		} else {
@@ -464,7 +464,7 @@ static struct symbol *restricted_binop_type(SCTX_ int op,
 		switch (restricted_binop(sctx_ op, ctype)) {
 		case 1:
 			if ((lclass ^ rclass) & TYPE_FOULED)
-				ctype = unfoul(ctype);
+				ctype = unfoul(sctx_ ctype);
 			break;
 		case 3:
 			if (!(lclass & rclass & TYPE_FOULED))
@@ -479,14 +479,14 @@ static struct symbol *restricted_binop_type(SCTX_ int op,
 	return ctype;
 }
 
-static inline void unrestrict(struct expression *expr,
+static inline void unrestrict(SCTX_ struct expression *expr,
 			      int class, struct symbol **ctype)
 {
 	if (class & TYPE_RESTRICT) {
 		if (class & TYPE_FOULED)
-			*ctype = unfoul(*ctype);
-		warning(expr->pos->pos, "%s degrades to integer",
-			show_typename(*ctype));
+			*ctype = unfoul(sctx_ *ctype);
+		warning(sctx_ expr->pos->pos, "%s degrades to integer",
+			show_typename(sctx_ *ctype));
 		*ctype = (*ctype)->ctype.base_type; /* get to arithmetic type */
 	}
 }
@@ -527,8 +527,8 @@ Restr:
 	if (ctype)
 		return ctype;
 
-	unrestrict(left, lclass, &ltype);
-	unrestrict(right, rclass, &rtype);
+	unrestrict(sctx_ left, lclass, &ltype);
+	unrestrict(sctx_ right, rclass, &rtype);
 
 	goto Normal;
 }
@@ -544,7 +544,7 @@ static struct symbol *evaluate_ptr_add(SCTX_ struct expression *expr, struct sym
 	struct symbol *ctype, *base;
 	int multiply;
 
-	classify_type(degenerate(sctx_ expr->left), &ctype);
+	classify_type(sctx_ degenerate(sctx_ expr->left), &ctype);
 	base = examine_pointer_target(sctx_ ctype);
 
 	if (!base) {
@@ -567,7 +567,7 @@ static struct symbol *evaluate_ptr_add(SCTX_ struct expression *expr, struct sym
 		return ctype;
 
 	if (index->type == EXPR_VALUE) {
-		struct expression *val = alloc_expression(expr->tok, EXPR_VALUE);
+		struct expression *val = alloc_expression(sctx_ expr->tok, EXPR_VALUE);
 		unsigned long long v = index->value, mask;
 		mask = 1ULL << (itype->bit_size - 1);
 		if (v & mask)
@@ -587,8 +587,8 @@ static struct symbol *evaluate_ptr_add(SCTX_ struct expression *expr, struct sym
 		index = cast_to(sctx_ index, ssize_t_ctype);
 
 	if (multiply > 1) {
-		struct expression *val = alloc_expression(expr->tok, EXPR_VALUE);
-		struct expression *mul = alloc_expression(expr->tok, EXPR_BINOP);
+		struct expression *val = alloc_expression(sctx_ expr->tok, EXPR_VALUE);
+		struct expression *mul = alloc_expression(sctx_ expr->tok, EXPR_BINOP);
 
 		val->ctype = ssize_t_ctype;
 		val->value = multiply;
@@ -788,8 +788,8 @@ static struct symbol *evaluate_ptr_sub(SCTX_ struct expression *expr)
 	struct expression *r = expr->right;
 	struct symbol *lbase;
 
-	classify_type(degenerate(sctx_ l), &ltype);
-	classify_type(degenerate(sctx_ r), &rtype);
+	classify_type(sctx_ degenerate(sctx_ l), &ltype);
+	classify_type(sctx_ degenerate(sctx_ r), &rtype);
 
 	lbase = examine_pointer_target(sctx_ ltype);
 	examine_pointer_target(sctx_ rtype);
@@ -806,9 +806,9 @@ static struct symbol *evaluate_ptr_sub(SCTX_ struct expression *expr)
 
 	expr->ctype = ssize_t_ctype;
 	if (lbase->bit_size > bits_in_char) {
-		struct expression *sub = alloc_expression(expr->tok, EXPR_BINOP);
+		struct expression *sub = alloc_expression(sctx_ expr->tok, EXPR_BINOP);
 		struct expression *div = expr;
-		struct expression *val = alloc_expression(expr->tok, EXPR_VALUE);
+		struct expression *val = alloc_expression(sctx_ expr->tok, EXPR_VALUE);
 		unsigned long value = bits_to_bytes(lbase->bit_size);
 
 		val->ctype = size_t_ctype;
@@ -871,8 +871,8 @@ static struct symbol *evaluate_logical(SCTX_ struct expression *expr)
 static struct symbol *evaluate_binop(SCTX_ struct expression *expr)
 {
 	struct symbol *ltype, *rtype, *ctype;
-	int lclass = classify_type(expr->left->ctype, &ltype);
-	int rclass = classify_type(expr->right->ctype, &rtype);
+	int lclass = classify_type(sctx_ expr->left->ctype, &ltype);
+	int rclass = classify_type(sctx_ expr->right->ctype, &rtype);
 	int op = expr->op;
 
 	if (expr->flags) {
@@ -893,8 +893,8 @@ static struct symbol *evaluate_binop(SCTX_ struct expression *expr)
 
 		if (op == SPECIAL_LEFTSHIFT || op == SPECIAL_RIGHTSHIFT) {
 			// shifts do integer promotions, but that's it.
-			unrestrict(expr->left, lclass, &ltype);
-			unrestrict(expr->right, rclass, &rtype);
+			unrestrict(sctx_ expr->left, lclass, &ltype);
+			unrestrict(sctx_ expr->right, rclass, &rtype);
 			ctype = ltype = integer_promotion(ltype);
 			rtype = integer_promotion(rtype);
 		} else {
@@ -922,14 +922,14 @@ static struct symbol *evaluate_binop(SCTX_ struct expression *expr)
 
 	/* pointer (+|-) integer */
 	if (lclass & TYPE_PTR && is_int(rclass) && (op == '+' || op == '-')) {
-		unrestrict(expr->right, rclass, &rtype);
+		unrestrict(sctx_ expr->right, rclass, &rtype);
 		return evaluate_ptr_add(sctx_ expr, rtype);
 	}
 
 	/* integer + pointer */
 	if (rclass & TYPE_PTR && is_int(lclass) && op == '+') {
 		struct expression *index = expr->left;
-		unrestrict(index, lclass, &ltype);
+		unrestrict(sctx_ index, lclass, &ltype);
 		expr->left = expr->right;
 		expr->right = index;
 		return evaluate_ptr_add(sctx_ expr, ltype);
@@ -964,21 +964,21 @@ static int modify_for_unsigned(SCTX_ int op)
 	return op;
 }
 
-static inline int is_null_pointer_constant(struct expression *e)
+static inline int is_null_pointer_constant(SCTX_ struct expression *e)
 {
 	if (e->ctype == &null_ctype)
 		return 1;
 	if (!(e->flags & Int_const_expr))
 		return 0;
-	return is_zero_constant(e) ? 2 : 0;
+	return is_zero_constant(sctx_ e) ? 2 : 0;
 }
 
 static struct symbol *evaluate_compare(SCTX_ struct expression *expr)
 {
 	struct expression *left = expr->left, *right = expr->right;
 	struct symbol *ltype, *rtype, *lbase, *rbase;
-	int lclass = classify_type(degenerate(sctx_ left), &ltype);
-	int rclass = classify_type(degenerate(sctx_ right), &rtype);
+	int lclass = classify_type(sctx_ degenerate(sctx_ left), &ltype);
+	int rclass = classify_type(sctx_ degenerate(sctx_ right), &rtype);
 	struct symbol *ctype;
 	const char *typediff;
 
@@ -1011,8 +1011,8 @@ static struct symbol *evaluate_compare(SCTX_ struct expression *expr)
 
 	/* equality comparisons can be with null pointer constants */
 	if (expr->op == SPECIAL_EQUAL || expr->op == SPECIAL_NOTEQUAL) {
-		int is_null1 = is_null_pointer_constant(left);
-		int is_null2 = is_null_pointer_constant(right);
+		int is_null1 = is_null_pointer_constant(sctx_ left);
+		int is_null2 = is_null_pointer_constant(sctx_ right);
 		if (is_null1 == 2)
 			bad_null(sctx_ left);
 		if (is_null2 == 2)
@@ -1107,8 +1107,8 @@ static struct symbol *evaluate_conditional_expression(SCTX_ struct expression *e
 			expr->flags = 0;
 	}
 
-	lclass = classify_type(ltype, &ltype);
-	rclass = classify_type(rtype, &rtype);
+	lclass = classify_type(sctx_ ltype, &ltype);
+	rclass = classify_type(sctx_ rtype, &rtype);
 	if (lclass & rclass & TYPE_NUM) {
 		ctype = usual_conversions(sctx_ '?', *true_sim, expr->cond_false,
 					  lclass, rclass, ltype, rtype);
@@ -1118,8 +1118,8 @@ static struct symbol *evaluate_conditional_expression(SCTX_ struct expression *e
 	}
 
 	if ((lclass | rclass) & TYPE_PTR) {
-		int is_null1 = is_null_pointer_constant(*true_sim);
-		int is_null2 = is_null_pointer_constant(expr->cond_false);
+		int is_null1 = is_null_pointer_constant(sctx_ *true_sim);
+		int is_null2 = is_null_pointer_constant(sctx_ expr->cond_false);
 
 		if (is_null1 && is_null2) {
 			*true_sim = cast_to(sctx_ *true_sim, &ptr_ctype);
@@ -1154,7 +1154,7 @@ static struct symbol *evaluate_conditional_expression(SCTX_ struct expression *e
 		/* need to be lazier here */
 		lbase = examine_pointer_target(sctx_ ltype);
 		rbase = examine_pointer_target(sctx_ rtype);
-		qual = target_qualifiers(sctx_ sctx_ ltype) | target_qualifiers(rtype);
+		qual = target_qualifiers(sctx_ ltype) | target_qualifiers(sctx_ rtype);
 
 		if (lbase == &void_ctype) {
 			/* XXX: pointers to function should warn here */
@@ -1217,8 +1217,8 @@ static int evaluate_assign_op(SCTX_ struct expression *expr)
 	struct symbol *target = expr->left->ctype;
 	struct symbol *source = expr->right->ctype;
 	struct symbol *t, *s;
-	int tclass = classify_type(target, &t);
-	int sclass = classify_type(source, &s);
+	int tclass = classify_type(sctx_ target, &t);
+	int sclass = classify_type(sctx_ source, &s);
 	int op = expr->op;
 
 	if (tclass & sclass & TYPE_NUM) {
@@ -1234,7 +1234,7 @@ static int evaluate_assign_op(SCTX_ struct expression *expr)
 				return 0;
 			}
 			/* allowed assignments unfoul */
-			if (sclass & TYPE_FOULED && unfoul(s) == t)
+			if (sclass & TYPE_FOULED && unfoul(sctx_ s) == t)
 				goto Cast;
 			if (!restricted_value(sctx_ expr->right, t))
 				return 1;
@@ -1251,7 +1251,7 @@ static int evaluate_assign_op(SCTX_ struct expression *expr)
 	}
 	if (tclass == TYPE_PTR && is_int(sclass)) {
 		if (op == SPECIAL_ADD_ASSIGN || op == SPECIAL_SUB_ASSIGN) {
-			unrestrict(expr->right, sclass, &s);
+			unrestrict(sctx_ expr->right, sclass, &s);
 			evaluate_ptr_add(sctx_ expr, s);
 			return 1;
 		}
@@ -1275,9 +1275,9 @@ static int whitelist_pointers(SCTX_ struct symbol *t1, struct symbol *t2)
 		return 1;
 	if (t2 == &void_ctype)
 		return 1;
-	if (classify_type(t1, &t1) != TYPE_NUM)
+	if (classify_type(sctx_ t1, &t1) != TYPE_NUM)
 		return 0;
-	if (classify_type(t2, &t2) != TYPE_NUM)
+	if (classify_type(sctx_ t2, &t2) != TYPE_NUM)
 		return 0;
 	if (t1 == t2)
 		return 1;
@@ -1294,13 +1294,13 @@ static int compatible_assignment_types(SCTX_ struct expression *expr, struct sym
 	const char *typediff;
 	struct symbol *source = degenerate(sctx_ *rp);
 	struct symbol *t, *s;
-	int tclass = classify_type(target, &t);
-	int sclass = classify_type(source, &s);
+	int tclass = classify_type(sctx_ target, &t);
+	int sclass = classify_type(sctx_ source, &s);
 
 	if (tclass & sclass & TYPE_NUM) {
 		if (tclass & TYPE_RESTRICT) {
 			/* allowed assignments unfoul */
-			if (sclass & TYPE_FOULED && unfoul(s) == t)
+			if (sclass & TYPE_FOULED && unfoul(sctx_ s) == t)
 				goto Cast;
 			if (!restricted_value(sctx_ *rp, target))
 				return 1;
@@ -1316,7 +1316,7 @@ static int compatible_assignment_types(SCTX_ struct expression *expr, struct sym
 		unsigned long mod1, mod2;
 		struct symbol *b1, *b2;
 		// NULL pointer is always OK
-		int is_null = is_null_pointer_constant(*rp);
+		int is_null = is_null_pointer_constant(sctx_ *rp);
 		if (is_null) {
 			if (is_null == 2)
 				bad_null(sctx_ *rp);
@@ -1556,33 +1556,33 @@ static struct symbol *degenerate(SCTX_ struct expression *expr)
 			a->bit_size = expr->base->ctype->bit_size;
 			a->array_size = expr->base->ctype->array_size;
 
-			e0 = alloc_expression(expr->tok, EXPR_SYMBOL);
+			e0 = alloc_expression(sctx_ expr->tok, EXPR_SYMBOL);
 			e0->symbol = a;
 			e0->ctype = &lazy_ptr_ctype;
 
-			e1 = alloc_expression(expr->tok, EXPR_PREOP);
+			e1 = alloc_expression(sctx_ expr->tok, EXPR_PREOP);
 			e1->unop = e0;
 			e1->op = '*';
 			e1->ctype = expr->base->ctype;	/* XXX */
 
-			e2 = alloc_expression(expr->tok, EXPR_ASSIGNMENT);
+			e2 = alloc_expression(sctx_ expr->tok, EXPR_ASSIGNMENT);
 			e2->left = e1;
 			e2->right = expr->base;
 			e2->op = '=';
 			e2->ctype = expr->base->ctype;
 
 			if (expr->r_bitpos) {
-				e3 = alloc_expression(expr->tok, EXPR_BINOP);
+				e3 = alloc_expression(sctx_ expr->tok, EXPR_BINOP);
 				e3->op = '+';
 				e3->left = e0;
-				e3->right = alloc_const_expression(expr->tok,
+				e3->right = alloc_const_expression(sctx_ expr->tok,
 							bits_to_bytes(expr->r_bitpos));
 				e3->ctype = &lazy_ptr_ctype;
 			} else {
 				e3 = e0;
 			}
 
-			e4 = alloc_expression(expr->tok, EXPR_COMMA);
+			e4 = alloc_expression(sctx_ expr->tok, EXPR_COMMA);
 			e4->left = e2;
 			e4->right = e3;
 			e4->ctype = &lazy_ptr_ctype;
@@ -1696,7 +1696,7 @@ static struct symbol *evaluate_postop(SCTX_ struct expression *expr)
 {
 	struct expression *op = expr->unop;
 	struct symbol *ctype = op->ctype;
-	int class = classify_type(ctype, &ctype);
+	int class = classify_type(sctx_ ctype, &ctype);
 	int multiply = 0;
 
 	if (!class || class & TYPE_COMPOUND) {
@@ -1709,7 +1709,7 @@ static struct symbol *evaluate_postop(SCTX_ struct expression *expr)
 	}
 
 	if ((class & TYPE_RESTRICT) && restricted_unop(sctx_ expr->op, &ctype))
-		unrestrict(expr, class, &ctype);
+		unrestrict(sctx_ expr, class, &ctype);
 
 	if (class & TYPE_NUM) {
 		multiply = 1;
@@ -1733,7 +1733,7 @@ static struct symbol *evaluate_postop(SCTX_ struct expression *expr)
 static struct symbol *evaluate_sign(SCTX_ struct expression *expr)
 {
 	struct symbol *ctype = expr->unop->ctype;
-	int class = classify_type(ctype, &ctype);
+	int class = classify_type(sctx_ ctype, &ctype);
 	if (expr->flags && !(expr->unop->flags & Int_const_expr))
 		expr->flags = 0;
 	/* should be an arithmetic type */
@@ -1756,7 +1756,7 @@ Normal:
 	return ctype;
 Restr:
 	if (restricted_unop(sctx_ expr->op, &ctype))
-		unrestrict(expr, class, &ctype);
+		unrestrict(sctx_ expr, class, &ctype);
 	goto Normal;
 }
 
@@ -1798,7 +1798,7 @@ static struct symbol *evaluate_preop(SCTX_ struct expression *expr)
 			expr->type = EXPR_BINOP;
 			expr->op = SPECIAL_EQUAL;
 			expr->left = arg;
-			expr->right = alloc_expression(expr->tok, EXPR_FVALUE);
+			expr->right = alloc_expression(sctx_ expr->tok, EXPR_FVALUE);
 			expr->right->ctype = ctype;
 			expr->right->fvalue = 0;
 		} else if (is_fouled_type(ctype)) {
@@ -1862,10 +1862,10 @@ static struct expression *evaluate_offset(SCTX_ struct expression *expr, unsigne
 	 * be just a cast, but the fact is, a node is a node,
 	 * so we might as well just do the "add zero" here.
 	 */
-	add = alloc_expression(expr->tok, EXPR_BINOP);
+	add = alloc_expression(sctx_ expr->tok, EXPR_BINOP);
 	add->op = '+';
 	add->left = expr;
-	add->right = alloc_expression(expr->tok, EXPR_VALUE);
+	add->right = alloc_expression(sctx_ expr->tok, EXPR_VALUE);
 	add->right->ctype = &int_ctype;
 	add->right->value = offset;
 
@@ -1932,7 +1932,7 @@ static struct symbol *evaluate_member_dereference(SCTX_ struct expression *expr)
 	 * the "parent" type.
 	 */
 	member = convert_to_as_mod(sctx_ member, address_space, mod);
-	ctype = get_base_type(member);
+	ctype = get_base_type(sctx_ member);
 
 	if (!lvalue_expression(deref)) {
 		if (deref->type != EXPR_SLICE) {
@@ -2073,7 +2073,7 @@ static struct symbol *evaluate_ptrsizeof(SCTX_ struct expression *expr)
 	case SYM_ARRAY:
 		break;
 	case SYM_PTR:
-		type = get_base_type(type);
+		type = get_base_type(sctx_ type);
 		if (type)
 			break;
 	default:
@@ -2124,7 +2124,7 @@ static int evaluate_arguments(SCTX_ struct symbol *f, struct symbol *fn, struct 
 		target = argtype;
 		if (!target) {
 			struct symbol *type;
-			int class = classify_type(ctype, &type);
+			int class = classify_type(sctx_ ctype, &type);
 			if (is_int(class)) {
 				*p = cast_to(sctx_ expr, integer_promotion(type));
 			} else if (class & TYPE_FLOAT) {
@@ -2215,7 +2215,7 @@ static struct expression *first_subobject(SCTX_ struct symbol *ctype, int class,
 	if (class & TYPE_PTR) { /* array */
 		if (!ctype->bit_size)
 			return NULL;
-		new = alloc_expression(e->tok, EXPR_INDEX);
+		new = alloc_expression(sctx_ e->tok, EXPR_INDEX);
 		new->idx_expression = e;
 		new->ctype = ctype->ctype.base_type;
 	} else  {
@@ -2227,7 +2227,7 @@ static struct expression *first_subobject(SCTX_ struct symbol *ctype, int class,
 		FINISH_PTR_LIST(p);
 		if (!field)
 			return NULL;
-		new = alloc_expression(e->tok, EXPR_IDENTIFIER);
+		new = alloc_expression(sctx_ e->tok, EXPR_IDENTIFIER);
 		new->ident_expression = e;
 		new->field = new->ctype = field;
 	}
@@ -2325,10 +2325,10 @@ static struct expression *next_designators(SCTX_ struct expression *old,
 				return NULL;
 			}
 			copy = e;
-			*v = new = alloc_expression(e->tok, EXPR_INDEX);
+			*v = new = alloc_expression(sctx_ e->tok, EXPR_INDEX);
 		} else {
 			n = old->idx_to;
-			new = alloc_expression(e->tok, EXPR_INDEX);
+			new = alloc_expression(sctx_ e->tok, EXPR_INDEX);
 		}
 
 		new->idx_from = new->idx_to = n;
@@ -2348,10 +2348,10 @@ static struct expression *next_designators(SCTX_ struct expression *old,
 				return NULL;
 			}
 			copy = e;
-			*v = new = alloc_expression(e->tok, EXPR_IDENTIFIER);
+			*v = new = alloc_expression(sctx_ e->tok, EXPR_IDENTIFIER);
 		} else {
 			field = old->field;
-			new = alloc_expression(e->tok, EXPR_IDENTIFIER);
+			new = alloc_expression(sctx_ e->tok, EXPR_IDENTIFIER);
 		}
 
 		new->field = field;
@@ -2422,7 +2422,7 @@ static void handle_list_initializer(SCTX_ struct expression *expr,
 		}
 
 found:
-		lclass = classify_type(top->ctype, &type);
+		lclass = classify_type(sctx_ top->ctype, &type);
 		if (top->type == EXPR_INDEX)
 			v = &top->idx_expression;
 		else
@@ -2589,7 +2589,7 @@ static int handle_simple_initializer(SCTX_ struct expression **ep, int nested,
 	return 0;
 
 String:
-	p = alloc_expression(e->tok, EXPR_STRING);
+	p = alloc_expression(sctx_ e->tok, EXPR_STRING);
 	*p = *e;
 	type = evaluate_expression(sctx_ p);
 	if (ctype->bit_size != -1) {
@@ -2608,7 +2608,7 @@ String:
 static void evaluate_initializer(SCTX_ struct symbol *ctype, struct expression **ep)
 {
 	struct symbol *type;
-	int class = classify_type(ctype, &type);
+	int class = classify_type(sctx_ ctype, &type);
 	if (!handle_simple_initializer(sctx_ ep, 0, class, ctype))
 		expression_error(sctx_ *ep, "invalid initializer");
 }
@@ -2636,7 +2636,7 @@ static struct symbol *evaluate_cast(SCTX_ struct expression *expr)
 	 */
 	if (target->type == EXPR_INITIALIZER) {
 		struct symbol *sym = expr->cast_type;
-		struct expression *addr = alloc_expression(expr->tok, EXPR_SYMBOL);
+		struct expression *addr = alloc_expression(sctx_ expr->tok, EXPR_SYMBOL);
 
 		sym->initializer = target;
 		evaluate_symbol(sctx_ sym);
@@ -2659,7 +2659,7 @@ static struct symbol *evaluate_cast(SCTX_ struct expression *expr)
 	evaluate_expression(sctx_ target);
 	degenerate(sctx_ target);
 
-	class1 = classify_type(ctype, &t1);
+	class1 = classify_type(sctx_ ctype, &t1);
 
 	/* cast to non-integer type -> not an integer constant expression */
 	if (!is_int(class1))
@@ -2685,7 +2685,7 @@ static struct symbol *evaluate_cast(SCTX_ struct expression *expr)
 		expression_error(sctx_ expr, "cast from unknown type");
 		goto out;
 	}
-	class2 = classify_type(t2, &t2);
+	class2 = classify_type(sctx_ t2, &t2);
 
 	if (class2 & TYPE_COMPOUND)
 		warning(sctx_ expr->pos->pos, "cast from non-scalar");
@@ -2695,7 +2695,7 @@ static struct symbol *evaluate_cast(SCTX_ struct expression *expr)
 
 	/* allowed cast unfouls */
 	if (class2 & TYPE_FOULED)
-		t2 = unfoul(t2);
+		t2 = unfoul(sctx_ t2);
 
 	if (t1 != t2) {
 		if (class1 & TYPE_RESTRICT)
@@ -2725,7 +2725,7 @@ static struct symbol *evaluate_cast(SCTX_ struct expression *expr)
 	if (as1 > 0 && as2 > 0 && as1 != as2)
 		warning(sctx_ expr->pos->pos, "cast between address spaces (<asn:%d>-><asn:%d>)", as2, as1);
 	if (as1 > 0 && !as2 &&
-	    !is_null_pointer_constant(target) && Wcast_to_as)
+	    !is_null_pointer_constant(sctx_ target) && Wcast_to_as)
 		warning(sctx_ expr->pos->pos,
 			"cast adds address space to expression (<asn:%d>)", as1);
 
@@ -2759,7 +2759,7 @@ static int evaluate_symbol_call(SCTX_ struct expression *expr)
 		return 0;
 
 	if (ctype->op && ctype->op->evaluate)
-		return ctype->op->evaluate(expr);
+		return ctype->op->evaluate(sctx_ expr);
 
 	if (ctype->ctype.modifiers & MOD_INLINE) {
 		int ret;
@@ -2793,7 +2793,7 @@ static struct symbol *evaluate_call(SCTX_ struct expression *expr)
 	if (ctype->type == SYM_NODE)
 		ctype = ctype->ctype.base_type;
 	if (ctype->type == SYM_PTR)
-		ctype = get_base_type(ctype);
+		ctype = get_base_type(sctx_ ctype);
 
 	if (ctype->type != SYM_FN) {
 		struct expression *arg;
@@ -2809,13 +2809,13 @@ static struct symbol *evaluate_call(SCTX_ struct expression *expr)
 	examine_fn_arguments(sctx_ ctype);
         if (sym->type == SYM_NODE && fn->type == EXPR_PREOP &&
 	    sym->op && sym->op->args) {
-		if (!sym->op->args(expr))
+		if (!sym->op->args(sctx_ expr))
 			return NULL;
 	} else {
 		if (!evaluate_arguments(sctx_ sym, ctype, arglist))
 			return NULL;
-		args = expression_list_size(expr->args);
-		fnargs = symbol_list_size(ctype->arguments);
+		args = expression_list_size(sctx_ expr->args);
+		fnargs = symbol_list_size(sctx_ ctype->arguments);
 		if (args < fnargs)
 			expression_error(sctx_ expr,
 				     "not enough arguments for function %s",
@@ -2847,7 +2847,7 @@ static struct symbol *evaluate_offsetof(SCTX_ struct expression *expr)
 			return NULL;
 		}
 		examine_symbol_type(sctx_ ctype);
-		class = classify_type(ctype, &ctype);
+		class = classify_type(sctx_ ctype, &ctype);
 		if (class != TYPE_COMPOUND) {
 			expression_error(sctx_ expr, "expected structure or union");
 			return NULL;
@@ -2870,7 +2870,7 @@ static struct symbol *evaluate_offsetof(SCTX_ struct expression *expr)
 			return NULL;
 		}
 		examine_symbol_type(sctx_ ctype);
-		class = classify_type(ctype, &ctype);
+		class = classify_type(sctx_ ctype, &ctype);
 		if (class != (TYPE_COMPOUND | TYPE_PTR)) {
 			expression_error(sctx_ expr, "expected array");
 			return NULL;
@@ -2885,14 +2885,14 @@ static struct symbol *evaluate_offsetof(SCTX_ struct expression *expr)
 		} else {
 			struct expression *idx = expr->index, *m;
 			struct symbol *i_type = evaluate_expression(sctx_ idx);
-			int i_class = classify_type(i_type, &i_type);
+			int i_class = classify_type(sctx_ i_type, &i_type);
 			if (!is_int(i_class)) {
 				expression_error(sctx_ expr, "non-integer index");
 				return NULL;
 			}
-			unrestrict(idx, i_class, &i_type);
+			unrestrict(sctx_ idx, i_class, &i_type);
 			idx = cast_to(sctx_ idx, size_t_ctype);
-			m = alloc_const_expression(expr->tok,
+			m = alloc_const_expression(sctx_ expr->tok,
 						   bits_to_bytes(ctype->bit_size));
 			m->ctype = size_t_ctype;
 			m->flags = Int_const_expr;
@@ -3061,7 +3061,7 @@ static struct symbol *evaluate_symbol(SCTX_ struct symbol *sym)
 	sym->evaluated = 1;
 
 	sym = examine_symbol_type(sctx_ sym);
-	base_type = get_base_type(sym);
+	base_type = get_base_type(sctx_ sym);
 	if (!base_type)
 		return NULL;
 
@@ -3277,8 +3277,8 @@ static void check_case_type(SCTX_ struct expression *switch_expr,
 			*enumcase = case_expr;
 	}
 
-	sclass = classify_type(switch_type, &switch_type);
-	cclass = classify_type(case_type, &case_type);
+	sclass = classify_type(sctx_ switch_type, &switch_type);
+	cclass = classify_type(sctx_ case_type, &case_type);
 
 	/* both should be arithmetic */
 	if (!(sclass & cclass & TYPE_NUM))
@@ -3294,8 +3294,8 @@ static void check_case_type(SCTX_ struct expression *switch_expr,
 
 	if (!restricted_binop_type(sctx_ SPECIAL_EQUAL, case_expr, switch_expr,
 				   cclass, sclass, case_type, switch_type)) {
-		unrestrict(case_expr, cclass, &case_type);
-		unrestrict(switch_expr, sclass, &switch_type);
+		unrestrict(sctx_ case_expr, cclass, &case_type);
+		unrestrict(sctx_ switch_expr, sclass, &switch_type);
 	}
 	return;
 
@@ -3328,7 +3328,7 @@ static void evaluate_goto_statement(SCTX_ struct statement *stmt)
 {
 	struct symbol *label = stmt->goto_label;
 
-	if (label && !label->stmt && !lookup_keyword(label->ident, NS_KEYWORD))
+	if (label && !label->stmt && !lookup_keyword(sctx_ label->ident, NS_KEYWORD))
 		sparse_error(sctx_ stmt->pos->pos, "label '%s' was not declared", show_ident(sctx_ label->ident));
 
 	evaluate_expression(sctx_ stmt->goto_expression);
