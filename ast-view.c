@@ -4,14 +4,14 @@
 #include "ast-inspect.h"
 
 GtkWidget *
-create_view_and_model (void *ptr)
+create_view_and_model (SCTX_ void *ptr)
 {
 	GtkTreeViewColumn   *text;
 	GtkCellRenderer *renderer;
 	AstNode *root;
 	GtkWidget *view;
 
-	root = ast_new(NULL, 0, "", ptr, inspect_symbol_list);
+	root = ast_new(sctx_ NULL, 0, "", ptr, inspect_symbol_list);
 
 	view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(root));
 
@@ -27,7 +27,7 @@ create_view_and_model (void *ptr)
 }
 
 void
-treeview_main (struct symbol_list *syms)
+treeview_main (SCTX_ struct symbol_list *syms)
 {
 	GtkWidget *window, *view, *scrollwin;
 
@@ -37,7 +37,7 @@ treeview_main (struct symbol_list *syms)
 
 	scrollwin = gtk_scrolled_window_new(NULL,NULL);
 
-	view = create_view_and_model(syms);
+	view = create_view_and_model(sctx_ syms);
 
 	gtk_container_add(GTK_CONTAINER(scrollwin), view);
 	gtk_container_add(GTK_CONTAINER(window), scrollwin);

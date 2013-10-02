@@ -454,7 +454,7 @@ ast_iter_parent (GtkTreeModel *tree_model,
 
 
 AstNode *
-ast_new (AstNode *parent, int index, const char *text, void *ptr, void (*inspect)(AstNode*))
+ast_new (SCTX_ AstNode *parent, int index, const char *text, void *ptr, void (*inspect)(AstNode*))
 {
 	AstNode *node = (AstNode*) g_object_new (AST_TYPE_NODE, NULL);
 	g_assert(node != NULL);
@@ -463,6 +463,9 @@ ast_new (AstNode *parent, int index, const char *text, void *ptr, void (*inspect
 	node->text = text;
 	node->inspect = inspect;
 	node->ptr = ptr;
+#ifdef DO_CTX
+	node->ctx = _sctx;
+#endif
 	return node;
 }
 
