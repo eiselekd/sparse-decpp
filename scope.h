@@ -1,31 +1,19 @@
 #ifndef SCOPE_H
 #define SCOPE_H
-/*
- * Symbol scoping is pretty simple.
- *
- * Copyright (C) 2003 Transmeta Corp.
- *               2003 Linus Torvalds
- *
- *  Licensed under the Open Software License version 1.1
- */
 
-struct symbol;
+#include "scope_struct.h"
 
-struct scope {
-	struct token *token;		/* Scope start information */
-	struct symbol_list *symbols;	/* List of symbols in this scope */
-	struct scope *next;
-};
-
+#ifndef DO_CTX
 extern struct scope
 		*block_scope,
 		*function_scope,
 		*file_scope,
 		*global_scope;
+#endif
 
 static inline int toplevel(SCTX_ struct scope *scope)
 {
-	return scope == file_scope || scope == global_scope;
+	return scope == sctxp file_scope || scope == sctxp global_scope;
 }
 
 extern void start_file_scope(SCTX);

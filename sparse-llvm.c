@@ -1124,7 +1124,7 @@ static void output_bb(SCTX_ struct function *fn, struct basic_block *bb, unsigne
 
 static void output_fn(SCTX_ LLVMModuleRef module, struct entrypoint *ep)
 {
-	unsigned long generation = ++bb_generation;
+	unsigned long generation = ++sctxp bb_generation;
 	struct symbol *sym = ep->name;
 	struct symbol *base_type = sym->ctype.base_type;
 	struct symbol *ret_type = sym->ctype.base_type->ctype.base_type;

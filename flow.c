@@ -18,7 +18,9 @@
 #include "flow.h"
 #include "target.h"
 
+#ifndef DO_CTX
 unsigned long bb_generation;
+#endif
 
 /*
  * Dammit, if we have a phi-node followed by a conditional
@@ -678,7 +680,7 @@ external_visibility:
 	FOR_EACH_PTR_REVERSE(pseudo->users, pu) {
 		struct instruction *insn = pu->insn;
 		if (insn->opcode == OP_LOAD)
-			all &= find_dominating_stores(sctx_ pseudo, insn, ++bb_generation, !mod);
+			all &= find_dominating_stores(sctx_ pseudo, insn, ++sctxp bb_generation, !mod);
 	} END_FOR_EACH_PTR_REVERSE(pu);
 
 	/* If we converted all the loads, remove the stores. They are dead */
@@ -696,14 +698,14 @@ external_visibility:
 		FOR_EACH_PTR(pseudo->users, pu) {
 			struct instruction *insn = pu->insn;
 			if (insn->opcode == OP_STORE)
-				kill_dominated_stores(sctx_ pseudo, insn, ++bb_generation, insn->bb, !mod, 0);
+				kill_dominated_stores(sctx_ pseudo, insn, ++sctxp bb_generation, insn->bb, !mod, 0);
 		} END_FOR_EACH_PTR(pu);
 
 		if (!(mod & (MOD_NONLOCAL | MOD_STATIC))) {
 			struct basic_block *bb;
 			FOR_EACH_PTR(ep->bbs, bb) {
 				if (!bb->children)
-					kill_dead_stores(sctx_ pseudo, ++bb_generation, bb, !mod);
+					kill_dead_stores(sctx_ pseudo, ++sctxp bb_generation, bb, !mod);
 			} END_FOR_EACH_PTR(bb);
 		}
 	}
@@ -774,7 +776,7 @@ void kill_bb(SCTX_ struct basic_block *bb)
 void kill_unreachable_bbs(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
-	unsigned long generation = ++bb_generation;
+	unsigned long generation = ++sctxp bb_generation;
 
 	mark_bb_reachable(sctx_ ep->entry->bb, generation);
 	FOR_EACH_PTR(ep->bbs, bb) {

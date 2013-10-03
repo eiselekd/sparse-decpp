@@ -26,7 +26,9 @@
 #include "target.h"
 #include "expression.h"
 
+#ifndef DO_CTX
 struct symbol *current_fn;
+#endif
 
 static struct symbol *degenerate(SCTX_ struct expression *expr);
 static struct symbol *evaluate_symbol(SCTX_ struct symbol *sym);
@@ -2763,17 +2765,17 @@ static int evaluate_symbol_call(SCTX_ struct expression *expr)
 
 	if (ctype->ctype.modifiers & MOD_INLINE) {
 		int ret;
-		struct symbol *curr = current_fn;
+		struct symbol *curr = sctxp current_fn;
 
 		if (ctype->definition)
 			ctype = ctype->definition;
 
-		current_fn = ctype->ctype.base_type;
+		sctxp current_fn = ctype->ctype.base_type;
 
 		ret = inline_function(sctx_ expr, ctype);
 
 		/* restore the old function */
-		current_fn = curr;
+		sctxp current_fn = curr;
 		return ret;
 	}
 
@@ -3071,12 +3073,12 @@ static struct symbol *evaluate_symbol(SCTX_ struct symbol *sym)
 
 	/* And finally, evaluate the body of the symbol too */
 	if (base_type->type == SYM_FN) {
-		struct symbol *curr = current_fn;
+		struct symbol *curr = sctxp current_fn;
 
 		if (sym->definition && sym->definition != sym)
 			return evaluate_symbol(sctx_ sym->definition);
 
-		current_fn = base_type;
+		sctxp current_fn = base_type;
 
 		examine_fn_arguments(sctx_ base_type);
 		if (!base_type->stmt && base_type->inline_stmt)
@@ -3084,7 +3086,7 @@ static struct symbol *evaluate_symbol(SCTX_ struct symbol *sym)
 		if (base_type->stmt)
 			evaluate_statement(sctx_ base_type->stmt);
 
-		current_fn = curr;
+		sctxp current_fn = curr;
 	}
 
 	return base_type;
@@ -3106,7 +3108,7 @@ static struct symbol *evaluate_return_expression(SCTX_ struct statement *stmt)
 	struct symbol *fntype;
 
 	evaluate_expression(sctx_ expr);
-	fntype = current_fn->ctype.base_type;
+	fntype = sctxp current_fn->ctype.base_type;
 	if (!fntype || fntype == &sctxp void_ctype) {
 		if (expr && expr->ctype != &sctxp void_ctype)
 			expression_error(sctx_ expr, "return expression in %s function", fntype?"void":"typeless");

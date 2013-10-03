@@ -935,8 +935,8 @@ static struct symbol_list *sparse_tokenstream(SCTX_ struct expansion *e)
 
 	// Parse the resulting C code
 	while (!eof_token(token))
-		token = external_declaration(sctx_ token, &translation_unit_used_list);
-	return translation_unit_used_list;
+		token = external_declaration(sctx_ token, &sctxp translation_unit_used_list);
+	return sctxp translation_unit_used_list;
 }
 
 static struct symbol_list *sparse_file(SCTX_ const char *filename)
@@ -1037,7 +1037,7 @@ struct symbol_list * sparse_keep_tokens(SCTX_ char *filename)
 	struct symbol_list *res;
 
 	/* Clear previous symbol list */
-	translation_unit_used_list = NULL;
+	sctxp translation_unit_used_list = NULL;
 
 	new_file_scope(sctx );
 	res = sparse_file(sctx_ filename);

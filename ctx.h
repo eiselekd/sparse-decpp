@@ -6,6 +6,7 @@
 #include "symbol_struct.h"
 #include "allocate_struct.h"
 #include "token_struct.h"
+#include "scope_struct.h"
 
 /* lib.c */
 #ifndef __GNUC__
@@ -195,6 +196,19 @@ struct sparse_ctx {
 	
 	int bits_in_enum /*= 32*/;
 	int enum_alignment /*= 4*/;
+	
+	/*expand.c*/
+	/*static*/ int conservative;
+	
+	/*linearize.c*/
+	/*static*/ struct position current_pos;
+	
+	/*flow-c*/
+	unsigned long bb_generation;
+	
+	/*liveness.c*/
+	/*static*/ struct pseudo_list **live_list;
+	/*static*/ struct pseudo_list *dead_list;
 
 	/* symbol.c */
 	struct symbol	int_type,
@@ -211,6 +225,17 @@ struct sparse_ctx {
 			incomplete_ctype, label_ctype, bad_ctype,
 			null_ctype;
 	struct symbol	zero_int;
+	struct symbol_list *translation_unit_used_list;
+	/*static*/ struct symbol_list *restr, *fouled;
+	struct symbol *current_fn;
+	
+	/*scope.c*/
+	struct scope builtin_scope;
+	struct scope *block_scope,		// regular automatic variables etc
+		*function_scope,	// labels, arguments etc
+		*file_scope,		// static
+		*global_scope;		// externally visible
+
 
 	/* linearize.c */
 	ALLOCATOR_DEF(pseudo_user, "pseudo_user", 0);
@@ -253,5 +278,6 @@ struct sparse_ctx {
 extern void sparse_ctx_init_parse1(struct sparse_ctx *);
 extern void sparse_ctx_init_parse2(struct sparse_ctx *);
 extern void sparse_ctx_init_show_parse(struct sparse_ctx *);
+extern void sparse_ctx_init_scope(struct sparse_ctx *);
 
 #endif

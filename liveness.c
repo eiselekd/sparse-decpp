@@ -303,8 +303,10 @@ static void track_bb_phi_uses(SCTX_ struct basic_block *bb)
 	} END_FOR_EACH_PTR(insn);
 }
 
+#ifndef DO_CTX
 static struct pseudo_list **live_list;
 static struct pseudo_list *dead_list;
+#endif
 
 static void death_def(SCTX_ struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
 {
@@ -312,9 +314,9 @@ static void death_def(SCTX_ struct basic_block *bb, struct instruction *insn, ps
 
 static void death_use(SCTX_ struct basic_block *bb, struct instruction *insn, pseudo_t pseudo)
 {
-	if (trackable_pseudo(pseudo) && !pseudo_in_list(sctx_ *live_list, pseudo)) {
-		add_pseudo(sctx_ &dead_list, pseudo);
-		add_pseudo(sctx_ live_list, pseudo);
+	if (trackable_pseudo(pseudo) && !pseudo_in_list(sctx_ *sctxp live_list, pseudo)) {
+		add_pseudo(sctx_ &sctxp dead_list, pseudo);
+		add_pseudo(sctx_ sctxp live_list, pseudo);
 	}
 }
 
@@ -328,23 +330,23 @@ static void track_pseudo_death_bb(SCTX_ struct basic_block *bb)
 		merge_pseudo_list(sctx_ child->needs, &live);
 	} END_FOR_EACH_PTR(child);
 
-	live_list = &live;
+	sctxp live_list = &live;
 	FOR_EACH_PTR_REVERSE(bb->insns, insn) {
 		if (!insn->bb)
 			continue;
 
-		dead_list = NULL;
+		sctxp dead_list = NULL;
 		track_instruction_usage(sctx_ bb, insn, death_def, death_use);
-		if (dead_list) {
+		if (sctxp dead_list) {
 			pseudo_t dead;
-			FOR_EACH_PTR(dead_list, dead) {
+			FOR_EACH_PTR(sctxp dead_list, dead) {
 				struct instruction *deathnote = __alloc_instruction(sctx_ 0);
 				deathnote->bb = bb;
 				deathnote->opcode = OP_DEATHNOTE;
 				deathnote->target = dead;
 				INSERT_CURRENT(deathnote, insn);
 			} END_FOR_EACH_PTR(dead);
-			free_ptr_list(&dead_list);
+			free_ptr_list(&sctxp dead_list);
 		}
 	} END_FOR_EACH_PTR_REVERSE(insn);
 	free_ptr_list(&live);

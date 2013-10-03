@@ -344,10 +344,10 @@ static struct instruction * try_to_cse(SCTX_ struct entrypoint *ep, struct instr
 		warning(sctx_ b1->pos->pos, "Whaa? unable to find CSE instructions");
 		return i1;
 	}
-	if (bb_dominates(sctx_ ep, b1, b2, ++bb_generation))
+	if (bb_dominates(sctx_ ep, b1, b2, ++sctxp bb_generation))
 		return cse_one_instruction(sctx_ i2, i1);
 
-	if (bb_dominates(sctx_ ep, b2, b1, ++bb_generation))
+	if (bb_dominates(sctx_ ep, b2, b1, ++sctxp bb_generation))
 		return cse_one_instruction(sctx_ i1, i2);
 
 	/* No direct dominance - but we could try to find a common ancestor.. */

@@ -24,7 +24,9 @@
  * Secondary symbol list for stuff that needs to be output because it
  * was used. 
  */
+#ifndef DO_CTX
 struct symbol_list *translation_unit_used_list = NULL;
+#endif
 
 /*
  * If the symbol is an inline symbol, add it to the list of symbols to parse
@@ -33,7 +35,7 @@ void access_symbol(SCTX_ struct symbol *sym)
 {
 	if (sym->ctype.modifiers & MOD_INLINE) {
 		if (!(sym->ctype.modifiers & MOD_ACCESSED)) {
-			add_symbol(sctx_ &translation_unit_used_list, sym);
+			add_symbol(sctx_ &sctxp translation_unit_used_list, sym);
 			sym->ctype.modifiers |= MOD_ACCESSED;
 		}
 	}
@@ -483,7 +485,9 @@ struct symbol *examine_pointer_target(SCTX_ struct symbol *sym)
 	return examine_base_type(sctx_ sym);
 }
 
+#ifndef DO_CTX
 static struct symbol_list *restr, *fouled;
+#endif
 
 void create_fouled(SCTX_ struct symbol *type)
 {
@@ -493,8 +497,8 @@ void create_fouled(SCTX_ struct symbol *type)
 		new->bit_size = sctxp bits_in_int;
 		new->type = SYM_FOULED;
 		new->ctype.base_type = type;
-		add_symbol(sctx_ &restr, type);
-		add_symbol(sctx_ &fouled, new);
+		add_symbol(sctx_ &sctxp restr, type);
+		add_symbol(sctx_ &sctxp fouled, new);
 	}
 }
 
@@ -503,8 +507,8 @@ struct symbol *befoul(SCTX_ struct symbol *type)
 	struct symbol *t1, *t2;
 	while (type->type == SYM_NODE)
 		type = type->ctype.base_type;
-	PREPARE_PTR_LIST(restr, t1);
-	PREPARE_PTR_LIST(fouled, t2);
+	PREPARE_PTR_LIST(sctxp restr, t1);
+	PREPARE_PTR_LIST(sctxp fouled, t2);
 	for (;;) {
 		if (t1 == type)
 			return t2;
@@ -566,22 +570,22 @@ void bind_symbol(SCTX_ struct symbol *sym, struct ident *ident, enum namespace n
 	sym->ident = ident;
 	sym->bound = 1;
 
-	scope = block_scope;
+	scope = sctxp block_scope;
 	if (ns == NS_SYMBOL && toplevel(sctx_ scope)) {
 		unsigned mod = MOD_ADDRESSABLE | MOD_TOPLEVEL;
 
-		scope = global_scope;
+		scope = sctxp global_scope;
 		if (sym->ctype.modifiers & MOD_STATIC ||
 		    is_extern_inline(sym)) {
-			scope = file_scope;
+			scope = sctxp file_scope;
 			mod = MOD_TOPLEVEL;
 		}
 		sym->ctype.modifiers |= mod;
 	}
 	if (ns == NS_MACRO)
-		scope = file_scope;
+		scope = sctxp file_scope;
 	if (ns == NS_LABEL)
-		scope = function_scope;
+		scope = sctxp function_scope;
 	bind_scope(sctx_ sym, scope);
 }
 

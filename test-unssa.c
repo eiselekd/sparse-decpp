@@ -27,7 +27,7 @@ static void output_bb(SCTX_ struct basic_block *bb, unsigned long generation)
 static void output_fn(SCTX_ struct entrypoint *ep)
 {
 	struct basic_block *bb;
-	unsigned long generation = ++bb_generation;
+	unsigned long generation = ++sctxp bb_generation;
 	struct symbol *sym = ep->name;
 	const char *name = show_ident(sctx_ sym->ident);
 

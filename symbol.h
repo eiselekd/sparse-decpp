@@ -4,7 +4,9 @@
 #include "ctx.h"
 
 /* Current parsing/evaluation function */
+#ifndef DO_CTX
 extern struct symbol *current_fn;
+#endif
 
 #ifndef DO_CTX
 /* Abstract types */
@@ -35,7 +37,9 @@ extern struct symbol	zero_int;
 
 #define symbol_is_typename(sym) ((sym)->type == SYM_TYPE)
 
+#ifndef DO_CTX
 extern struct symbol_list *translation_unit_used_list;
+#endif
 
 extern void access_symbol(SCTX_ struct symbol *);
 

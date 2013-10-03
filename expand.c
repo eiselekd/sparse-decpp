@@ -34,7 +34,9 @@
 
 static int expand_expression(SCTX_ struct expression *);
 static int expand_statement(SCTX_ struct statement *);
+#ifndef DO_CTX
 static int conservative;
+#endif
 
 static int expand_symbol_expression(SCTX_ struct expression *expr)
 {
@@ -95,7 +97,7 @@ Int:
 	// _Bool requires a zero test rather than truncation.
 	if (is_bool_type(sctx_ newtype)) {
 		expr->value = !!value;
-		if (!conservative && value != 0 && value != 1)
+		if (!sctxp conservative && value != 0 && value != 1)
 			warning(sctx_ old->pos->pos, "odd constant _Bool cast (%llx becomes 1)", value);
 		return;
 	}
@@ -106,7 +108,7 @@ Int:
 	expr->value = value & mask;
 
 	// Stop here unless checking for truncation
-	if (!sctxp Wcast_truncate || conservative)
+	if (!sctxp Wcast_truncate || sctxp conservative)
 		return;
 	
 	// Check if we dropped any bits..
@@ -172,7 +174,7 @@ static int simplify_int_binop(SCTX_ struct expression *expr, struct symbol *ctyp
 	r = right->value;
 	if (expr->op == SPECIAL_LEFTSHIFT || expr->op == SPECIAL_RIGHTSHIFT) {
 		if (r >= ctype->bit_size) {
-			if (conservative)
+			if (sctxp conservative)
 				return 0;
 			r = check_shift_count(sctx_ expr, ctype, r);
 			right->value = r;
@@ -269,11 +271,11 @@ static int simplify_int_binop(SCTX_ struct expression *expr, struct symbol *ctyp
 	expr->taint = left->taint | right->taint;
 	return 1;
 Div:
-	if (!conservative)
+	if (!sctxp conservative)
 		warning(sctx_ expr->pos->pos, "division by zero");
 	return 0;
 Overflow:
-	if (!conservative)
+	if (!sctxp conservative)
 		warning(sctx_ expr->pos->pos, "constant integer operation overflow");
 	return 0;
 }
@@ -354,7 +356,7 @@ static int simplify_float_binop(SCTX_ struct expression *expr)
 	expr->fvalue = res;
 	return 1;
 Div:
-	if (!conservative)
+	if (!sctxp conservative)
 		warning(sctx_ expr->pos->pos, "division by zero");
 	return 0;
 }
@@ -677,7 +679,7 @@ static int simplify_preop(SCTX_ struct expression *expr)
 	return 1;
 
 Overflow:
-	if (!conservative)
+	if (!sctxp conservative)
 		warning(sctx_ expr->pos->pos, "constant integer operation overflow");
 	return 0;
 }
@@ -1254,9 +1256,9 @@ long long get_expression_value_silent(SCTX_ struct expression *expr)
 
 int is_zero_constant(SCTX_ struct expression *expr)
 {
-	const int saved = conservative;
-	conservative = 1;
+	const int saved = sctxp conservative;
+	sctxp conservative = 1;
 	expand_expression(sctx_ expr);
-	conservative = saved;
+	sctxp conservative = saved;
 	return expr->type == EXPR_VALUE && !expr->value;
 }

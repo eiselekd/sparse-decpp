@@ -7,7 +7,7 @@
 #include "compat.h"
 #include "token.h"
 #include "symbol.h"
-#include "scope.h"
+#include "scope_struct.h"
 #include "expression.h"
 #include "linearize.h"
 #include "storage.h"
@@ -108,6 +108,9 @@ struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *ctx) {
 	/* parse.c */
 	sparse_ctx_init_parse1(ctx);
 	sparse_ctx_init_parse2(ctx);
+	
+	/* scope.c */
+	sparse_ctx_init_scope(ctx);
 
 	/* linearize.c */
 	ALLOCATOR_INIT(pseudo_user, "pseudo_user", 0);

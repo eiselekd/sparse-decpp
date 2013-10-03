@@ -2092,14 +2092,14 @@ static struct statement *start_function(SCTX_ struct token *token, struct symbol
 	fn_local_symbol(sctx_ ret);
 
 	// Currently parsed symbol for __func__/__FUNCTION__/__PRETTY_FUNCTION__
-	current_fn = sym;
+	sctxp current_fn = sym;
 
 	return stmt;
 }
 
 static void end_function(SCTX_ struct symbol *sym)
 {
-	current_fn = NULL;
+	sctxp current_fn = NULL;
 	end_function_scope(sctx );
 }
 

@@ -77,7 +77,7 @@ static struct symbol *handle_func(SCTX_ struct token *token)
 	    ident != &__PRETTY_FUNCTION___ident)
 		return NULL;
 
-	if (!current_fn || !current_fn->ident)
+	if (!sctxp current_fn || !sctxp current_fn->ident)
 		return NULL;
 
 	/* OK, it's one of ours */
@@ -95,9 +95,9 @@ static struct symbol *handle_func(SCTX_ struct token *token)
 	bind_symbol(sctx_ decl, ident, NS_LABEL);
 	decl->namespace = NS_SYMBOL;
 
-	len = current_fn->ident->len;
+	len = sctxp current_fn->ident->len;
 	string = __alloc_string(sctx_ len + 1);
-	memcpy(string->data, current_fn->ident->name, len);
+	memcpy(string->data, sctxp current_fn->ident->name, len);
 	string->data[len] = 0;
 	string->length = len + 1;
 

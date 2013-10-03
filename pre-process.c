@@ -122,7 +122,7 @@ static int token_defined(SCTX_ struct token *token)
 	if (token_type(token) == TOKEN_IDENT) {
 		struct symbol *sym = lookup_macro(sctx_ token->ident);
 		if (sym) {
-			sym->used_in = file_scope;
+			sym->used_in = sctxp file_scope;
 			return 1;
 		}
 		return 0;
@@ -153,7 +153,7 @@ static int expand_one_symbol(SCTX_ struct token **list)
 
 	sym = lookup_macro(sctx_ token->ident);
 	if (sym) {
-		sym->used_in = file_scope;
+		sym->used_in = sctxp file_scope;
 		return expand(sctx_ list, sym, token);
 	}
 	if (token->ident == &__LINE___ident) {
@@ -1376,7 +1376,7 @@ static int do_handle_define(SCTX_ struct stream *stream, struct token **line, st
 		    token_list_different(sctx_ sym->arglist, arglist)) {
 			ret = 0;
 			if ((clean && attr == SYM_ATTR_NORMAL)
-					|| sym->used_in == file_scope) {
+					|| sym->used_in == sctxp file_scope) {
 				warning(sctx_ left->pos, "preprocessor token %.*s redefined",
 						name->len, name->name);
 				info(sctx_ sym->pos->pos, "this was the original definition");
@@ -1385,7 +1385,7 @@ static int do_handle_define(SCTX_ struct stream *stream, struct token **line, st
 			goto out;
 	}
 
-	if (!sym || sym->scope != file_scope) {
+	if (!sym || sym->scope != sctxp file_scope) {
 		sym = alloc_symbol(sctx_ left, SYM_NODE);
 		bind_symbol(sctx_ sym, name, NS_MACRO);
 		ret = 0;
@@ -1438,7 +1438,7 @@ static int do_handle_undef(SCTX_ struct stream *stream, struct token **line, str
 	} else if (attr <= SYM_ATTR_NORMAL)
 		return 1;
 
-	if (!sym || sym->scope != file_scope) {
+	if (!sym || sym->scope != sctxp file_scope) {
 		sym = alloc_symbol(sctx_ left, SYM_NODE);
 		bind_symbol(sctx_ sym, left->ident, NS_MACRO);
 	}

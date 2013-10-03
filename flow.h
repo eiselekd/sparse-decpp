@@ -3,7 +3,9 @@
 
 #include "lib.h"
 
+#ifndef DO_CTX
 extern unsigned long bb_generation;
+#endif
 
 #define REPEAT_CSE		1
 #define REPEAT_SYMBOL_CLEANUP	2

@@ -1905,7 +1905,7 @@ static void arch_set_up_storage(SCTX_ struct entrypoint *ep)
 
 static void output(SCTX_ struct entrypoint *ep)
 {
-	unsigned long generation = ++bb_generation;
+	unsigned long generation = ++sctxp bb_generation;
 
 	last_reg = -1;
 	stack_offset = 0;

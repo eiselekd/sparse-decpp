@@ -118,7 +118,7 @@ static void simplify_loads(SCTX_ struct basic_block *bb)
 			} END_FOR_EACH_PTR_REVERSE(dom);
 
 			/* OK, go find the parents */
-			generation = ++bb_generation;
+			generation = ++sctxp bb_generation;
 			bb->generation = generation;
 			dominators = NULL;
 			if (find_dominating_parents_mem(sctx_ pseudo, insn, bb, generation, &dominators, local, 1)) {

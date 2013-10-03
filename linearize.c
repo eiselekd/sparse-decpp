@@ -35,7 +35,9 @@ static pseudo_t linearize_initializer(SCTX_ struct entrypoint *ep, struct expres
 
 struct pseudo void_pseudo = {};
 
+#ifndef DO_CTX
 static struct position current_pos;
+#endif
 
 ALLOCATOR(pseudo_user, "pseudo_user", 0);
 
@@ -44,7 +46,7 @@ static struct instruction *alloc_instruction(SCTX_ int opcode, int size)
 	struct instruction * insn = __alloc_instruction(sctx_ 0);
 	insn->opcode = opcode;
 	insn->size = size;
-	insn->pos = current_pos;
+	insn->pos = sctxp current_pos;
 	return insn;
 }
 
@@ -1542,7 +1544,7 @@ pseudo_t linearize_expression(SCTX_ struct entrypoint *ep, struct expression *ex
 	if (!expr)
 		return VOID;
 
-	current_pos = expr->pos->pos;
+	sctxp current_pos = expr->pos->pos;
 	switch (expr->type) {
 	case EXPR_SYMBOL:
 		linearize_one_symbol(sctx_ ep, expr->symbol);
@@ -1991,7 +1993,7 @@ pseudo_t linearize_statement(SCTX_ struct entrypoint *ep, struct statement *stmt
 	bb = ep->active;
 	if (bb && !bb->insns)
 		bb->pos = stmt->pos;
-	current_pos = stmt->pos->pos;
+	sctxp current_pos = stmt->pos->pos;
 
 	switch (stmt->type) {
 	case STMT_NONE:
@@ -2212,7 +2214,7 @@ struct entrypoint *linearize_symbol(SCTX_ struct symbol *sym)
 
 	if (!sym)
 		return NULL;
-	current_pos = sym->pos->pos;
+	sctxp current_pos = sym->pos->pos;
 	base_type = sym->ctype.base_type;
 	if (!base_type)
 		return NULL;

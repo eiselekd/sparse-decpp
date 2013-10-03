@@ -204,9 +204,9 @@ int main(int argc, char **argv)
 	examine_symbol_list(sctx_ sparse_initialize(sctx_ argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 		sparse(sctx_ file);
-		examine_symbol_list(sctx_ file_scope->symbols);
+		examine_symbol_list(sctx_ sctxp file_scope->symbols);
 	} END_FOR_EACH_PTR_NOTAG(file);
-	examine_symbol_list(sctx_ global_scope->symbols);
+	examine_symbol_list(sctx_ sctxp global_scope->symbols);
 	sort_list(sctx_ (struct ptr_list **)&taglist, cmp_sym);
 	show_tags(sctx_ taglist);
 	return 0;
