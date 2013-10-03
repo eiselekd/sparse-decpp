@@ -261,7 +261,7 @@ static void examine_namespace(SCTX_ struct symbol *sym)
 static int get_stream_id (SCTX_ const char *name)
 {
 	int i;
-	for (i=0; i<input_stream_nr; i++) {
+	for (i=0; i<sctxp input_stream_nr; i++) {
 		if (strcmp(name, stream_name(sctx_ i))==0)
 			return i;
 	}
@@ -305,8 +305,8 @@ int main(int argc, char **argv)
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 		examine_symbol_list(sctx_ file, symlist);
 		sparse_keep_tokens(sctx_ file);
-		examine_symbol_list(sctx_ file, file_scope->symbols);
-		examine_symbol_list(sctx_ file, global_scope->symbols);
+		examine_symbol_list(sctx_ file, sctxp file_scope->symbols);
+		examine_symbol_list(sctx_ file, sctxp global_scope->symbols);
 	} END_FOR_EACH_PTR_NOTAG(file);
 
 
