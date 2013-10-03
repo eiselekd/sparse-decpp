@@ -236,50 +236,64 @@ static void FORMAT_ATTR(2+SCTXCNT) append(SCTX_ struct type_name *name, const ch
 	append_cnt(sctx_ name, buffer, n);
 }
 
-static struct ctype_name {
-	struct symbol *sym;
-	const char *name;
-} typenames[] = {
-	{ & char_ctype,  "char" },
-	{ &schar_ctype,  "signed char" },
-	{ &uchar_ctype,  "unsigned char" },
-	{ & short_ctype, "short" },
-	{ &sshort_ctype, "signed short" },
-	{ &ushort_ctype, "unsigned short" },
-	{ & int_ctype,   "int" },
-	{ &sint_ctype,   "signed int" },
-	{ &uint_ctype,   "unsigned int" },
-	{ &slong_ctype,  "signed long" },
-	{ & long_ctype,  "long" },
-	{ &ulong_ctype,  "unsigned long" },
-	{ & llong_ctype, "long long" },
-	{ &sllong_ctype, "signed long long" },
-	{ &ullong_ctype, "unsigned long long" },
-	{ & lllong_ctype, "long long long" },
-	{ &slllong_ctype, "signed long long long" },
-	{ &ulllong_ctype, "unsigned long long long" },
+#ifndef DO_CTX
+static
+#else
+void sparse_ctx_init_show_parse(SCTX) {
+#endif
 
-	{ &void_ctype,   "void" },
-	{ &bool_ctype,   "bool" },
-	{ &string_ctype, "string" },
+struct ctype_name typenames[] = {
+	{ & sctxp char_ctype,  "char" },
+	{ &sctxp schar_ctype,  "signed char" },
+	{ &sctxp uchar_ctype,  "unsigned char" },
+	{ &sctxp  short_ctype, "short" },
+	{ &sctxp sshort_ctype, "signed short" },
+	{ &sctxp ushort_ctype, "unsigned short" },
+	{ &sctxp  int_ctype,   "int" },
+	{ &sctxp sint_ctype,   "signed int" },
+	{ &sctxp uint_ctype,   "unsigned int" },
+	{ &sctxp slong_ctype,  "signed long" },
+	{ &sctxp  long_ctype,  "long" },
+	{ &sctxp ulong_ctype,  "unsigned long" },
+	{ &sctxp  llong_ctype, "long long" },
+	{ &sctxp sllong_ctype, "signed long long" },
+	{ &sctxp ullong_ctype, "unsigned long long" },
+	{ &sctxp  lllong_ctype, "long long long" },
+	{ &sctxp slllong_ctype, "signed long long long" },
+	{ &sctxp ulllong_ctype, "unsigned long long long" },
 
-	{ &float_ctype,  "float" },
-	{ &double_ctype, "double" },
-	{ &ldouble_ctype,"long double" },
-	{ &incomplete_ctype, "incomplete type" },
-	{ &int_type, "abstract int" },
-	{ &fp_type, "abstract fp" },
-	{ &label_ctype, "label type" },
-	{ &bad_ctype, "bad type" },
+	{ &sctxp void_ctype,   "void" },
+	{ &sctxp bool_ctype,   "bool" },
+	{ &sctxp string_ctype, "string" },
+
+	{ &sctxp float_ctype,  "float" },
+	{ &sctxp double_ctype, "double" },
+	{ &sctxp ldouble_ctype,"long double" },
+	{ &sctxp incomplete_ctype, "incomplete type" },
+	{ &sctxp int_type, "abstract int" },
+	{ &sctxp fp_type, "abstract fp" },
+	{ &sctxp label_ctype, "label type" },
+	{ &sctxp bad_ctype, "bad type" },
 };
+
+#ifndef DO_CTX
+	static int typenames_cnt = ARRAY_SIZE(typenames);
+#else
+	sctxp typenames_cnt = ARRAY_SIZE(typenames);
+	sctxp typenames = malloc(sizeof(typenames)); /* todo: release */
+	memcpy(sctxp typenames, typenames, sizeof(typenames));
+}
+#endif
+
+
 
 const char *builtin_typename(SCTX_ struct symbol *sym)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(typenames); i++)
-		if (typenames[i].sym == sym)
-			return typenames[i].name;
+	for (i = 0; i < sctxp typenames_cnt; i++)
+		if (sctxp typenames[i].sym == sym)
+			return sctxp typenames[i].name;
 	return NULL;
 }
 
@@ -287,9 +301,9 @@ const char *builtin_ctypename(SCTX_ struct ctype *ctype)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(typenames); i++)
-		if (&typenames[i].sym->ctype == ctype)
-			return typenames[i].name;
+	for (i = 0; i < sctxp typenames_cnt; i++)
+		if (&sctxp typenames[i].sym->ctype == ctype)
+			return sctxp typenames[i].name;
 	return NULL;
 }
 
@@ -764,7 +778,7 @@ static int show_call_expression(SCTX_ struct expression *expr)
 		int new = show_expression(sctx_ arg);
 		int size = arg->ctype->bit_size;
 		printf("\tpush.%d\t\tv%d\n", size, new);
-		framesize += bits_to_bytes(size);
+		framesize += bits_to_bytes(sctx_ size);
 	} END_FOR_EACH_PTR_REVERSE(arg);
 
 	fn = expr->fn;
@@ -785,7 +799,7 @@ static int show_call_expression(SCTX_ struct expression *expr)
 		printf("\tcall\t\t*v%d\n", fncall);
 	}
 	if (framesize)
-		printf("\tadd.%d\t\tvSP,vSP,$%d\n", bits_in_pointer, framesize);
+		printf("\tadd.%d\t\tvSP,vSP,$%d\n", sctxp bits_in_pointer, framesize);
 
 	retval = new_pseudo(sctx );
 	printf("\tmov.%d\t\tv%d,retval\n", expr->ctype->bit_size, retval);
@@ -965,14 +979,14 @@ static int show_symbol_expr(SCTX_ struct symbol *sym)
 		return show_string_expr(sctx_ sym->initializer);
 
 	if (sym->ctype.modifiers & (MOD_TOPLEVEL | MOD_EXTERN | MOD_STATIC)) {
-		printf("\tmovi.%d\t\tv%d,$%s\n", bits_in_pointer, new, show_ident(sctx_ sym->ident));
+		printf("\tmovi.%d\t\tv%d,$%s\n", sctxp bits_in_pointer, new, show_ident(sctx_ sym->ident));
 		return new;
 	}
 	if (sym->ctype.modifiers & MOD_ADDRESSABLE) {
-		printf("\taddi.%d\t\tv%d,vFP,$%lld\n", bits_in_pointer, new, sym->value);
+		printf("\taddi.%d\t\tv%d,vFP,$%lld\n", sctxp bits_in_pointer, new, sym->value);
 		return new;
 	}
-	printf("\taddi.%d\t\tv%d,vFP,$offsetof(%s:%p)\n", bits_in_pointer, new, show_ident(sctx_ sym->ident), sym);
+	printf("\taddi.%d\t\tv%d,vFP,$offsetof(%s:%p)\n", sctxp bits_in_pointer, new, show_ident(sctx_ sym->ident), sym);
 	return new;
 }
 
@@ -1046,14 +1060,14 @@ static int show_string_expr(SCTX_ struct expression *expr)
 {
 	int new = new_pseudo(sctx);
 
-	printf("\tmovi.%d\t\tv%d,&%s\n", bits_in_pointer, new, show_string(sctx_ expr->string));
+	printf("\tmovi.%d\t\tv%d,&%s\n", sctxp bits_in_pointer, new, show_string(sctx_ expr->string));
 	return new;
 }
 
 static int show_label_expr(SCTX_ struct expression *expr)
 {
 	int new = new_pseudo(sctx);
-	printf("\tmovi.%d\t\tv%d,.L%p\n",bits_in_pointer, new, expr->label_symbol);
+	printf("\tmovi.%d\t\tv%d,.L%p\n",sctxp bits_in_pointer, new, expr->label_symbol);
 	return new;
 }
 

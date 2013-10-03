@@ -2080,7 +2080,7 @@ static struct storage *x86_call_expression(SCTX_ struct expression *expr)
 		insn(sctx_ "pushl", new, NULL,
 		     !framesize ? "begin function call" : NULL);
 
-		framesize += bits_to_bytes(size);
+		framesize += bits_to_bytes(sctx_ size);
 	} END_FOR_EACH_PTR_REVERSE(arg);
 
 	fn = expr->fn;
@@ -2218,14 +2218,14 @@ static struct storage *x86_symbol_expr(SCTX_ struct symbol *sym)
 	struct storage *new = stack_alloc(sctx_ 4);
 
 	if (sym->ctype.modifiers & (MOD_TOPLEVEL | MOD_EXTERN | MOD_STATIC)) {
-		printf("\tmovi.%d\t\tv%d,$%s\n", bits_in_pointer, new->pseudo, show_ident(sctx_ sym->ident));
+		printf("\tmovi.%d\t\tv%d,$%s\n", sctxp bits_in_pointer, new->pseudo, show_ident(sctx_ sym->ident));
 		return new;
 	}
 	if (sym->ctype.modifiers & MOD_ADDRESSABLE) {
-		printf("\taddi.%d\t\tv%d,vFP,$%lld\n", bits_in_pointer, new->pseudo, sym->value);
+		printf("\taddi.%d\t\tv%d,vFP,$%lld\n", sctxp bits_in_pointer, new->pseudo, sym->value);
 		return new;
 	}
-	printf("\taddi.%d\t\tv%d,vFP,$offsetof(%s:%p)\n", bits_in_pointer, new->pseudo, show_ident(sctx_ sym->ident), sym);
+	printf("\taddi.%d\t\tv%d,vFP,$offsetof(%s:%p)\n", sctxp bits_in_pointer, new->pseudo, show_ident(sctx_ sym->ident), sym);
 	return new;
 }
 
@@ -2262,7 +2262,7 @@ static int type_is_signed(SCTX_ struct symbol *sym)
 static struct storage *x86_label_expr(SCTX_ struct expression *expr)
 {
 	struct storage *new = stack_alloc(sctx_ 4);
-	printf("\tmovi.%d\t\tv%d,.L%p\n", bits_in_pointer, new->pseudo, expr->label_symbol);
+	printf("\tmovi.%d\t\tv%d,.L%p\n", sctxp bits_in_pointer, new->pseudo, expr->label_symbol);
 	return new;
 }
 

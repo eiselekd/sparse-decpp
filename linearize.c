@@ -474,7 +474,7 @@ void show_bb(SCTX_ struct basic_block *bb)
 	struct instruction *insn;
 
 	printf(".L%p:\n", bb);
-	if (verbose) {
+	if (sctxp verbose) {
 		pseudo_t needs, defines;
 		printf("%s:%d\n", stream_name(sctx_ bb->pos->pos.stream), bb->pos->pos.line);
 
@@ -518,7 +518,7 @@ void show_bb(SCTX_ struct basic_block *bb)
 	}
 
 	FOR_EACH_PTR(bb->insns, insn) {
-		if (!insn->bb && verbose < 2)
+		if (!insn->bb && sctxp verbose < 2)
 			continue;
 		printf("\t%s\n", show_instruction(sctx_ insn));
 	} END_FOR_EACH_PTR(insn);
@@ -544,7 +544,7 @@ void show_entry(SCTX_ struct entrypoint *ep)
 
 	printf("%s:\n", show_ident(sctx_ ep->name->ident));
 
-	if (verbose) {
+	if (sctxp verbose) {
 		printf("ep %p: %s\n", ep, show_ident(sctx_ ep->name->ident));
 
 		FOR_EACH_PTR(ep->syms, sym) {
@@ -564,7 +564,7 @@ void show_entry(SCTX_ struct entrypoint *ep)
 	FOR_EACH_PTR(ep->bbs, bb) {
 		if (!bb)
 			continue;
-		if (!bb->parents && !bb->children && !bb->insns && verbose < 2)
+		if (!bb->parents && !bb->children && !bb->insns && sctxp verbose < 2)
 			continue;
 		show_bb(sctx_ bb);
 		printf("\n");
@@ -979,7 +979,7 @@ static pseudo_t add_setval(SCTX_ struct entrypoint *ep, struct symbol *ctype, st
 
 static pseudo_t add_symbol_address(SCTX_ struct entrypoint *ep, struct symbol *sym)
 {
-	struct instruction *insn = alloc_instruction(sctx_ OP_SYMADDR, bits_in_pointer);
+	struct instruction *insn = alloc_instruction(sctx_ OP_SYMADDR, sctxp bits_in_pointer);
 	pseudo_t target = alloc_pseudo(sctx_ insn);
 
 	insn->target = target;
@@ -1110,10 +1110,10 @@ static struct instruction *alloc_cast_instruction(SCTX_ struct symbol *src, stru
 		base = base->ctype.base_type;
 	if (base->type == SYM_PTR) {
 		base = base->ctype.base_type;
-		if (base != &void_ctype)
+		if (base != &sctxp void_ctype)
 			opcode = OP_PTRCAST;
 	}
-	if (base->ctype.base_type == &fp_type)
+	if (base->ctype.base_type == &sctxp fp_type)
 		opcode = OP_FPCAST;
 	return alloc_typed_instruction(sctx_ opcode, ctype);
 }
@@ -1234,7 +1234,7 @@ static pseudo_t linearize_call_expression(SCTX_ struct entrypoint *ep, struct ex
 	}
 	use_pseudo(sctx_ insn, call, &insn->func);
 	retval = VOID;
-	if (expr->ctype != &void_ctype)
+	if (expr->ctype != &sctxp void_ctype)
 		retval = alloc_pseudo(sctx_ insn);
 	insn->target = retval;
 	add_one_insn(sctx_ ep, insn);
@@ -2200,7 +2200,7 @@ repeat:
 	}
 
 	/* Finally, add deathnotes to pseudos now that we have them */
-	if (dbg_dead)
+	if (sctxp dbg_dead)
 		track_pseudo_death(sctx_ ep);
 
 	return ep;

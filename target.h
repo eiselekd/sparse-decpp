@@ -1,6 +1,10 @@
 #ifndef TARGET_H
 #define TARGET_H
 
+#include "ctx.h"
+
+#ifndef DO_CTX
+
 extern struct symbol *size_t_ctype;
 extern struct symbol *ssize_t_ctype;
 
@@ -43,18 +47,20 @@ extern int pointer_alignment;
 extern int bits_in_enum;
 extern int enum_alignment;
 
+#endif
+
 /*
  * Helper functions for converting bits to bytes and vice versa.
  */
 
-static inline int bits_to_bytes(int bits)
+static inline int bits_to_bytes(SCTX_ int bits)
 {
-	return bits >= 0 ? bits / bits_in_char : -1;
+	return bits >= 0 ? bits / sctxp bits_in_char : -1;
 }
 
-static inline int bytes_to_bits(int bytes)
+static inline int bytes_to_bits(SCTX_ int bytes)
 {
-	return bytes * bits_in_char;
+	return bytes * sctxp bits_in_char;
 }
 
 #endif

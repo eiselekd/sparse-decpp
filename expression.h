@@ -195,7 +195,7 @@ static inline struct expression *alloc_const_expression(SCTX_ struct token *tok,
 	expr->pos = tok;
 	expr->tok = tok;
 	expr->value = value;
-	expr->ctype = &int_ctype;
+	expr->ctype = &sctx->int_ctype;
 	return expr;
 }
 

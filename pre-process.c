@@ -2031,7 +2031,7 @@ static struct token *do_preprocess(SCTX_ struct token **list)
 
 struct token * preprocess(SCTX_ struct expansion *e)
 {
-	preprocessing = 1;
+	sctxp preprocessing = 1;
 	init_preprocessor(sctx );
 
 	e->d = dup_list_e(sctx_ e->s, e);
@@ -2040,7 +2040,7 @@ struct token * preprocess(SCTX_ struct expansion *e)
 	// Drop all expressions from preprocessing, they're not used any more.
 	// This is not true when we have multiple files, though ;/
 	// clear_expression_alloc();
-	preprocessing = 0;
+	sctxp preprocessing = 0;
 
 	return e->d;
 }

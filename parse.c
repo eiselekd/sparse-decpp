@@ -57,9 +57,11 @@
 #include "compat-linux.c" 
 #endif
 
+#ifndef DO_CTX
 static struct symbol_list **function_symbol_list;
 struct symbol_list *function_computed_target_list;
 struct statement_list *function_computed_goto_list;
+#endif
 
 static struct token *statement(SCTX_ struct token *token, struct statement **tree);
 static struct token *handle_attributes(SCTX_ struct token *token, struct decl_state *ctx, unsigned int keywords);
@@ -392,13 +394,12 @@ static struct symbol_op mode_word_op = {
 	.to_mode = to_word_mode
 };
 
-static struct init_keyword {
-	const char *name;
-	enum namespace ns;
-	unsigned long modifiers;
-	struct symbol_op *op;
-	struct symbol *type;
-} keyword_table[] = {
+#ifndef DO_CTX
+static
+#else
+void sparse_ctx_init_parse1(SCTX) {
+#endif
+ struct init_keyword keyword_table[] = {
 	/* Type qualifiers */
 	{ "const",	NS_TYPEDEF, .op = &const_op },
 	{ "__const",	NS_TYPEDEF, .op = &const_op },
@@ -411,7 +412,7 @@ static struct init_keyword {
 	{ "typedef",	NS_TYPEDEF, .op = &typedef_op },
 
 	/* Type specifiers */
-	{ "void",	NS_TYPEDEF, .type = &void_ctype, .op = &spec_op},
+	{ "void",	NS_TYPEDEF, .type = &sctxp void_ctype, .op = &spec_op},
 	{ "char",	NS_TYPEDEF, .op = &char_op },
 	{ "short",	NS_TYPEDEF, .op = &short_op },
 	{ "int",	NS_TYPEDEF, .op = &int_op },
@@ -422,13 +423,13 @@ static struct init_keyword {
 	{ "__signed",	NS_TYPEDEF, .op = &signed_op },
 	{ "__signed__",	NS_TYPEDEF, .op = &signed_op },
 	{ "unsigned",	NS_TYPEDEF, .op = &unsigned_op },
-	{ "_Bool",	NS_TYPEDEF, .type = &bool_ctype, .op = &spec_op },
+	{ "_Bool",	NS_TYPEDEF, .type = &sctxp bool_ctype, .op = &spec_op },
 
 	/* Predeclared types */
-	{ "__builtin_va_list", NS_TYPEDEF, .type = &ptr_ctype, .op = &spec_op },
-	{ "__builtin_ms_va_list", NS_TYPEDEF, .type = &ptr_ctype, .op = &spec_op },
-	{ "__int128_t",	NS_TYPEDEF, .type = &lllong_ctype, .op = &spec_op },
-	{ "__uint128_t",NS_TYPEDEF, .type = &ulllong_ctype, .op = &spec_op },
+	{ "__builtin_va_list", NS_TYPEDEF, .type = &sctxp ptr_ctype, .op = &spec_op },
+	{ "__builtin_ms_va_list", NS_TYPEDEF, .type = &sctxp ptr_ctype, .op = &spec_op },
+	{ "__int128_t",	NS_TYPEDEF, .type = &sctxp lllong_ctype, .op = &spec_op },
+	{ "__uint128_t",NS_TYPEDEF, .type = &sctxp ulllong_ctype, .op = &spec_op },
 
 	/* Extended types */
 	{ "typeof", 	NS_TYPEDEF, .op = &typeof_op },
@@ -513,6 +514,15 @@ static struct init_keyword {
 	{ "word",	NS_KEYWORD,	MOD_LONG,	.op = &mode_word_op },
 	{ "__word__",	NS_KEYWORD,	MOD_LONG,	.op = &mode_word_op },
 };
+
+#ifndef DO_CTX
+	static int keyword_table_cnt = ARRAY_SIZE(keyword_table);
+#else
+	sctxp keyword_table_cnt = ARRAY_SIZE(keyword_table);
+	sctxp keyword_table = malloc(sizeof(keyword_table)); /* todo: release */
+	memcpy(sctxp keyword_table, keyword_table, sizeof(keyword_table));
+}
+#endif
 
 const char *ignored_attributes[] = {
 	"alias",
@@ -620,8 +630,8 @@ const char *ignored_attributes[] = {
 void init_parser(SCTX_ int stream)
 {
 	int i;
-	for (i = 0; i < ARRAY_SIZE(keyword_table); i++) {
-		struct init_keyword *ptr = keyword_table + i;
+	for (i = 0; i < sctxp keyword_table_cnt ; i++) {
+		struct init_keyword *ptr = sctxp keyword_table + i;
 		struct symbol *sym = create_symbol(sctx_ stream, ptr->name, SYM_KEYWORD, ptr->ns);
 		sym->ident->keyword = 1;
 		if (ptr->ns == NS_TYPEDEF)
@@ -644,8 +654,8 @@ void init_parser(SCTX_ int stream)
 // Add a symbol to the list of function-local symbols
 static void fn_local_symbol(SCTX_ struct symbol *sym)
 {
-	if (function_symbol_list)
-		add_symbol(sctx_ function_symbol_list, sym);
+	if (sctxp function_symbol_list)
+		add_symbol(sctx_ sctxp function_symbol_list, sym);
 }
 
 static int SENTINEL_ATTR match_idents(SCTX_ struct token *token, ...)
@@ -762,7 +772,7 @@ static struct token *struct_union_enum_specifier(SCTX_ enum type type,
 	// private struct/union/enum type
 	if (!match_op(token, '{')) {
 		sparse_error(sctx_ token->pos, "expected declaration");
-		ctx->ctype.base_type = &bad_ctype;
+		ctx->ctype.base_type = &sctxp bad_ctype;
 		return token;
 	}
 
@@ -860,8 +870,8 @@ static struct symbol *bigger_enum_type(SCTX_ struct symbol *s1, struct symbol *s
 		if (s2->ctype.modifiers & MOD_UNSIGNED)
 			s1 = s2;
 	}
-	if (s1->bit_size < bits_in_int)
-		return &int_ctype;
+	if (s1->bit_size < sctxp bits_in_int)
+		return &sctxp int_ctype;
 	return s1;
 }
 
@@ -888,7 +898,7 @@ static struct token *parse_enum_declaration(SCTX_ struct token *token, struct sy
 	Num upper = {-1, 0}, lower = {1, 0};
 
 	parent->examined = 1;
-	parent->ctype.base_type = &int_ctype;
+	parent->ctype.base_type = &sctxp int_ctype;
 	while (token_type(token) == TOKEN_IDENT) {
 		struct expression *expr = NULL;
 		struct token *next = token->next;
@@ -897,12 +907,12 @@ static struct token *parse_enum_declaration(SCTX_ struct token *token, struct sy
 		if (match_op(next, '=')) {
 			next = constant_expression(sctx_ next->next, &expr);
 			lastval = get_expression_value(sctx_ expr);
-			ctype = &void_ctype;
+			ctype = &sctxp void_ctype;
 			if (expr && expr->ctype)
 				ctype = expr->ctype;
 		} else if (!ctype) {
-			ctype = &int_ctype;
-		} else if (is_int_type(ctype)) {
+			ctype = &sctxp int_ctype;
+		} else if (is_int_type(sctx_ ctype)) {
 			lastval++;
 		} else {
 			error_die(sctx_ token->pos, "can't increment the last enum member");
@@ -922,7 +932,7 @@ static struct token *parse_enum_declaration(SCTX_ struct token *token, struct sy
 		sym->ctype.base_type = parent;
 		add_ptr_list(&parent->symbol_list, sym);
 
-		if (base_type != &bad_ctype) {
+		if (base_type != &sctxp bad_ctype) {
 			if (ctype->type == SYM_NODE)
 				ctype = ctype->ctype.base_type;
 			if (ctype->type == SYM_ENUM) {
@@ -945,13 +955,13 @@ static struct token *parse_enum_declaration(SCTX_ struct token *token, struct sy
 				base_type = ctype;
 			} else if (ctype == base_type) {
 				/* nothing */
-			} else if (is_int_type(base_type) && is_int_type(ctype)) {
+			} else if (is_int_type(sctx_ base_type) && is_int_type(sctx_ ctype)) {
 				base_type = bigger_enum_type(sctx_ base_type, ctype);
 			} else
-				base_type = &bad_ctype;
+				base_type = &sctxp bad_ctype;
 			parent->ctype.base_type = base_type;
 		}
-		if (is_int_type(base_type)) {
+		if (is_int_type(sctx_ base_type)) {
 			Num v = {.y = lastval};
 			if (ctype->ctype.modifiers & MOD_UNSIGNED)
 				v.x = 0;
@@ -972,26 +982,26 @@ static struct token *parse_enum_declaration(SCTX_ struct token *token, struct sy
 	}
 	if (!base_type) {
 		sparse_error(sctx_ token->pos, "bad enum definition");
-		base_type = &bad_ctype;
+		base_type = &sctxp bad_ctype;
 	}
-	else if (!is_int_type(base_type))
+	else if (!is_int_type(sctx_ base_type))
 		base_type = base_type;
 	else if (type_is_ok(sctx_ base_type, &upper, &lower))
 		base_type = base_type;
-	else if (type_is_ok(sctx_ &int_ctype, &upper, &lower))
-		base_type = &int_ctype;
-	else if (type_is_ok(sctx_ &uint_ctype, &upper, &lower))
-		base_type = &uint_ctype;
-	else if (type_is_ok(sctx_ &long_ctype, &upper, &lower))
-		base_type = &long_ctype;
-	else if (type_is_ok(sctx_ &ulong_ctype, &upper, &lower))
-		base_type = &ulong_ctype;
-	else if (type_is_ok(sctx_ &llong_ctype, &upper, &lower))
-		base_type = &llong_ctype;
-	else if (type_is_ok(sctx_ &ullong_ctype, &upper, &lower))
-		base_type = &ullong_ctype;
+	else if (type_is_ok(sctx_ &sctxp int_ctype, &upper, &lower))
+		base_type = &sctxp int_ctype;
+	else if (type_is_ok(sctx_ &sctxp uint_ctype, &upper, &lower))
+		base_type = &sctxp uint_ctype;
+	else if (type_is_ok(sctx_ &sctxp long_ctype, &upper, &lower))
+		base_type = &sctxp long_ctype;
+	else if (type_is_ok(sctx_ &sctxp ulong_ctype, &upper, &lower))
+		base_type = &sctxp ulong_ctype;
+	else if (type_is_ok(sctx_ &sctxp llong_ctype, &upper, &lower))
+		base_type = &sctxp llong_ctype;
+	else if (type_is_ok(sctx_ &sctxp ullong_ctype, &upper, &lower))
+		base_type = &sctxp ullong_ctype;
 	else
-		base_type = &bad_ctype;
+		base_type = &sctxp bad_ctype;
 	parent->ctype.base_type = base_type;
 	parent->ctype.modifiers |= (base_type->ctype.modifiers & MOD_UNSIGNED);
 	parent->examined = 0;
@@ -1007,7 +1017,7 @@ static struct token *enum_specifier(SCTX_ struct token *token, struct decl_state
 	struct ctype *ctype = &ctx->ctype.base_type->ctype;
 
 	if (!ctype->base_type)
-		ctype->base_type = &incomplete_ctype;
+		ctype->base_type = &sctxp incomplete_ctype;
 
 	return ret;
 }
@@ -1033,7 +1043,7 @@ static struct token *typeof_specifier(SCTX_ struct token *token, struct decl_sta
 		typeof_sym->endpos = token;
 		if (!typeof_sym->initializer) {
 			sparse_error(sctx_ token->pos, "expected expression after the '(' token");
-			typeof_sym = &bad_ctype;
+			typeof_sym = &sctxp bad_ctype;
 		}
 		ctx->ctype.base_type = typeof_sym;
 	}
@@ -1057,7 +1067,7 @@ static struct token *attribute_packed(SCTX_ struct token *token, struct symbol *
 
 static struct token *attribute_aligned(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
-	int alignment = max_alignment;
+	int alignment = sctxp max_alignment;
 	struct expression *expr = NULL;
 
 	if (match_op(token, '(')) {
@@ -1094,7 +1104,7 @@ static struct token *attribute_address_space(SCTX_ struct token *token, struct s
 	token = conditional_expression(sctx_ token, &expr);
 	if (expr) {
 		as = const_expression_value(sctx_ expr);
-		if (Waddress_space && as)
+		if (sctxp Waddress_space && as)
 			ctx->ctype.as = as;
 	}
 	token = expect(sctx_ token, ')', "after address_space attribute");
@@ -1103,52 +1113,52 @@ static struct token *attribute_address_space(SCTX_ struct token *token, struct s
 
 static struct symbol *to_QI_mode(SCTX_ struct symbol *ctype)
 {
-	if (ctype->ctype.base_type != &int_type)
+	if (ctype->ctype.base_type != &sctxp int_type)
 		return NULL;
-	if (ctype == &char_ctype)
+	if (ctype == &sctxp char_ctype)
 		return ctype;
-	return ctype->ctype.modifiers & MOD_UNSIGNED ? &uchar_ctype
-						     : &schar_ctype;
+	return ctype->ctype.modifiers & MOD_UNSIGNED ? &sctxp uchar_ctype
+						     : &sctxp schar_ctype;
 }
 
 static struct symbol *to_HI_mode(SCTX_ struct symbol *ctype)
 {
-	if (ctype->ctype.base_type != &int_type)
+	if (ctype->ctype.base_type != &sctxp int_type)
 		return NULL;
-	return ctype->ctype.modifiers & MOD_UNSIGNED ? &ushort_ctype
-						     : &sshort_ctype;
+	return ctype->ctype.modifiers & MOD_UNSIGNED ? &sctxp ushort_ctype
+						     : &sctxp sshort_ctype;
 }
 
 static struct symbol *to_SI_mode(SCTX_ struct symbol *ctype)
 {
-	if (ctype->ctype.base_type != &int_type)
+	if (ctype->ctype.base_type != &sctxp int_type)
 		return NULL;
-	return ctype->ctype.modifiers & MOD_UNSIGNED ? &uint_ctype
-						     : &sint_ctype;
+	return ctype->ctype.modifiers & MOD_UNSIGNED ? &sctxp uint_ctype
+						     : &sctxp sint_ctype;
 }
 
 static struct symbol *to_DI_mode(SCTX_ struct symbol *ctype)
 {
-	if (ctype->ctype.base_type != &int_type)
+	if (ctype->ctype.base_type != &sctxp int_type)
 		return NULL;
-	return ctype->ctype.modifiers & MOD_UNSIGNED ? &ullong_ctype
-						     : &sllong_ctype;
+	return ctype->ctype.modifiers & MOD_UNSIGNED ? &sctxp ullong_ctype
+						     : &sctxp sllong_ctype;
 }
 
 static struct symbol *to_TI_mode(SCTX_ struct symbol *ctype)
 {
-	if (ctype->ctype.base_type != &int_type)
+	if (ctype->ctype.base_type != &sctxp int_type)
 		return NULL;
-	return ctype->ctype.modifiers & MOD_UNSIGNED ? &ulllong_ctype
-						     : &slllong_ctype;
+	return ctype->ctype.modifiers & MOD_UNSIGNED ? &sctxp ulllong_ctype
+						     : &sctxp slllong_ctype;
 }
 
 static struct symbol *to_word_mode(SCTX_ struct symbol *ctype)
 {
-	if (ctype->ctype.base_type != &int_type)
+	if (ctype->ctype.base_type != &sctxp int_type)
 		return NULL;
-	return ctype->ctype.modifiers & MOD_UNSIGNED ? &ulong_ctype
-						     : &slong_ctype;
+	return ctype->ctype.modifiers & MOD_UNSIGNED ? &sctxp ulong_ctype
+						     : &sctxp slong_ctype;
 }
 
 static struct token *attribute_mode(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
@@ -1222,7 +1232,7 @@ static struct token *attribute_designated_init(SCTX_ struct token *token, struct
 
 static struct token *attribute_transparent_union(SCTX_ struct token *token, struct symbol *attr, struct decl_state *ctx)
 {
-	if (Wtransparent_union)
+	if (sctxp Wtransparent_union)
 		warning(sctx_ token->pos, "ignoring attribute __transparent_union__");
 	return token;
 }
@@ -1429,26 +1439,53 @@ Catch_all:
 	sparse_error(sctx_ pos, "two or more data types in declaration specifiers");
 }
 
-static struct symbol * const int_types[] =
-	{&short_ctype, &int_ctype, &long_ctype, &llong_ctype};
-static struct symbol * const signed_types[] =
-	{&sshort_ctype, &sint_ctype, &slong_ctype, &sllong_ctype,
-	 &slllong_ctype};
-static struct symbol * const unsigned_types[] =
-	{&ushort_ctype, &uint_ctype, &ulong_ctype, &ullong_ctype,
-	 &ulllong_ctype};
-static struct symbol * const real_types[] =
-	{&float_ctype, &double_ctype, &ldouble_ctype};
-static struct symbol * const char_types[] =
-	{&char_ctype, &schar_ctype, &uchar_ctype};
+#ifndef DO_CTX
+#define PARSE_STATIC static
+#else
+#define PARSE_STATIC
+extern void sparse_ctx_init_parse2(SCTX) {
+#endif
+/* keep sync with ctx.h */
+PARSE_STATIC struct symbol * const int_types[] =
+	{&sctxp short_ctype, &sctxp int_ctype, &sctxp long_ctype, &sctxp llong_ctype};
+PARSE_STATIC struct symbol * const signed_types[] =
+	{&sctxp sshort_ctype, &sctxp sint_ctype, &sctxp slong_ctype, &sctxp sllong_ctype,
+	 &sctxp slllong_ctype};
+PARSE_STATIC struct symbol * const unsigned_types[] =
+	{&sctxp ushort_ctype, &sctxp uint_ctype, &sctxp ulong_ctype, &sctxp ullong_ctype,
+	 &sctxp ulllong_ctype};
+PARSE_STATIC struct symbol * const real_types[] =
+	{&sctxp float_ctype, &sctxp double_ctype, &sctxp ldouble_ctype};
+PARSE_STATIC struct symbol * const char_types[] =
+	{&sctxp char_ctype, &sctxp schar_ctype, &sctxp uchar_ctype};
+
+#ifndef DO_CTX
 static struct symbol * const * const types[] = {
 	int_types + 1, signed_types + 1, unsigned_types + 1,
 	real_types + 1, char_types, char_types + 1, char_types + 2
 };
+#else 
+	memcpy(sctxp int_types, int_types, sizeof(int_types));
+	memcpy(sctxp signed_types, signed_types, sizeof(signed_types));
+	memcpy(sctxp unsigned_types, unsigned_types, sizeof(unsigned_types));
+	memcpy(sctxp real_types, real_types, sizeof(real_types));
+	memcpy(sctxp char_types, char_types, sizeof(char_types));
+
+	sctxp types[0] = sctxp int_types + 1;
+	sctxp types[1] = sctxp signed_types + 1;
+	sctxp types[2] = sctxp unsigned_types + 1;
+	sctxp types[3] = sctxp real_types + 1;
+	sctxp types[4] = sctxp char_types;
+	sctxp types[5] = sctxp char_types + 1;
+	sctxp types[6] = sctxp char_types + 2;
+	
+}
+#endif
+
 
 struct symbol *ctype_integer(SCTX_ int size, int want_unsigned)
 {
-	return types[want_unsigned ? CUInt : CInt][size];
+	return sctxp types[want_unsigned ? CUInt : CInt][size];
 }
 
 static struct token *handle_qualifiers(SCTX_ struct token *t, struct decl_state *ctx)
@@ -1519,16 +1556,16 @@ static struct token *declaration_specifiers(SCTX_ struct token *token, struct de
 	}
 
 	if (!(seen & Set_S)) {	/* not set explicitly? */
-		struct symbol *base = &incomplete_ctype;
+		struct symbol *base = &sctxp incomplete_ctype;
 		if (seen & Set_Any)
-			base = types[class][size];
+			base = sctxp types[class][size];
 		ctx->ctype.base_type = base;
 	}
 
 	if (ctx->ctype.modifiers & MOD_BITWISE) {
 		struct symbol *type;
 		ctx->ctype.modifiers &= ~MOD_BITWISE;
-		if (!is_int_type(ctx->ctype.base_type)) {
+		if (!is_int_type(sctx_ ctx->ctype.base_type)) {
 			sparse_error(sctx_ token->pos, "invalid modifier");
 			return token;
 		}
@@ -1773,7 +1810,7 @@ static struct token *handle_bitfield(SCTX_ struct token *token, struct decl_stat
 	struct symbol *bitfield;
 	long long width;
 
-	if (ctype->base_type != &int_type && !is_int_type(ctype->base_type)) {
+	if (ctype->base_type != &sctxp int_type && !is_int_type(sctx_ ctype->base_type)) {
 		sparse_error(sctx_ token->pos, "invalid bitfield specifier for type %s.",
 			show_typename(sctx_ ctype->base_type));
 		// Parse this to recover gracefully.
@@ -1794,14 +1831,14 @@ static struct token *handle_bitfield(SCTX_ struct token *token, struct decl_stat
 		width = -1;
 	} else if (*ctx->ident) {
 		struct symbol *base_type = bitfield->ctype.base_type;
-		struct symbol *bitfield_type = base_type == &int_type ? bitfield : base_type;
+		struct symbol *bitfield_type = base_type == &sctxp int_type ? bitfield : base_type;
 		int is_signed = !(bitfield_type->ctype.modifiers & MOD_UNSIGNED);
-		if (Wone_bit_signed_bitfield && width == 1 && is_signed) {
+		if (sctxp Wone_bit_signed_bitfield && width == 1 && is_signed) {
 			// Valid values are either {-1;0} or {0}, depending on integer
 			// representation.  The latter makes for very efficient code...
 			sparse_error(sctx_ token->pos, "dubious one-bit signed bitfield");
 		}
-		if (Wdefault_bitfield_sign &&
+		if (sctxp Wdefault_bitfield_sign &&
 		    bitfield_type->type != SYM_ENUM &&
 		    !(bitfield_type->ctype.modifiers & MOD_EXPLICITLY_SIGNED) &&
 		    is_signed) {
@@ -2202,7 +2239,7 @@ static struct token *parse_do_statement(SCTX_ struct token *token, struct statem
 	stmt->iterator_statement = iterator;
 	end_iterator(sctx_ stmt);
 
-	if (iterator && iterator->type != STMT_COMPOUND && Wdo_while)
+	if (iterator && iterator->type != STMT_COMPOUND && sctxp Wdo_while)
 		warning(sctx_ iterator->pos->pos, "do-while statement is not a compound statement");
 
 	return expect(sctx_ token, ';', "after statement");
@@ -2267,7 +2304,7 @@ static struct token *parse_goto_statement(SCTX_ struct token *token, struct stat
 	token = token->next;
 	if (match_op(token, '*')) {
 		token = parse_expression(sctx_ token->next, &stmt->goto_expression);
-		add_statement(sctx_ &function_computed_goto_list, stmt);
+		add_statement(sctx_ &(sctxp function_computed_goto_list), stmt);
 	} else if (token_type(token) == TOKEN_IDENT) {
 		stmt->goto_label = label_symbol(sctx_ token);
 		token = token->next;
@@ -2375,7 +2412,7 @@ static struct token * statement_list(SCTX_ struct token *token, struct statement
 			stmt = alloc_statement(sctx_ token, STMT_DECLARATION);
 			token = external_declaration(sctx_ token, &stmt->declaration);
 		} else {
-			seen_statement = Wdeclarationafterstatement;
+			seen_statement = sctxp Wdeclarationafterstatement;
 			token = statement(sctx_ token, &stmt);
 		}
 		add_statement(sctx_ list, stmt);
@@ -2391,7 +2428,7 @@ static struct token *identifier_list(SCTX_ struct token *token, struct symbol *f
 		sym->ident = token->ident;
 		token = token->next;
 		sym->endpos = token;
-		sym->ctype.base_type = &incomplete_ctype;
+		sym->ctype.base_type = &sctxp incomplete_ctype;
 		add_symbol(sctx_ list, sym);
 		if (!match_op(token, ',') ||
 		    token_type(token->next) != TOKEN_IDENT ||
@@ -2417,7 +2454,7 @@ static struct token *parameter_type_list(SCTX_ struct token *token, struct symbo
 
 		sym = alloc_symbol(sctx_ token, SYM_NODE);
 		token = parameter_declaration(sctx_ token, sym);
-		if (sym->ctype.base_type == &void_ctype) {
+		if (sym->ctype.base_type == &sctxp void_ctype) {
 			/* Special case: (void) */
 			if (!*list && !sym->ident)
 				break;
@@ -2472,7 +2509,7 @@ static struct token *single_initializer(SCTX_ struct expression **ep, struct tok
 
 	if ((token_type(token) == TOKEN_IDENT) && match_op(next, ':')) {
 		struct expression *expr = identifier_expression(sctx_ token);
-		if (Wold_initializer)
+		if (sctxp Wold_initializer)
 			warning(sctx_ token->pos, "obsolete struct initializer, use C99 syntax");
 		token = initializer(sctx_ &expr->ident_expression, next->next);
 		if (expr->ident_expression)
@@ -2566,16 +2603,16 @@ static struct token *parse_function_body(SCTX_ struct token *token, struct symbo
 	struct symbol *prev;
 	struct symbol *arg;
 
-	old_symbol_list = function_symbol_list;
+	old_symbol_list = sctxp function_symbol_list;
 	if (decl->ctype.modifiers & MOD_INLINE) {
-		function_symbol_list = &decl->inline_symbol_list;
+		sctxp function_symbol_list = &decl->inline_symbol_list;
 		p = &base_type->inline_stmt;
 	} else {
-		function_symbol_list = &decl->symbol_list;
+		sctxp function_symbol_list = &decl->symbol_list;
 		p = &base_type->stmt;
 	}
-	function_computed_target_list = NULL;
-	function_computed_goto_list = NULL;
+	sctxp function_computed_target_list = NULL;
+	sctxp function_computed_goto_list = NULL;
 
 	if (decl->ctype.modifiers & MOD_EXTERN) {
 		if (!(decl->ctype.modifiers & MOD_INLINE))
@@ -2609,13 +2646,13 @@ static struct token *parse_function_body(SCTX_ struct token *token, struct symbo
 			prev = prev->same_symbol;
 		}
 	}
-	function_symbol_list = old_symbol_list;
-	if (function_computed_goto_list) {
-		if (!function_computed_target_list)
+	sctxp function_symbol_list = old_symbol_list;
+	if (sctxp  function_computed_goto_list) {
+		if (!sctxp  function_computed_target_list)
 			warning(sctx_ decl->pos->pos, "function '%s' has computed goto but no targets?", show_ident(sctx_ decl->ident));
 		else {
-			FOR_EACH_PTR(function_computed_goto_list, stmt) {
-				stmt->target_list = function_computed_target_list;
+			FOR_EACH_PTR(sctxp function_computed_goto_list, stmt) {
+				stmt->target_list = sctxp function_computed_target_list;
 			} END_FOR_EACH_PTR(stmt);
 		}
 	}
@@ -2625,8 +2662,8 @@ static struct token *parse_function_body(SCTX_ struct token *token, struct symbo
 static void promote_k_r_types(SCTX_ struct symbol *arg)
 {
 	struct symbol *base = arg->ctype.base_type;
-	if (base && base->ctype.base_type == &int_type && (base->ctype.modifiers & (MOD_CHAR | MOD_SHORT))) {
-		arg->ctype.base_type = &int_ctype;
+	if (base && base->ctype.base_type == &sctxp int_type && (base->ctype.modifiers & (MOD_CHAR | MOD_SHORT))) {
+		arg->ctype.base_type = &sctxp int_ctype;
 	}
 }
 
@@ -2772,7 +2809,7 @@ struct token *external_declaration(SCTX_ struct token *token, struct symbol_list
 
 		if (!(decl->ctype.modifiers & MOD_STATIC))
 			decl->ctype.modifiers |= MOD_EXTERN;
-	} else if (base_type == &void_ctype && !(decl->ctype.modifiers & MOD_EXTERN)) {
+	} else if (base_type == &sctxp void_ctype && !(decl->ctype.modifiers & MOD_EXTERN)) {
 		sparse_error(sctx_ token->pos, "void declaration");
 	}
 

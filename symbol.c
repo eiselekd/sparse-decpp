@@ -129,7 +129,7 @@ static void lay_out_struct(SCTX_ struct symbol *sym, struct struct_union_info *i
 		base_size = 0;
 	}
 
-	align_bit_mask = bytes_to_bits(sym->ctype.alignment) - 1;
+	align_bit_mask = bytes_to_bits(sctx_ sym->ctype.alignment) - 1;
 
 	/*
 	 * Bitfields have some very special rules..
@@ -144,7 +144,7 @@ static void lay_out_struct(SCTX_ struct symbol *sym, struct struct_union_info *i
 			bit_size = (bit_size + align_bit_mask) & ~align_bit_mask;
 			bit_offset = 0;
 		}
-		sym->offset = bits_to_bytes(bit_size - bit_offset);
+		sym->offset = bits_to_bytes(sctx_ bit_size - bit_offset);
 		sym->bit_offset = bit_offset;
 		sym->ctype.base_type->bit_offset = bit_offset;
 		info->bit_size = bit_size + width;
@@ -157,7 +157,7 @@ static void lay_out_struct(SCTX_ struct symbol *sym, struct struct_union_info *i
 	 * Otherwise, just align it right and add it up..
 	 */
 	bit_size = (bit_size + align_bit_mask) & ~align_bit_mask;
-	sym->offset = bits_to_bytes(bit_size);
+	sym->offset = bits_to_bytes(sctx_ bit_size);
 
 	info->bit_size = bit_size + base_size;
 	// warning (sym->pos, "regular: offset=%d", sym->offset);
@@ -183,7 +183,7 @@ static struct symbol * examine_struct_union_type(SCTX_ struct symbol *sym, int a
 		sym->ctype.alignment = info.max_align;
 	bit_size = info.bit_size;
 	if (info.align_size) {
-		bit_align = bytes_to_bits(sym->ctype.alignment)-1;
+		bit_align = bytes_to_bits(sctx_ sym->ctype.alignment)-1;
 		bit_size = (bit_size + bit_align) & ~bit_align;
 	}
 	sym->bit_size = bit_size;
@@ -221,7 +221,7 @@ static struct symbol * examine_array_type(SCTX_ struct symbol *sym)
 	if (array_size) {	
 		bit_size = base_type->bit_size * get_expression_value_silent(sctx_ array_size);
 		if (array_size->type != EXPR_VALUE) {
-			if (Wvla)
+			if (sctxp Wvla)
 				warning(sctx_ array_size->pos->pos, "Variable length array is used.");
 			bit_size = -1;
 		}
@@ -282,7 +282,7 @@ static int count_array_initializer(SCTX_ struct symbol *t, struct expression *ex
 	 * on T - if it's a character type, we get the length of string literal
 	 * (including NUL), otherwise we have one element here.
 	 */
-	if (t->ctype.base_type == &int_type && t->ctype.modifiers & MOD_CHAR)
+	if (t->ctype.base_type == &sctxp int_type && t->ctype.modifiers & MOD_CHAR)
 		is_char = 1;
 
 	switch (expr->type) {
@@ -356,10 +356,10 @@ static struct symbol *examine_enum_type(SCTX_ struct symbol *sym)
 	struct symbol *base_type = examine_base_type(sctx_ sym);
 
 	sym->ctype.modifiers |= (base_type->ctype.modifiers & MOD_SIGNEDNESS);
-	sym->bit_size = bits_in_enum;
+	sym->bit_size = sctxp bits_in_enum;
 	if (base_type->bit_size > sym->bit_size)
 		sym->bit_size = base_type->bit_size;
-	sym->ctype.alignment = enum_alignment;
+	sym->ctype.alignment = sctxp enum_alignment;
 	if (base_type->ctype.alignment > sym->ctype.alignment)
 		sym->ctype.alignment = base_type->ctype.alignment;
 	return sym;
@@ -374,9 +374,9 @@ static struct symbol *examine_pointer_type(SCTX_ struct symbol *sym)
 	 * being needed for the base type size evaluation.
 	 */
 	if (!sym->bit_size)
-		sym->bit_size = bits_in_pointer;
+		sym->bit_size = sctxp bits_in_pointer;
 	if (!sym->ctype.alignment)
-		sym->ctype.alignment = pointer_alignment;
+		sym->ctype.alignment = sctxp pointer_alignment;
 	return sym;
 }
 
@@ -484,10 +484,10 @@ static struct symbol_list *restr, *fouled;
 
 void create_fouled(SCTX_ struct symbol *type)
 {
-	if (type->bit_size < bits_in_int) {
+	if (type->bit_size < sctxp bits_in_int) {
 		struct symbol *new = alloc_symbol(sctx_ type->tok, type->type);
 		*new = *type;
-		new->bit_size = bits_in_int;
+		new->bit_size = sctxp bits_in_int;
 		new->type = SYM_FOULED;
 		new->ctype.base_type = type;
 		add_symbol(sctx_ &restr, type);
@@ -534,7 +534,7 @@ void check_declaration(SCTX_ struct symbol *sym)
 			return;
 		}
 
-		if (!Wshadow || warned)
+		if (!sctxp Wshadow || warned)
 			continue;
 		if (get_sym_type(next) == SYM_FN)
 			continue;
@@ -593,14 +593,14 @@ struct symbol *create_symbol(SCTX_ int stream, const char *name, int type, int n
 
 static int evaluate_to_integer(SCTX_ struct expression *expr)
 {
-	expr->ctype = &int_ctype;
+	expr->ctype = &sctxp int_ctype;
 	return 1;
 }
 
 static int evaluate_expect(SCTX_ struct expression *expr)
 {
 	/* Should we evaluate it to return the type of the first argument? */
-	expr->ctype = &int_ctype;
+	expr->ctype = &sctxp int_ctype;
 	return 1;
 }
 
@@ -741,6 +741,7 @@ static struct sym_init {
 };
 
 
+#ifndef DO_CTX
 /*
  * Abstract types
  */
@@ -764,6 +765,7 @@ struct symbol	bool_ctype, void_ctype, type_ctype,
 		null_ctype;
 
 struct symbol	zero_int;
+#endif
 
 #define __INIT_IDENT(str, res) { .len = sizeof(str)-1, .name = str, .reserved = res }
 #define __IDENT(n,str,res) \
@@ -795,63 +797,68 @@ void init_symbols(SCTX)
 #define MOD_ESIGNED (MOD_SIGNED | MOD_EXPLICITLY_SIGNED)
 #define MOD_LL (MOD_LONG | MOD_LONGLONG)
 #define MOD_LLL MOD_LONGLONGLONG
-static const struct ctype_declare {
-	struct symbol *ptr;
-	enum type type;
-	unsigned long modifiers;
-	int *bit_size;
-	int *maxalign;
-	struct symbol *base_type;
-} ctype_declaration[] = {
-	{ &bool_ctype,	    SYM_BASETYPE, MOD_UNSIGNED,		    &bits_in_bool,	     &max_int_alignment, &int_type },
-	{ &void_ctype,	    SYM_BASETYPE, 0,			    NULL,	     NULL,		 NULL },
-	{ &type_ctype,	    SYM_BASETYPE, MOD_TYPE,		    NULL,		     NULL,		 NULL },
-	{ &incomplete_ctype,SYM_BASETYPE, 0,			    NULL,		     NULL,		 NULL },
-	{ &bad_ctype,	    SYM_BASETYPE, 0,			    NULL,		     NULL,		 NULL },
 
-	{ &char_ctype,	    SYM_BASETYPE, MOD_SIGNED | MOD_CHAR,    &bits_in_char,	     &max_int_alignment, &int_type },
-	{ &schar_ctype,	    SYM_BASETYPE, MOD_ESIGNED | MOD_CHAR,   &bits_in_char,	     &max_int_alignment, &int_type },
-	{ &uchar_ctype,	    SYM_BASETYPE, MOD_UNSIGNED | MOD_CHAR,  &bits_in_char,	     &max_int_alignment, &int_type },
-	{ &short_ctype,	    SYM_BASETYPE, MOD_SIGNED | MOD_SHORT,   &bits_in_short,	     &max_int_alignment, &int_type },
-	{ &sshort_ctype,    SYM_BASETYPE, MOD_ESIGNED | MOD_SHORT,  &bits_in_short,	     &max_int_alignment, &int_type },
-	{ &ushort_ctype,    SYM_BASETYPE, MOD_UNSIGNED | MOD_SHORT, &bits_in_short,	     &max_int_alignment, &int_type },
-	{ &int_ctype,	    SYM_BASETYPE, MOD_SIGNED,		    &bits_in_int,	     &max_int_alignment, &int_type },
-	{ &sint_ctype,	    SYM_BASETYPE, MOD_ESIGNED,		    &bits_in_int,	     &max_int_alignment, &int_type },
-	{ &uint_ctype,	    SYM_BASETYPE, MOD_UNSIGNED,		    &bits_in_int,	     &max_int_alignment, &int_type },
-	{ &long_ctype,	    SYM_BASETYPE, MOD_SIGNED | MOD_LONG,    &bits_in_long,	     &max_int_alignment, &int_type },
-	{ &slong_ctype,	    SYM_BASETYPE, MOD_ESIGNED | MOD_LONG,   &bits_in_long,	     &max_int_alignment, &int_type },
-	{ &ulong_ctype,	    SYM_BASETYPE, MOD_UNSIGNED | MOD_LONG,  &bits_in_long,	     &max_int_alignment, &int_type },
-	{ &llong_ctype,	    SYM_BASETYPE, MOD_SIGNED | MOD_LL,	    &bits_in_longlong,       &max_int_alignment, &int_type },
-	{ &sllong_ctype,    SYM_BASETYPE, MOD_ESIGNED | MOD_LL,	    &bits_in_longlong,       &max_int_alignment, &int_type },
-	{ &ullong_ctype,    SYM_BASETYPE, MOD_UNSIGNED | MOD_LL,    &bits_in_longlong,       &max_int_alignment, &int_type },
-	{ &lllong_ctype,    SYM_BASETYPE, MOD_SIGNED | MOD_LLL,	    &bits_in_longlonglong,   &max_int_alignment, &int_type },
-	{ &slllong_ctype,   SYM_BASETYPE, MOD_ESIGNED | MOD_LLL,    &bits_in_longlonglong,   &max_int_alignment, &int_type },
-	{ &ulllong_ctype,   SYM_BASETYPE, MOD_UNSIGNED | MOD_LLL,   &bits_in_longlonglong,   &max_int_alignment, &int_type },
+#ifndef DO_CTX
+static const 
+#else
+void init_ctype(SCTX) {
+#endif
 
-	{ &float_ctype,	    SYM_BASETYPE,  0,			    &bits_in_float,          &max_fp_alignment,  &fp_type },
-	{ &double_ctype,    SYM_BASETYPE, MOD_LONG,		    &bits_in_double,         &max_fp_alignment,  &fp_type },
-	{ &ldouble_ctype,   SYM_BASETYPE, MOD_LONG | MOD_LONGLONG,  &bits_in_longdouble,     &max_fp_alignment,  &fp_type },
+struct ctype_declare ctype_declaration[] = {
+	{ &sctxp bool_ctype,	    SYM_BASETYPE, MOD_UNSIGNED,		    &sctxp bits_in_bool,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp void_ctype,	    SYM_BASETYPE, 0,			    NULL,	     NULL,		 NULL },
+	{ &sctxp type_ctype,	    SYM_BASETYPE, MOD_TYPE,		    NULL,		     NULL,		 NULL },
+	{ &sctxp incomplete_ctype,SYM_BASETYPE, 0,			    NULL,		     NULL,		 NULL },
+	{ &sctxp bad_ctype,	    SYM_BASETYPE, 0,			    NULL,		     NULL,		 NULL },
 
-	{ &string_ctype,    SYM_PTR,	  0,			    &bits_in_pointer,        &pointer_alignment, &char_ctype },
-	{ &ptr_ctype,	    SYM_PTR,	  0,			    &bits_in_pointer,        &pointer_alignment, &void_ctype },
-	{ &null_ctype,	    SYM_PTR,	  0,			    &bits_in_pointer,        &pointer_alignment, &void_ctype },
-	{ &label_ctype,	    SYM_PTR,	  0,			    &bits_in_pointer,        &pointer_alignment, &void_ctype },
-	{ &lazy_ptr_ctype,  SYM_PTR,	  0,			    &bits_in_pointer,        &pointer_alignment, &void_ctype },
+	{ &sctxp char_ctype,	    SYM_BASETYPE, MOD_SIGNED | MOD_CHAR,    &sctxp bits_in_char,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp schar_ctype,	    SYM_BASETYPE, MOD_ESIGNED | MOD_CHAR,   &sctxp bits_in_char,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp uchar_ctype,	    SYM_BASETYPE, MOD_UNSIGNED | MOD_CHAR,  &sctxp bits_in_char,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp short_ctype,	    SYM_BASETYPE, MOD_SIGNED | MOD_SHORT,   &sctxp bits_in_short,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp sshort_ctype,    SYM_BASETYPE, MOD_ESIGNED | MOD_SHORT,  &sctxp bits_in_short,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp ushort_ctype,    SYM_BASETYPE, MOD_UNSIGNED | MOD_SHORT, &sctxp bits_in_short,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp int_ctype,	    SYM_BASETYPE, MOD_SIGNED,		    &sctxp bits_in_int,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp sint_ctype,	    SYM_BASETYPE, MOD_ESIGNED,		    &sctxp bits_in_int,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp uint_ctype,	    SYM_BASETYPE, MOD_UNSIGNED,		    &sctxp bits_in_int,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp long_ctype,	    SYM_BASETYPE, MOD_SIGNED | MOD_LONG,    &sctxp bits_in_long,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp slong_ctype,	    SYM_BASETYPE, MOD_ESIGNED | MOD_LONG,   &sctxp bits_in_long,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp ulong_ctype,	    SYM_BASETYPE, MOD_UNSIGNED | MOD_LONG,  &sctxp bits_in_long,	     &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp llong_ctype,	    SYM_BASETYPE, MOD_SIGNED | MOD_LL,	    &sctxp bits_in_longlong,       &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp sllong_ctype,    SYM_BASETYPE, MOD_ESIGNED | MOD_LL,	    &sctxp bits_in_longlong,       &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp ullong_ctype,    SYM_BASETYPE, MOD_UNSIGNED | MOD_LL,    &sctxp bits_in_longlong,       &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp lllong_ctype,    SYM_BASETYPE, MOD_SIGNED | MOD_LLL,	    &sctxp bits_in_longlonglong,   &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp slllong_ctype,   SYM_BASETYPE, MOD_ESIGNED | MOD_LLL,    &sctxp bits_in_longlonglong,   &sctxp max_int_alignment, &sctxp int_type },
+	{ &sctxp ulllong_ctype,   SYM_BASETYPE, MOD_UNSIGNED | MOD_LLL,   &sctxp bits_in_longlonglong,   &sctxp max_int_alignment, &sctxp int_type },
+
+	{ &sctxp float_ctype,	    SYM_BASETYPE,  0,			    &sctxp bits_in_float,          &sctxp max_fp_alignment,  &sctxp fp_type },
+	{ &sctxp double_ctype,    SYM_BASETYPE, MOD_LONG,		    &sctxp bits_in_double,         &sctxp max_fp_alignment,  &sctxp fp_type },
+	{ &sctxp ldouble_ctype,   SYM_BASETYPE, MOD_LONG | MOD_LONGLONG,  &sctxp bits_in_longdouble,     &sctxp max_fp_alignment,  &sctxp fp_type },
+
+	{ &sctxp string_ctype,    SYM_PTR,	  0,			    &sctxp bits_in_pointer,        &sctxp pointer_alignment, &sctxp char_ctype },
+	{ &sctxp ptr_ctype,	    SYM_PTR,	  0,			    &sctxp bits_in_pointer,        &sctxp pointer_alignment, &sctxp void_ctype },
+	{ &sctxp null_ctype,	    SYM_PTR,	  0,			    &sctxp bits_in_pointer,        &sctxp pointer_alignment, &sctxp void_ctype },
+	{ &sctxp label_ctype,	    SYM_PTR,	  0,			    &sctxp bits_in_pointer,        &sctxp pointer_alignment, &sctxp void_ctype },
+	{ &sctxp lazy_ptr_ctype,  SYM_PTR,	  0,			    &sctxp bits_in_pointer,        &sctxp pointer_alignment, &sctxp void_ctype },
 	{ NULL, }
 };
 #undef MOD_LLL
 #undef MOD_LL
 #undef MOD_ESIGNED
 
+#ifndef DO_CTX
 void init_ctype(SCTX)
 {
+#else
+ 
+#endif
+
 	const struct ctype_declare *ctype;
 
 	for (ctype = ctype_declaration ; ctype->ptr; ctype++) {
 		struct symbol *sym = ctype->ptr;
 		unsigned long bit_size = ctype->bit_size ? *ctype->bit_size : -1;
 		unsigned long maxalign = ctype->maxalign ? *ctype->maxalign : 0;
-		unsigned long alignment = bits_to_bytes(bit_size + bits_in_char - 1);
+		unsigned long alignment = bits_to_bytes(sctx_ bit_size + sctxp bits_in_char - 1);
 
 		if (alignment > maxalign)
 			alignment = maxalign;

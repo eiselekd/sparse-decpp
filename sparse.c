@@ -51,7 +51,7 @@ static int context_increase(SCTX_ struct basic_block *bb, int entry)
 
 static int imbalance(SCTX_ struct entrypoint *ep, struct basic_block *bb, int entry, int exit, const char *why)
 {
-	if (Wcontext) {
+	if (sctxp Wcontext) {
 		struct symbol *sym = ep->name;
 		warning(sctx_ bb->pos->pos, "context imbalance in '%s' - %s", show_ident(sctx_ sym->ident), why);
 	}
@@ -199,7 +199,7 @@ static void check_one_instruction(SCTX_ struct instruction *insn)
 {
 	switch (insn->opcode) {
 	case OP_CAST: case OP_SCAST:
-		if (verbose)
+		if (sctxp verbose)
 			check_cast_instruction(sctx_ insn);
 		break;
 	case OP_RANGE_LIN:
@@ -237,7 +237,7 @@ static void check_context(SCTX_ struct entrypoint *ep)
 	struct sym_context *context;
 	unsigned int in_context = 0, out_context = 0;
 
-	if (Wuninitialized && verbose && ep->entry->bb->needs) {
+	if (sctxp Wuninitialized && sctxp verbose && ep->entry->bb->needs) {
 		pseudo_t pseudo;
 		FOR_EACH_PTR(ep->entry->bb->needs, pseudo) {
 			if (pseudo->type != PSEUDO_ARG)
@@ -265,7 +265,7 @@ static void check_symbols(SCTX_ struct symbol_list *list)
 		expand_symbol(sctx_ sym);
 		ep = linearize_symbol(sctx_ sym);
 		if (ep) {
-			if (dbg_entry)
+			if (sctxp dbg_entry)
 				show_entry(sctx_ ep);
 
 			check_context(sctx_ ep);

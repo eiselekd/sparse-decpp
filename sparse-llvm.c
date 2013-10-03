@@ -35,12 +35,12 @@ struct function {
 	struct phi_fwd			*fwd_list;
 };
 
-static inline bool symbol_is_fp_type(struct symbol *sym)
+static inline bool symbol_is_fp_type(SCTX_ struct symbol *sym)
 {
 	if (!sym)
 		return false;
 
-	return sym->ctype.base_type == &fp_type;
+	return sym->ctype.base_type == &sctxp fp_type;
 }
 
 static LLVMTypeRef symbol_type(SCTX_ LLVMModuleRef module, struct symbol *sym);
@@ -153,7 +153,7 @@ static LLVMTypeRef sym_ptr_type(SCTX_ LLVMModuleRef module, struct symbol *sym)
 	LLVMTypeRef type;
 
 	/* 'void *' is treated like 'char *' */
-	if (is_void_type(sym->ctype.base_type))
+	if (is_void_type(sctx_ sym->ctype.base_type))
 		type = LLVMInt8Type();
 	else
 		type = symbol_type(sctx_ module, sym->ctype.base_type);
@@ -165,7 +165,7 @@ static LLVMTypeRef sym_basetype_type(SCTX_ struct symbol *sym)
 {
 	LLVMTypeRef ret = NULL;
 
-	if (symbol_is_fp_type(sym)) {
+	if (symbol_is_fp_type(sctx_ sym)) {
 		switch (sym->bit_size) {
 		case 32:
 			ret = LLVMFloatType();
@@ -478,75 +478,75 @@ static void output_op_binary(SCTX_ struct function *fn, struct instruction *insn
 	switch (insn->opcode) {
 	/* Binary */
 	case OP_ADD_LIN:
-		if (symbol_is_fp_type(insn->type))
+		if (symbol_is_fp_type(sctx_ insn->type))
 			target = LLVMBuildFAdd(fn->builder, lhs, rhs, target_name);
 		else
 			target = LLVMBuildAdd(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_SUB:
-		if (symbol_is_fp_type(insn->type))
+		if (symbol_is_fp_type(sctx_ insn->type))
 			target = LLVMBuildFSub(fn->builder, lhs, rhs, target_name);
 		else
 			target = LLVMBuildSub(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_MULU:
-		if (symbol_is_fp_type(insn->type))
+		if (symbol_is_fp_type(sctx_ insn->type))
 			target = LLVMBuildFMul(fn->builder, lhs, rhs, target_name);
 		else
 			target = LLVMBuildMul(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_MULS:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildMul(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_DIVU:
-		if (symbol_is_fp_type(insn->type))
+		if (symbol_is_fp_type(sctx_ insn->type))
 			target = LLVMBuildFDiv(fn->builder, lhs, rhs, target_name);
 		else
 			target = LLVMBuildUDiv(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_DIVS:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildSDiv(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_MODU:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildURem(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_MODS:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildSRem(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_SHL:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildShl(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_LSR:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildLShr(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_ASR:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildAShr(fn->builder, lhs, rhs, target_name);
 		break;
 	
 	/* Logical */
 	case OP_AND_LIN:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildAnd(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_OR_LIN:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildOr(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_XOR_LIN:
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 		target = LLVMBuildXor(fn->builder, lhs, rhs, target_name);
 		break;
 	case OP_AND_BOOL: {
 		LLVMValueRef x, y;
 
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 
 		y = LLVMBuildICmp(fn->builder, LLVMIntNE, lhs, LLVMConstInt(LLVMTypeOf(lhs), 0, 0), "y");
 		x = LLVMBuildICmp(fn->builder, LLVMIntNE, rhs, LLVMConstInt(LLVMTypeOf(rhs), 0, 0), "x");
@@ -557,7 +557,7 @@ static void output_op_binary(SCTX_ struct function *fn, struct instruction *insn
 	case OP_OR_BOOL: {
 		LLVMValueRef tmp;
 
-		assert(!symbol_is_fp_type(insn->type));
+		assert(!symbol_is_fp_type(sctx_ insn->type));
 
 		tmp = LLVMBuildOr(fn->builder, rhs, lhs, "tmp");
 
@@ -604,7 +604,7 @@ static void output_op_load(SCTX_ struct function *fn, struct instruction *insn)
 	LLVMValueRef src_p, src_i, ofs_i, addr_i, addr, target;
 
 	/* int type large enough to hold a pointer */
-	int_type = LLVMIntType(bits_in_pointer);
+	int_type = LLVMIntType(sctxp bits_in_pointer);
 
 	/* convert to integer, add src + offset */
 	src_p = pseudo_to_value(sctx_ fn, insn, insn->src);
@@ -629,7 +629,7 @@ static void output_op_store(SCTX_ struct function *fn, struct instruction *insn)
 	LLVMValueRef src_p, src_i, ofs_i, addr_i, addr, target, target_in;
 
 	/* int type large enough to hold a pointer */
-	int_type = LLVMIntType(bits_in_pointer);
+	int_type = LLVMIntType(sctxp bits_in_pointer);
 
 	/* convert to integer, add src + offset */
 	src_p = pseudo_to_value(sctx_ fn, insn, insn->src);
@@ -946,7 +946,7 @@ static void output_op_ptrcast(SCTX_ struct function *fn, struct instruction *ins
 
 	pseudo_name(sctx_ insn->target, target_name);
 
-	assert(!symbol_is_fp_type(insn->type));
+	assert(!symbol_is_fp_type(sctx_ insn->type));
 
 	target = LLVMBuildBitCast(fn->builder, src, insn_symbol_type(sctx_ fn->module, insn), target_name);
 
@@ -964,7 +964,7 @@ static void output_op_cast(SCTX_ struct function *fn, struct instruction *insn, 
 
 	pseudo_name(sctx_ insn->target, target_name);
 
-	assert(!symbol_is_fp_type(insn->type));
+	assert(!symbol_is_fp_type(sctx_ insn->type));
 
 	if (insn->size < LLVMGetIntTypeWidth(LLVMTypeOf(src)))
 		target = LLVMBuildTrunc(fn->builder, src, insn_symbol_type(sctx_ fn->module, insn), target_name);
@@ -992,7 +992,7 @@ static void output_op_copy(SCTX_ struct function *fn, struct instruction *insn,
 	 * than using "X + 0" simply to produce a new LLVM pseudo
 	 */
 
-	if (symbol_is_fp_type(insn->type))
+	if (symbol_is_fp_type(sctx_ insn->type))
 		target = LLVMBuildFAdd(fn->builder, src,
 			LLVMConstReal(const_type, 0.0), target_name);
 	else

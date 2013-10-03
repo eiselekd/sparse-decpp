@@ -10,11 +10,11 @@ endif
 
 OS = linux
 
-ALL_SRC = ctx.c tokenize.c pre-process.c symbol.c lib.c scope.c \
+ALL_SRC = ctx.c tokenize.c pre-process.c symbol.c scope.c \
 expression.c evaluate.c expand.c  inline.c linearize.c \
 allocate.c ptrlist.c flow.c cse.c simplify.c memops.c \
 liveness.c  storage.c  unssa.c  dissect.c target.c \
-show-parse.c char.c  sort.c compat-linux.c  
+show-parse.c char.c  sort.c compat-linux.c parse.c  lib.c 
 
 
 #sparse-llvm.c
@@ -25,7 +25,8 @@ show-parse.c char.c  sort.c compat-linux.c
 
 
 CC = gcc
-CFLAGS = -O2 -finline-functions -fno-strict-aliasing -g
+CFLAGS = -g
+ #-O2 -finline-functions -fno-strict-aliasing -g
 CFLAGS += -Wall -Wwrite-strings
 LDFLAGS += -g
 LD = gcc

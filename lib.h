@@ -1,7 +1,7 @@
 #ifndef LIB_H
 #define LIB_H
 
-#include "ctx.h"
+#include "ctx_def.h"
 #include <stdlib.h>
 #include <stddef.h>
 
@@ -25,11 +25,14 @@
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof((x)[0]))
 #endif
 
+#ifndef DO_CTX
 extern int verbose, optimize, optimize_size, preprocessing;
 extern int die_if_error;
-extern int repeat_phase, merge_phi_sources;
 extern int gcc_major, gcc_minor, gcc_patchlevel;
 extern struct token *pp_tokenlist;
+#endif
+
+extern int repeat_phase, merge_phi_sources;
 
 extern unsigned int hexval(SCTX_ unsigned int c);
 
@@ -85,6 +88,7 @@ extern void expression_error(SCTX_ struct expression *, const char *, ...) FORMA
 
 extern void add_pre_buffer(SCTX_ const char *fmt, ...) FORMAT_ATTR(1+SCTXCNT);
 
+#ifndef DO_CTX
 extern int preprocess_only;
 
 extern int Waddress_space;
@@ -117,7 +121,7 @@ extern int dbg_dead;
 
 extern int arch_m64;
 extern int arch_msize_long;
-
+#endif
 
 extern void declare_builtin_functions(SCTX);
 extern void create_builtin_stream(SCTX);

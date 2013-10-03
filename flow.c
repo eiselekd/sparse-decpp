@@ -266,8 +266,8 @@ void convert_load_instruction(SCTX_ struct instruction *insn, pseudo_t src)
 
 static int overlapping_memop(SCTX_ struct instruction *a, struct instruction *b)
 {
-	unsigned int a_start = bytes_to_bits(a->offset);
-	unsigned int b_start = bytes_to_bits(b->offset);
+	unsigned int a_start = bytes_to_bits(sctx_ a->offset);
+	unsigned int b_start = bytes_to_bits(sctx_ b->offset);
 	unsigned int a_size = a->size;
 	unsigned int b_size = b->size;
 
@@ -582,14 +582,14 @@ void check_access(SCTX_ struct instruction *insn)
 	pseudo_t pseudo = insn->src;
 
 	if (insn->bb && pseudo->type == PSEUDO_SYM) {
-		int offset = insn->offset, bit = bytes_to_bits(offset) + insn->size;
+		int offset = insn->offset, bit = bytes_to_bits(sctx_ offset) + insn->size;
 		struct symbol *sym = pseudo->sym;
 
 		if (sym->bit_size > 0 && (offset < 0 || bit > sym->bit_size))
 			warning(sctx_ insn->pos, "invalid access %s '%s' (%d %d)",
 				offset < 0 ? "below" : "past the end of",
 				show_ident(sctx_ sym->ident), offset,
-				bits_to_bytes(sym->bit_size));
+				bits_to_bytes(sctx_ sym->bit_size));
 	}
 }
 

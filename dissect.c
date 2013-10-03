@@ -66,7 +66,7 @@ static inline usage_t u_addr(usage_t mode)
 static usage_t u_lval(SCTX_ struct symbol *type)
 {
 	int wptr = is_ptr(type) && !(type->ctype.modifiers & MOD_CONST);
-	return wptr || type == &bad_ctype
+	return wptr || type == &sctxp bad_ctype
 		? U_W_AOF | U_R_VAL : U_R_VAL;
 }
 
@@ -102,13 +102,13 @@ static usage_t fix_mode(SCTX_ struct symbol *type, usage_t mode)
 	return mode;
 }
 
-static inline struct symbol *no_member(struct ident *name)
+static inline struct symbol *no_member(SCTX_ struct ident *name)
 {
 	static struct symbol sym = {
 		.type = SYM_BAD,
 	};
 
-	sym.ctype.base_type = &bad_ctype;
+	sym.ctype.base_type = &sctxp bad_ctype;
 	sym.ident = name;
 
 	return &sym;
@@ -155,7 +155,7 @@ static inline struct symbol *expr_symbol(SCTX_ struct expression *expr)
 	}
 
 	if (!sym->ctype.base_type)
-		sym->ctype.base_type = &bad_ctype;
+		sym->ctype.base_type = &sctxp bad_ctype;
 
 	return sym;
 }
@@ -230,13 +230,13 @@ static void examine_sym_node(SCTX_ struct symbol *node, struct ident *root)
 static struct symbol *base_type_dis(SCTX_ struct symbol *sym)
 {
 	if (!sym)
-		return &bad_ctype;
+		return &sctxp bad_ctype;
 
 	if (sym->type == SYM_NODE)
 		examine_sym_node(sctx_ sym, NULL);
 
 	return sym->ctype.base_type	// builtin_fn_type
-		?: &bad_ctype;
+		?: &sctxp bad_ctype;
 }
 
 static struct symbol *__lookup_member(SCTX_ struct symbol *type, struct ident *name, int *p_addr)
@@ -269,7 +269,7 @@ found:
 static struct symbol *lookup_member(SCTX_ struct symbol *type, struct ident *name, int *addr)
 {
 	return __lookup_member(sctx_ type, name, addr)
-		?: no_member(name);
+		?: no_member(sctx_ name);
 }
 
 static struct expression *peek_preop(SCTX_ struct expression *expr, int op)
@@ -290,7 +290,7 @@ static struct expression *peek_preop(SCTX_ struct expression *expr, int op)
 
 static struct symbol *do_expression(SCTX_ usage_t mode, struct expression *expr)
 {
-	struct symbol *ret = &int_ctype;
+	struct symbol *ret = &sctxp int_ctype;
 
 again:
 	if (expr) switch (expr->type) {
@@ -302,10 +302,10 @@ again:
 	case EXPR_FVALUE:
 
 	break; case EXPR_LABEL:
-		ret = &label_ctype;
+		ret = &sctxp label_ctype;
 
 	break; case EXPR_STRING:
-		ret = &string_ctype;
+		ret = &sctxp string_ctype;
 
 	break; case EXPR_STATEMENT:
 		ret = do_statement(sctx_ mode, expr->statement);
@@ -340,7 +340,7 @@ again:
 		DO_2_LIST(ret->arguments, expr->args, arg, val,
 			do_expression(sctx_ u_lval(sctx_ base_type_dis(sctx_ arg)), val));
 		ret = ret->type == SYM_FN ? base_type_dis(sctx_ ret)
-			: &bad_ctype;
+			: &sctxp bad_ctype;
 
 	break; case EXPR_ASSIGNMENT:
 		mode |= U_W_VAL | U_R_VAL;
@@ -396,7 +396,7 @@ again:
 				mode |= U_W_AOF;
 			ret = do_expression(sctx_ mode, unop);
 			ret = is_ptr(ret) ? base_type_dis(sctx_ ret)
-				: &bad_ctype;
+				: &sctxp bad_ctype;
 		}
 	}
 
@@ -431,7 +431,7 @@ static void do_asm_xputs(SCTX_ usage_t mode, struct expression_list *xputs)
 
 static struct symbol *do_statement(SCTX_ usage_t mode, struct statement *stmt)
 {
-	struct symbol *ret = &void_ctype;
+	struct symbol *ret = &sctxp void_ctype;
 
 	if (stmt) switch (stmt->type) {
 	default:

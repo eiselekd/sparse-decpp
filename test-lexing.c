@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 	char *file;
 	SPARSE_CTX_INIT
 
-	preprocess_only = 1;
+	sctxp preprocess_only = 1;
 	sparse_initialize(sctx_ argc, argv, &filelist);
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 		sparse(sctx_ file);

@@ -110,7 +110,7 @@ static void graph_calls(SCTX_ struct entrypoint *ep, int internal)
 	FOR_EACH_PTR(ep->bbs, bb) {
 		if (!bb)
 			continue;
-		if (!bb->parents && !bb->children && !bb->insns && verbose < 2)
+		if (!bb->parents && !bb->children && !bb->insns && sctxp verbose < 2)
 			continue;
 
 		FOR_EACH_PTR(bb->insns, insn) {

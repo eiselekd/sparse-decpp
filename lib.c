@@ -29,21 +29,20 @@
 #include "target.h"
 #include "version.h"
 
+#ifndef DO_CTX
 int verbose, optimize, optimize_size, preprocessing;
 int die_if_error = 0;
-
-#ifndef __GNUC__
-# define __GNUC__ 2
-# define __GNUC_MINOR__ 95
-# define __GNUC_PATCHLEVEL__ 0
 #endif
 
+#ifndef DO_CTX
+/* def in ctx.h */
 int gcc_major = __GNUC__;
 int gcc_minor = __GNUC_MINOR__;
 int gcc_patchlevel = __GNUC_PATCHLEVEL__;
 struct token *pp_tokenlist = NULL;
 
 static const char *gcc_base_dir = GCC_BASE;
+#endif
 
 struct token *skip_to(SCTX_ struct token *token, int op)
 {
@@ -97,14 +96,16 @@ static void do_warn(SCTX_ const char *type, struct position pos, const char * fm
 		name, pos.line, pos.pos, type, buffer);
 }
 
+#ifndef DO_CTX
 static int max_warnings = 100;
 static int show_info = 1;
+#endif
 
 void info(SCTX_ struct position pos, const char * fmt, ...)
 {
 	va_list args;
 
-	if (!show_info)
+	if (!sctxp show_info)
 		return;
 	va_start(args, fmt);
 	do_warn(sctx_ "", pos, fmt, args);
@@ -115,13 +116,13 @@ void warning(SCTX_ struct position pos, const char * fmt, ...)
 {
 	va_list args;
 
-	if (!max_warnings) {
-		show_info = 0;
+	if (!sctxp max_warnings) {
+		sctxp show_info = 0;
 		return;
 	}
 
-	if (!--max_warnings) {
-		show_info = 0;
+	if (!--sctxp max_warnings) {
+		sctxp show_info = 0;
 		fmt = "too many warnings";
 	}
 
@@ -133,13 +134,13 @@ void warning(SCTX_ struct position pos, const char * fmt, ...)
 static void do_error(SCTX_ struct position pos, const char * fmt, va_list args)
 {
 	static int errors = 0;
-        die_if_error = 1;
-	show_info = 1;
+        sctxp die_if_error = 1;
+	sctxp show_info = 1;
 	/* Shut up warnings after an error */
-	max_warnings = 0;
+	sctxp max_warnings = 0;
 	if (errors > 100) {
 		static int once = 0;
-		show_info = 0;
+		sctxp show_info = 0;
 		if (once)
 			return;
 		fmt = "too many errors";
@@ -164,7 +165,7 @@ void expression_error(SCTX_ struct expression *expr, const char *fmt, ...)
 	va_start(args, fmt);
 	do_error(sctx_ expr->pos->pos, fmt, args);
 	va_end(args);
-	expr->ctype = &bad_ctype;
+	expr->ctype = &sctxp bad_ctype;
 }
 
 void error_die(SCTX_ struct position pos, const char * fmt, ...) 
@@ -189,6 +190,7 @@ void sparse_die(SCTX_ const char *fmt, ...)
 	exit(1);
 }
 
+#ifndef DO_CTX
 static struct token *pre_buffer_begin = NULL;
 static struct token *pre_buffer_end = NULL;
 
@@ -221,6 +223,7 @@ int dbg_entry = 0;
 int dbg_dead = 0;
 
 int preprocess_only;
+#endif
 
 static enum { STANDARD_C89,
               STANDARD_C94,
@@ -228,18 +231,22 @@ static enum { STANDARD_C89,
               STANDARD_GNU89,
               STANDARD_GNU99, } standard = STANDARD_GNU89;
 
+/* ctx.h:
 #ifdef __x86_64__
 #define ARCH_M64_DEFAULT 1
 #else
 #define ARCH_M64_DEFAULT 0
 #endif
+*/
 
+#ifndef DO_CTX
 int arch_m64 = ARCH_M64_DEFAULT;
 int arch_msize_long = 0;
 
-#define CMDLINE_INCLUDE 20
+/*#define CMDLINE_INCLUDE 20*//*ctx.h*/
 static int cmdline_include_nr = 0;
 static char *cmdline_include[CMDLINE_INCLUDE];
+#endif 
 
 
 void add_pre_buffer(SCTX_ const char *fmt, ...)
@@ -255,11 +262,11 @@ void add_pre_buffer(SCTX_ const char *fmt, ...)
 	va_end(args);
 	e = tokenize_buffer(sctx_ buffer, size, &end);
 	begin = e->s;
-	if (!pre_buffer_begin)
-		pre_buffer_begin = begin;
-	if (pre_buffer_end)
-		pre_buffer_end->next = begin;
-	pre_buffer_end = end;
+	if (!sctxp pre_buffer_begin)
+		sctxp pre_buffer_begin = begin;
+	if (sctxp pre_buffer_end)
+		sctxp pre_buffer_end->next = begin;
+	sctxp pre_buffer_end = end;
 }
 
 static char **handle_switch_D(SCTX_ char *arg, char **next)
@@ -288,7 +295,7 @@ static char **handle_switch_D(SCTX_ char *arg, char **next)
 static char **handle_switch_E(SCTX_ char *arg, char **next)
 {
 	if (arg[1] == '\0')
-		preprocess_only = 1;
+		sctxp preprocess_only = 1;
 	return next;
 }
 
@@ -314,9 +321,9 @@ static char **handle_switch_I(SCTX_ char *arg, char **next)
 
 static void add_cmdline_include(SCTX_ char *filename)
 {
-	if (cmdline_include_nr >= CMDLINE_INCLUDE)
+	if (sctxp cmdline_include_nr >= CMDLINE_INCLUDE)
 		sparse_die(sctx_ "too many include files for %s\n", filename);
-	cmdline_include[cmdline_include_nr++] = filename;
+	sctxp cmdline_include[sctxp cmdline_include_nr++] = filename;
 }
 
 static char **handle_switch_i(SCTX_ char *arg, char **next)
@@ -352,24 +359,24 @@ static char **handle_switch_M(SCTX_ char *arg, char **next)
 static char **handle_switch_m(SCTX_ char *arg, char **next)
 {
 	if (!strcmp(arg, "m64")) {
-		arch_m64 = 1;
+		sctxp arch_m64 = 1;
 	} else if (!strcmp(arg, "m32")) {
-		arch_m64 = 0;
+		sctxp arch_m64 = 0;
 	} else if (!strcmp(arg, "msize-long")) {
-		arch_msize_long = 1;
+		sctxp arch_msize_long = 1;
 	}
 	return next;
 }
 
 static void handle_arch_m64_finalize(SCTX)
 {
-	if (arch_m64) {
-		bits_in_long = 64;
-		max_int_alignment = 8;
-		bits_in_pointer = 64;
-		pointer_alignment = 8;
-		size_t_ctype = &ulong_ctype;
-		ssize_t_ctype = &long_ctype;
+	if (sctxp arch_m64) {
+		sctxp bits_in_long = 64;
+		sctxp max_int_alignment = 8;
+		sctxp bits_in_pointer = 64;
+		sctxp pointer_alignment = 8;
+		sctxp size_t_ctype = &sctxp ulong_ctype;
+		sctxp ssize_t_ctype = &sctxp long_ctype;
 #ifdef __x86_64__
 		add_pre_buffer(sctx_ "#weak_define __x86_64__ 1\n");
 #endif
@@ -378,9 +385,9 @@ static void handle_arch_m64_finalize(SCTX)
 
 static void handle_arch_msize_long_finalize(SCTX)
 {
-	if (arch_msize_long) {
-		size_t_ctype = &ulong_ctype;
-		ssize_t_ctype = &long_ctype;
+	if (sctxp arch_msize_long) {
+		sctxp size_t_ctype = &sctxp ulong_ctype;
+		sctxp ssize_t_ctype = &sctxp long_ctype;
 	}
 }
 
@@ -402,10 +409,11 @@ static char **handle_switch_o(SCTX_ char *arg, char **next)
 	return next;
 }
 
+#ifndef DO_CTX
 static const struct warning {
 	const char *name;
 	int *flag;
-} warnings[] = {
+} warnings[WCNT] = {
 	{ "address-space", &Waddress_space },
 	{ "bitwise", &Wbitwise },
 	{ "cast-to-as", &Wcast_to_as },
@@ -431,6 +439,7 @@ static const struct warning {
 	{ "uninitialized", &Wuninitialized },
 	{ "vla", &Wvla },
 };
+#endif 
 
 enum {
 	WARNING_OFF,
@@ -439,7 +448,7 @@ enum {
 };
 
 
-static char **handle_onoff_switch(SCTX_ char *arg, char **next, const struct warning warnings[], int n)
+static char **handle_onoff_switch(SCTX_ char *arg, char **next, const struct warning *warnings, int n)
 {
 	int flag = WARNING_ON;
 	char *p = arg + 1;
@@ -473,7 +482,7 @@ static char **handle_onoff_switch(SCTX_ char *arg, char **next, const struct war
 
 static char **handle_switch_W(SCTX_ char *arg, char **next)
 {
-	char ** ret = handle_onoff_switch(sctx_ arg, next, warnings, ARRAY_SIZE(warnings));
+	char ** ret = handle_onoff_switch(sctx_ arg, next, sctxp warnings, WCNT /*ARRAY_SIZE(warnings)*/);
 	if (ret)
 		return ret;
 
@@ -481,54 +490,55 @@ static char **handle_switch_W(SCTX_ char *arg, char **next)
 	return next;
 }
 
+#ifndef DO_CTX
 static struct warning debugs[] = {
 	{ "entry", &dbg_entry},
 	{ "dead", &dbg_dead},
 };
-
+#endif
 
 static char **handle_switch_v(SCTX_ char *arg, char **next)
 {
-	char ** ret = handle_onoff_switch(sctx_ arg, next, debugs, ARRAY_SIZE(debugs));
+	char ** ret = handle_onoff_switch(sctx_ arg, next, sctxp debugs, DCNT /*ARRAY_SIZE(debugs)*/);
 	if (ret)
 		return ret;
 
 	// Unknown.
 	do {
-		verbose++;
+		sctxp verbose++;
 	} while (*++arg == 'v');
 	return next;
 }
 
 
-static void handle_onoff_switch_finalize(SCTX_ const struct warning warnings[], int n)
+static void handle_onoff_switch_finalize(SCTX_ const struct warning *warnings, int n)
 {
 	unsigned i;
 
 	for (i = 0; i < n; i++) {
-		if (*warnings[i].flag == WARNING_FORCE_OFF)
-			*warnings[i].flag = WARNING_OFF;
+		if (*(warnings[i].flag) == WARNING_FORCE_OFF)
+			*(warnings[i].flag) = WARNING_OFF;
 	}
 }
 
 static void handle_switch_W_finalize(SCTX)
 {
-	handle_onoff_switch_finalize(sctx_ warnings, ARRAY_SIZE(warnings));
+	handle_onoff_switch_finalize(sctx_ sctxp warnings, WCNT /*ÜARRAY_SIZE(warnings)*/);
 
 	/* default Wdeclarationafterstatement based on the C dialect */
-	if (-1 == Wdeclarationafterstatement)
+	if (-1 == sctxp Wdeclarationafterstatement)
 	{
 		switch (standard)
 		{
 			case STANDARD_C89:
 			case STANDARD_C94:
-				Wdeclarationafterstatement = 1;
+				sctxp Wdeclarationafterstatement = 1;
 				break;
 
 			case STANDARD_C99:
 			case STANDARD_GNU89:
 			case STANDARD_GNU99:
-				Wdeclarationafterstatement = 0;
+				sctxp Wdeclarationafterstatement = 0;
 				break;
 
 			default:
@@ -540,7 +550,7 @@ static void handle_switch_W_finalize(SCTX)
 
 static void handle_switch_v_finalize(SCTX)
 {
-	handle_onoff_switch_finalize(sctx_ debugs, ARRAY_SIZE(debugs));
+	handle_onoff_switch_finalize(sctx_ sctxp debugs, DCNT /*ARRAY_SIZE(debugs)*/);
 }
 
 static char **handle_switch_U(SCTX_ char *arg, char **next)
@@ -555,8 +565,8 @@ static char **handle_switch_O(SCTX_ char *arg, char **next)
 	int level = 1;
 	if (arg[1] >= '0' && arg[1] <= '9')
 		level = arg[1] - '0';
-	optimize = level;
-	optimize_size = arg[1] == 's';
+	sctxp optimize = level;
+	sctxp optimize_size = arg[1] == 's';
 	return next;
 }
 
@@ -648,8 +658,8 @@ static char **handle_nostdinc_lib(SCTX_ char *arg, char **next)
 
 static char **handle_base_dir(SCTX_ char *arg, char **next)
 {
-	gcc_base_dir = *++next;
-	if (!gcc_base_dir)
+	sctxp gcc_base_dir = *++next;
+	if (!sctxp gcc_base_dir)
 		sparse_die(sctx_ "missing argument for -gcc-base-dir option");
 	return next;
 }
@@ -820,14 +830,14 @@ void declare_builtin_functions(SCTX)
 
 void create_builtin_stream(SCTX)
 {
-	add_pre_buffer(sctx_ "#weak_define __GNUC__ %d\n", gcc_major);
-	add_pre_buffer(sctx_ "#weak_define __GNUC_MINOR__ %d\n", gcc_minor);
-	add_pre_buffer(sctx_ "#weak_define __GNUC_PATCHLEVEL__ %d\n", gcc_patchlevel);
+	add_pre_buffer(sctx_ "#weak_define __GNUC__ %d\n", sctxp gcc_major);
+	add_pre_buffer(sctx_ "#weak_define __GNUC_MINOR__ %d\n", sctxp gcc_minor);
+	add_pre_buffer(sctx_ "#weak_define __GNUC_PATCHLEVEL__ %d\n", sctxp gcc_patchlevel);
 
 	/* We add compiler headers path here because we have to parse
 	 * the arguments to get it, falling back to default. */
-	add_pre_buffer(sctx_ "#add_system \"%s/include\"\n", gcc_base_dir);
-	add_pre_buffer(sctx_ "#add_system \"%s/include-fixed\"\n", gcc_base_dir);
+	add_pre_buffer(sctx_ "#add_system \"%s/include\"\n", sctxp gcc_base_dir);
+	add_pre_buffer(sctx_ "#add_system \"%s/include-fixed\"\n", sctxp gcc_base_dir);
 
 	add_pre_buffer(sctx_ "#define __extension__\n");
 	add_pre_buffer(sctx_ "#define __pragma__\n");
@@ -837,7 +847,7 @@ void create_builtin_stream(SCTX)
 	// it is "long unsigned int".  In either case we can probably
 	// get away with this.  We need the #weak_define as cgcc will define
 	// the right __SIZE_TYPE__.
-	if (size_t_ctype == &ulong_ctype)
+	if (sctxp size_t_ctype == &sctxp ulong_ctype)
 		add_pre_buffer(sctx_ "#weak_define __SIZE_TYPE__ long unsigned int\n");
 	else
 		add_pre_buffer(sctx_ "#weak_define __SIZE_TYPE__ unsigned int\n");
@@ -883,9 +893,9 @@ void create_builtin_stream(SCTX)
 	/* FIXME! We need to do these as special magic macros at expansion time! */
 	add_pre_buffer(sctx_ "#define __BASE_FILE__ \"base_file.c\"\n");
 
-	if (optimize)
+	if (sctxp optimize)
 		add_pre_buffer(sctx_ "#define __OPTIMIZE__ 1\n");
-	if (optimize_size)
+	if (sctxp optimize_size)
 		add_pre_buffer(sctx_ "#define __OPTIMIZE_SIZE__ 1\n");
 
 	/* GCC defines these for limits.h */
@@ -904,8 +914,8 @@ static struct symbol_list *sparse_tokenstream(SCTX_ struct expansion *e)
 	// Preprocess the stream
 	token = preprocess(sctx_ e);
 
-	pp_tokenlist = token;
-	if (preprocess_only) {
+	sctxp pp_tokenlist = token;
+	if (sctxp preprocess_only) {
 	        while (!eof_token(token)) {
 			int prec = 1;
 			struct token *next = token->next;
@@ -967,13 +977,13 @@ static struct symbol_list *sparse_initial(SCTX)
 
 	// Prepend any "include" file to the stream.
 	// We're in global scope, it will affect all files!
-	for (i = 0; i < cmdline_include_nr; i++)
-		add_pre_buffer(sctx_ "#argv_include \"%s\"\n", cmdline_include[i]);
+	for (i = 0; i < sctxp cmdline_include_nr; i++)
+		add_pre_buffer(sctx_ "#argv_include \"%s\"\n", sctxp cmdline_include[i]);
 	
 	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_CMDLINE;
-	e->s = pre_buffer_begin;
+	e->s = sctxp pre_buffer_begin;
 	list_e(e->s, e);
 
 	return sparse_tokenstream(sctx_ e);
@@ -1011,7 +1021,7 @@ struct symbol_list *sparse_initialize(SCTX_ int argc, char **argv, struct string
 
 		create_builtin_stream(sctx);
 		add_pre_buffer(sctx_ "#define __CHECKER__ 1\n");
-		if (!preprocess_only)
+		if (!sctxp preprocess_only)
 			declare_builtin_functions(sctx);
 
 		list = sparse_initial(sctx );

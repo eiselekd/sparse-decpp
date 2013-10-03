@@ -277,7 +277,7 @@ static void FORMAT_ATTR(2+SCTXCNT) output_comment(SCTX_ struct bb_state *state, 
 	static char buffer[512];
 	va_list args;
 
-	if (!verbose)
+	if (!sctxp verbose)
 		return;
 	va_start(args, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, args);
@@ -1365,7 +1365,7 @@ static void generate_compare(SCTX_ struct bb_state *state, struct instruction *i
 
 static void generate_one_insn(SCTX_ struct instruction *insn, struct bb_state *state)
 {
-	if (verbose)
+	if (sctxp verbose)
 		output_comment(sctx_ state, "%s", show_instruction(sctx_ insn));
 
 	switch (insn->opcode) {
@@ -1707,7 +1707,7 @@ static void generate(SCTX_ struct basic_block *bb, struct bb_state *state)
 		generate_one_insn(sctx_ insn, state);
 	} END_FOR_EACH_PTR(insn);
 
-	if (verbose) {
+	if (sctxp verbose) {
 		output_comment(sctx_ state, "--- in ---");
 		FOR_EACH_PTR(state->inputs, entry) {
 			output_comment(sctx_ state, "%s <- %s", show_pseudo(sctx_ entry->pseudo), show_storage(sctx_ entry->storage));
@@ -1824,13 +1824,13 @@ static void set_up_arch_entry(SCTX_ struct entrypoint *ep, struct instruction *e
 		} else {
 			int bits = argtype ? argtype->bit_size : 0;
 
-			if (bits < bits_in_int)
-				bits = bits_in_int;
+			if (bits < sctxp bits_in_int)
+				bits = sctxp bits_in_int;
 
 			in->type = REG_FRAME;
 			in->offset = offset;
 			
-			offset += bits_to_bytes(bits);
+			offset += bits_to_bytes(sctx_ bits);
 		}
 		i++;
 		NEXT_PTR_LIST(argtype);
@@ -1943,12 +1943,12 @@ static int compile(SCTX_ struct symbol_list *list)
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file;struct sparse_ctx sctx;
+	char *file; SPARSE_CTX_INIT
 
-	compile(&sctx, sparse_initialize(&sctx, argc, argv, &filelist));
-	dbg_dead = 1;
+	compile(sctx_ sparse_initialize(sctx_ argc, argv, &filelist));
+	sctxp dbg_dead = 1;
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		compile(&sctx, sparse(&sctx, file));
+		compile(sctx_ sparse(sctx_ file));
 	} END_FOR_EACH_PTR_NOTAG(file);
 	return 0;
 }

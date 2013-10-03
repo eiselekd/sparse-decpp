@@ -113,8 +113,10 @@ struct statement {
 	};
 };
 
+#ifndef DO_CTX
 extern struct symbol_list *function_computed_target_list;
 extern struct statement_list *function_computed_goto_list;
+#endif
 
 extern struct token *parse_expression(SCTX_ struct token *, struct expression **);
 extern struct symbol *label_symbol(SCTX_ struct token *token);

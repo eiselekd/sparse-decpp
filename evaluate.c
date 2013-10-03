@@ -53,7 +53,7 @@ static struct symbol *evaluate_symbol_expression(SCTX_ struct expression *expr)
 	addr = alloc_expression(sctx_ expr->tok, EXPR_SYMBOL);
 	addr->symbol = sym;
 	addr->symbol_name = expr->symbol_name;
-	addr->ctype = &lazy_ptr_ctype;	/* Lazy evaluation: we need to do a proper job if somebody does &sym */
+	addr->ctype = &sctxp lazy_ptr_ctype;	/* Lazy evaluation: we need to do a proper job if somebody does &sym */
 	expr->type = EXPR_PREOP;
 	expr->op = '*';
 	expr->unop = addr;
@@ -72,7 +72,7 @@ static struct symbol *evaluate_string(SCTX_ struct expression *expr)
 	unsigned int length = expr->string->length;
 
 	sym->array_size = alloc_const_expression(sctx_ expr->tok, length);
-	sym->bit_size = bytes_to_bits(length);
+	sym->bit_size = bytes_to_bits(sctx_ length);
 	sym->ctype.alignment = 1;
 	sym->string = 1;
 	sym->ctype.modifiers = MOD_STATIC;
@@ -83,13 +83,13 @@ static struct symbol *evaluate_string(SCTX_ struct expression *expr)
 	initstr->string = expr->string;
 
 	array->array_size = sym->array_size;
-	array->bit_size = bytes_to_bits(length);
+	array->bit_size = bytes_to_bits(sctx_ length);
 	array->ctype.alignment = 1;
 	array->ctype.modifiers = MOD_STATIC;
-	array->ctype.base_type = &char_ctype;
+	array->ctype.base_type = &sctxp char_ctype;
 	
 	addr->symbol = sym;
-	addr->ctype = &lazy_ptr_ctype;
+	addr->ctype = &sctxp lazy_ptr_ctype;
 
 	expr->type = EXPR_PREOP;
 	expr->op = '*';
@@ -99,7 +99,7 @@ static struct symbol *evaluate_string(SCTX_ struct expression *expr)
 }
 
 /* type has come from classify_type and is an integer type */
-static inline struct symbol *integer_promotion(struct symbol *type)
+static inline struct symbol *integer_promotion(SCTX_ struct symbol *type)
 {
 	struct symbol *orig_type = type;
 	unsigned long mod =  type->ctype.modifiers;
@@ -115,14 +115,14 @@ static inline struct symbol *integer_promotion(struct symbol *type)
 		orig_type = type;
 	}
 	mod = type->ctype.modifiers;
-	if (width < bits_in_int)
-		return &int_ctype;
+	if (width < sctxp bits_in_int)
+		return &sctxp int_ctype;
 
 	/* If char/short has as many bits as int, it still gets "promoted" */
 	if (mod & (MOD_CHAR | MOD_SHORT)) {
 		if (mod & MOD_UNSIGNED)
-			return &uint_ctype;
-		return &int_ctype;
+			return &sctxp uint_ctype;
+		return &sctxp int_ctype;
 	}
 	return orig_type;
 }
@@ -148,8 +148,8 @@ static struct symbol *bigger_int_type(SCTX_ struct symbol *left, struct symbol *
 {
 	unsigned long lmod, rmod;
 
-	left = integer_promotion(left);
-	right = integer_promotion(right);
+	left = integer_promotion(sctx_ left);
+	right = integer_promotion(sctx_ right);
 
 	if (left == right)
 		goto left;
@@ -239,7 +239,7 @@ warn_for_different_enum_types (SCTX_ struct position pos,
 			       struct symbol *typea,
 			       struct symbol *typeb)
 {
-	if (!Wenum_mismatch)
+	if (!sctxp Wenum_mismatch)
 		return;
 	if (typea->type == SYM_NODE)
 		typea = typea->ctype.base_type;
@@ -269,7 +269,7 @@ static struct expression * cast_to(SCTX_ struct expression *old, struct symbol *
 
 	warn_for_different_enum_types (sctx_ old->pos->pos, old->ctype, type);
 
-	if (old->ctype != &null_ctype && is_same_type(sctx_ old, type))
+	if (old->ctype != &sctxp null_ctype && is_same_type(sctx_ old, type))
 		return old;
 
 	/*
@@ -341,7 +341,7 @@ static inline int classify_type(SCTX_ struct symbol *type, struct symbol **base)
 	if (type->type == SYM_TYPEOF) {
 		type = evaluate_expression(sctx_ type->initializer);
 		if (!type)
-			type = &bad_ctype;
+			type = &sctxp bad_ctype;
 		else if (type->type == SYM_NODE)
 			type = type->ctype.base_type;
 	}
@@ -349,9 +349,9 @@ static inline int classify_type(SCTX_ struct symbol *type, struct symbol **base)
 		type = type->ctype.base_type;
 	*base = type;
 	if (type->type == SYM_BASETYPE) {
-		if (type->ctype.base_type == &int_type)
+		if (type->ctype.base_type == &sctxp int_type)
 			return TYPE_NUM;
-		if (type->ctype.base_type == &fp_type)
+		if (type->ctype.base_type == &sctxp fp_type)
 			return TYPE_NUM | TYPE_FLOAT;
 	}
 	return type_class[type->type];
@@ -359,11 +359,11 @@ static inline int classify_type(SCTX_ struct symbol *type, struct symbol **base)
 
 #define is_int(class) ((class & (TYPE_NUM | TYPE_FLOAT)) == TYPE_NUM)
 
-static inline int is_string_type(struct symbol *type)
+static inline int is_string_type(SCTX_ struct symbol *type)
 {
 	if (type->type == SYM_NODE)
 		type = type->ctype.base_type;
-	return type->type == SYM_ARRAY && is_byte_type(type->ctype.base_type);
+	return type->type == SYM_ARRAY && is_byte_type(sctx_ type->ctype.base_type);
 }
 
 static struct symbol *bad_expr_type(SCTX_ struct expression *expr)
@@ -384,7 +384,7 @@ static struct symbol *bad_expr_type(SCTX_ struct expression *expr)
 	}
 
 	expr->flags = 0;
-	return expr->ctype = &bad_ctype;
+	return expr->ctype = &sctxp bad_ctype;
 }
 
 static int restricted_value(SCTX_ struct expression *v, struct symbol *type)
@@ -420,7 +420,7 @@ static int restricted_binop(SCTX_ int op, struct symbol *type)
 static int restricted_unop(SCTX_ int op, struct symbol **type)
 {
 	if (op == '~') {
-		if ((*type)->bit_size < bits_in_int)
+		if ((*type)->bit_size < sctxp bits_in_int)
 			*type = befoul(sctx_ *type);
 		return 0;
 	} if (op == '+')
@@ -557,13 +557,13 @@ static struct symbol *evaluate_ptr_add(SCTX_ struct expression *expr, struct sym
 	}
 
 	/* Get the size of whatever the pointer points to */
-	multiply = is_void_type(base) ? 1 : bits_to_bytes(base->bit_size);
+	multiply = is_void_type(sctx_ base) ? 1 : bits_to_bytes(sctx_ base->bit_size);
 
-	if (ctype == &null_ctype)
-		ctype = &ptr_ctype;
+	if (ctype == &sctxp null_ctype)
+		ctype = &sctxp ptr_ctype;
 	expr->ctype = ctype;
 
-	if (multiply == 1 && itype->bit_size >= bits_in_pointer)
+	if (multiply == 1 && itype->bit_size >= sctxp bits_in_pointer)
 		return ctype;
 
 	if (index->type == EXPR_VALUE) {
@@ -575,26 +575,26 @@ static struct symbol *evaluate_ptr_add(SCTX_ struct expression *expr, struct sym
 		else
 			v &= mask - 1;
 		v *= multiply;
-		mask = 1ULL << (bits_in_pointer - 1);
+		mask = 1ULL << (sctxp bits_in_pointer - 1);
 		v &= mask | (mask - 1);
 		val->value = v;
-		val->ctype = ssize_t_ctype;
+		val->ctype = sctxp ssize_t_ctype;
 		expr->right = val;
 		return ctype;
 	}
 
-	if (itype->bit_size < bits_in_pointer)
-		index = cast_to(sctx_ index, ssize_t_ctype);
+	if (itype->bit_size < sctxp bits_in_pointer)
+		index = cast_to(sctx_ index, sctxp ssize_t_ctype);
 
 	if (multiply > 1) {
 		struct expression *val = alloc_expression(sctx_ expr->tok, EXPR_VALUE);
 		struct expression *mul = alloc_expression(sctx_ expr->tok, EXPR_BINOP);
 
-		val->ctype = ssize_t_ctype;
+		val->ctype = sctxp ssize_t_ctype;
 		val->value = multiply;
 
 		mul->op = '*';
-		mul->ctype = ssize_t_ctype;
+		mul->ctype = sctxp ssize_t_ctype;
 		mul->left = index;
 		mul->right = val;
 		index = mul;
@@ -768,7 +768,7 @@ const char *type_difference(SCTX_ struct ctype *c1, struct ctype *c2,
 
 static void bad_null(SCTX_ struct expression *expr)
 {
-	if (Wnon_pointer_null)
+	if (sctxp Wnon_pointer_null)
 		warning(sctx_ expr->pos->pos, "Using plain integer as NULL pointer");
 }
 
@@ -804,23 +804,23 @@ static struct symbol *evaluate_ptr_sub(SCTX_ struct expression *expr)
 		return NULL;
 	}
 
-	expr->ctype = ssize_t_ctype;
-	if (lbase->bit_size > bits_in_char) {
+	expr->ctype = sctxp ssize_t_ctype;
+	if (lbase->bit_size > sctxp bits_in_char) {
 		struct expression *sub = alloc_expression(sctx_ expr->tok, EXPR_BINOP);
 		struct expression *div = expr;
 		struct expression *val = alloc_expression(sctx_ expr->tok, EXPR_VALUE);
-		unsigned long value = bits_to_bytes(lbase->bit_size);
+		unsigned long value = bits_to_bytes(sctx_ lbase->bit_size);
 
-		val->ctype = size_t_ctype;
+		val->ctype = sctxp size_t_ctype;
 		val->value = value;
 
 		if (value & (value-1)) {
-			if (Wptr_subtraction_blows)
+			if (sctxp Wptr_subtraction_blows)
 				warning(sctx_ expr->pos->pos, "potentially expensive pointer subtraction");
 		}
 
 		sub->op = '-';
-		sub->ctype = ssize_t_ctype;
+		sub->ctype = sctxp ssize_t_ctype;
 		sub->left = l;
 		sub->right = r;
 
@@ -829,7 +829,7 @@ static struct symbol *evaluate_ptr_sub(SCTX_ struct expression *expr)
 		div->right = val;
 	}
 		
-	return ssize_t_ctype;
+	return sctxp ssize_t_ctype;
 }
 
 #define is_safe_type(type) ((type)->ctype.modifiers & MOD_SAFE)
@@ -860,12 +860,12 @@ static struct symbol *evaluate_logical(SCTX_ struct expression *expr)
 	if (!evaluate_conditional(sctx_ expr->right, 0))
 		return NULL;
 
-	expr->ctype = &bool_ctype;
+	expr->ctype = &sctxp bool_ctype;
 	if (expr->flags) {
 		if (!(expr->left->flags & expr->right->flags & Int_const_expr))
 			expr->flags = 0;
 	}
-	return &bool_ctype;
+	return &sctxp bool_ctype;
 }
 
 static struct symbol *evaluate_binop(SCTX_ struct expression *expr)
@@ -895,8 +895,8 @@ static struct symbol *evaluate_binop(SCTX_ struct expression *expr)
 			// shifts do integer promotions, but that's it.
 			unrestrict(sctx_ expr->left, lclass, &ltype);
 			unrestrict(sctx_ expr->right, rclass, &rtype);
-			ctype = ltype = integer_promotion(ltype);
-			rtype = integer_promotion(rtype);
+			ctype = ltype = integer_promotion(sctx_ ltype);
+			rtype = integer_promotion(sctx_ rtype);
 		} else {
 			// The rest do usual conversions
 			const unsigned left_not  = expr->left->type == EXPR_PREOP
@@ -945,8 +945,8 @@ static struct symbol *evaluate_binop(SCTX_ struct expression *expr)
 static struct symbol *evaluate_comma(SCTX_ struct expression *expr)
 {
 	expr->ctype = degenerate(sctx_ expr->right);
-	if (expr->ctype == &null_ctype)
-		expr->ctype = &ptr_ctype;
+	if (expr->ctype == &sctxp null_ctype)
+		expr->ctype = &sctxp ptr_ctype;
 	expr->flags &= expr->left->flags & expr->right->flags;
 	return expr->ctype;
 }
@@ -966,7 +966,7 @@ static int modify_for_unsigned(SCTX_ int op)
 
 static inline int is_null_pointer_constant(SCTX_ struct expression *e)
 {
-	if (e->ctype == &null_ctype)
+	if (e->ctype == &sctxp null_ctype)
 		return 1;
 	if (!(e->flags & Int_const_expr))
 		return 0;
@@ -1043,11 +1043,11 @@ static struct symbol *evaluate_compare(SCTX_ struct expression *expr)
 	/* they also have special treatment for pointers to void */
 	if (expr->op == SPECIAL_EQUAL || expr->op == SPECIAL_NOTEQUAL) {
 		if (ltype->ctype.as == rtype->ctype.as) {
-			if (lbase == &void_ctype) {
+			if (lbase == &sctxp void_ctype) {
 				right = cast_to(sctx_ right, ltype);
 				goto OK;
 			}
-			if (rbase == &void_ctype) {
+			if (rbase == &sctxp void_ctype) {
 				left = cast_to(sctx_ left, rtype);
 				goto OK;
 			}
@@ -1064,8 +1064,8 @@ static struct symbol *evaluate_compare(SCTX_ struct expression *expr)
 	return NULL;
 
 OK:
-	expr->ctype = &bool_ctype;
-	return &bool_ctype;
+	expr->ctype = &sctxp bool_ctype;
+	return &sctxp bool_ctype;
 }
 
 /*
@@ -1122,9 +1122,9 @@ static struct symbol *evaluate_conditional_expression(SCTX_ struct expression *e
 		int is_null2 = is_null_pointer_constant(sctx_ expr->cond_false);
 
 		if (is_null1 && is_null2) {
-			*true_sim = cast_to(sctx_ *true_sim, &ptr_ctype);
-			expr->cond_false = cast_to(sctx_ expr->cond_false, &ptr_ctype);
-			ctype = &ptr_ctype;
+			*true_sim = cast_to(sctx_ *true_sim, &sctxp ptr_ctype);
+			expr->cond_false = cast_to(sctx_ expr->cond_false, &sctxp ptr_ctype);
+			ctype = &sctxp ptr_ctype;
 			goto out;
 		}
 		if (is_null1 && (rclass & TYPE_PTR)) {
@@ -1156,13 +1156,13 @@ static struct symbol *evaluate_conditional_expression(SCTX_ struct expression *e
 		rbase = examine_pointer_target(sctx_ rtype);
 		qual = target_qualifiers(sctx_ ltype) | target_qualifiers(sctx_ rtype);
 
-		if (lbase == &void_ctype) {
+		if (lbase == &sctxp void_ctype) {
 			/* XXX: pointers to function should warn here */
 			ctype = ltype;
 			goto Qual;
 
 		}
-		if (rbase == &void_ctype) {
+		if (rbase == &sctxp void_ctype) {
 			/* XXX: pointers to function should warn here */
 			ctype = rtype;
 			goto Qual;
@@ -1271,9 +1271,9 @@ static int whitelist_pointers(SCTX_ struct symbol *t1, struct symbol *t2)
 {
 	if (t1 == t2)
 		return 0;	/* yes, 0 - we don't want a cast_to here */
-	if (t1 == &void_ctype)
+	if (t1 == &sctxp void_ctype)
 		return 1;
-	if (t2 == &void_ctype)
+	if (t2 == &sctxp void_ctype)
 		return 1;
 	if (classify_type(sctx_ t1, &t1) != TYPE_NUM)
 		return 0;
@@ -1285,7 +1285,7 @@ static int whitelist_pointers(SCTX_ struct symbol *t1, struct symbol *t2)
 		return 1;
 	if ((t1->ctype.modifiers ^ t2->ctype.modifiers) & MOD_SIZE)
 		return 0;
-	return !Wtypesign;
+	return !sctxp Wtypesign;
 }
 
 static int compatible_assignment_types(SCTX_ struct expression *expr, struct symbol *target,
@@ -1358,7 +1358,7 @@ static int compatible_assignment_types(SCTX_ struct expression *expr, struct sym
 
 	if (tclass & TYPE_NUM) {
 		/* XXX: need to turn into comparison with NULL */
-		if (t == &bool_ctype && (sclass & TYPE_PTR))
+		if (t == &sctxp bool_ctype && (sclass & TYPE_PTR))
 			goto Cast;
 		typediff = "different base types";
 		goto Err;
@@ -1500,11 +1500,11 @@ static struct symbol *create_pointer(SCTX_ struct expression *expr, struct symbo
 	struct symbol *ptr = alloc_symbol(sctx_ expr->tok, SYM_PTR);
 
 	node->ctype.base_type = ptr;
-	ptr->bit_size = bits_in_pointer;
-	ptr->ctype.alignment = pointer_alignment;
+	ptr->bit_size = sctxp bits_in_pointer;
+	ptr->ctype.alignment = sctxp pointer_alignment;
 
-	node->bit_size = bits_in_pointer;
-	node->ctype.alignment = pointer_alignment;
+	node->bit_size = sctxp bits_in_pointer;
+	node->ctype.alignment = sctxp pointer_alignment;
 
 	access_symbol(sctx_ sym);
 	if (sym->ctype.modifiers & MOD_REGISTER) {
@@ -1558,7 +1558,7 @@ static struct symbol *degenerate(SCTX_ struct expression *expr)
 
 			e0 = alloc_expression(sctx_ expr->tok, EXPR_SYMBOL);
 			e0->symbol = a;
-			e0->ctype = &lazy_ptr_ctype;
+			e0->ctype = &sctxp lazy_ptr_ctype;
 
 			e1 = alloc_expression(sctx_ expr->tok, EXPR_PREOP);
 			e1->unop = e0;
@@ -1576,8 +1576,8 @@ static struct symbol *degenerate(SCTX_ struct expression *expr)
 				e3->op = '+';
 				e3->left = e0;
 				e3->right = alloc_const_expression(sctx_ expr->tok,
-							bits_to_bytes(expr->r_bitpos));
-				e3->ctype = &lazy_ptr_ctype;
+							bits_to_bytes(sctx_ expr->r_bitpos));
+				e3->ctype = &sctxp lazy_ptr_ctype;
 			} else {
 				e3 = e0;
 			}
@@ -1585,7 +1585,7 @@ static struct symbol *degenerate(SCTX_ struct expression *expr)
 			e4 = alloc_expression(sctx_ expr->tok, EXPR_COMMA);
 			e4->left = e2;
 			e4->right = e3;
-			e4->ctype = &lazy_ptr_ctype;
+			e4->ctype = &sctxp lazy_ptr_ctype;
 
 			expr->unop = e4;
 			expr->type = EXPR_PREOP;
@@ -1594,7 +1594,7 @@ static struct symbol *degenerate(SCTX_ struct expression *expr)
 	case SYM_FN:
 		if (expr->op != '*' || expr->type != EXPR_PREOP) {
 			expression_error(sctx_ expr, "strange non-value function or array");
-			return &bad_ctype;
+			return &sctxp bad_ctype;
 		}
 		*expr = *expr->unop;
 		ctype = create_pointer(sctx_ expr, ctype, 1);
@@ -1628,7 +1628,7 @@ static struct symbol *evaluate_addressof(SCTX_ struct expression *expr)
 	 * of the sub-expression, so we may have to generate
 	 * the type here if so..
 	 */
-	if (expr->ctype == &lazy_ptr_ctype) {
+	if (expr->ctype == &sctxp lazy_ptr_ctype) {
 		ctype = create_pointer(sctx_ expr, ctype, 0);
 		expr->ctype = ctype;
 	}
@@ -1716,7 +1716,7 @@ static struct symbol *evaluate_postop(SCTX_ struct expression *expr)
 	} else if (class == TYPE_PTR) {
 		struct symbol *target = examine_pointer_target(sctx_ ctype);
 		if (!is_function(target))
-			multiply = bits_to_bytes(target->bit_size);
+			multiply = bits_to_bytes(sctx_ target->bit_size);
 	}
 
 	if (multiply) {
@@ -1743,7 +1743,7 @@ static struct symbol *evaluate_sign(SCTX_ struct expression *expr)
 		goto Restr;
 Normal:
 	if (!(class & TYPE_FLOAT)) {
-		ctype = integer_promotion(ctype);
+		ctype = integer_promotion(sctx_ ctype);
 		expr->unop = cast_to(sctx_ expr->unop, ctype);
 	} else if (expr->op != '~') {
 		/* no conversions needed */
@@ -1793,7 +1793,7 @@ static struct symbol *evaluate_preop(SCTX_ struct expression *expr)
 			expr->flags = 0;
 		if (is_safe_type(ctype))
 			warning(sctx_ expr->pos->pos, "testing a 'safe expression'");
-		if (is_float_type(ctype)) {
+		if (is_float_type(sctx_ ctype)) {
 			struct expression *arg = expr->unop;
 			expr->type = EXPR_BINOP;
 			expr->op = SPECIAL_EQUAL;
@@ -1805,14 +1805,14 @@ static struct symbol *evaluate_preop(SCTX_ struct expression *expr)
 			warning(sctx_ expr->pos->pos, "%s degrades to integer",
 				show_typename(sctx_ ctype->ctype.base_type));
 		}
-		ctype = &bool_ctype;
+		ctype = &sctxp bool_ctype;
 		break;
 
 	default:
 		break;
 	}
 	expr->ctype = ctype;
-	return &bool_ctype;
+	return &sctxp bool_ctype;
 }
 
 static struct symbol *find_identifier(SCTX_ struct ident *ident, struct symbol_list *_list, int *offset)
@@ -1866,14 +1866,14 @@ static struct expression *evaluate_offset(SCTX_ struct expression *expr, unsigne
 	add->op = '+';
 	add->left = expr;
 	add->right = alloc_expression(sctx_ expr->tok, EXPR_VALUE);
-	add->right->ctype = &int_ctype;
+	add->right->ctype = &sctxp int_ctype;
 	add->right->value = offset;
 
 	/*
 	 * The ctype of the pointer will be lazily evaluated if
 	 * we ever take the address of this member dereference..
 	 */
-	add->ctype = &lazy_ptr_ctype;
+	add->ctype = &sctxp lazy_ptr_ctype;
 	return add;
 }
 
@@ -1942,7 +1942,7 @@ static struct symbol *evaluate_member_dereference(SCTX_ struct expression *expr)
 			expr->base = deref->base;
 			expr->r_bitpos = deref->r_bitpos;
 		}
-		expr->r_bitpos += bytes_to_bits(offset);
+		expr->r_bitpos += bytes_to_bits(sctx_ offset);
 		expr->type = EXPR_SLICE;
 		expr->r_nrbits = member->bit_size;
 		expr->r_bitpos += member->bit_offset;
@@ -2006,10 +2006,10 @@ static struct symbol *evaluate_type_information(SCTX_ struct expression *expr)
 		 * promoted - check that here
 		 */
 		if (is_restricted_type(sym)) {
-			if (sym->bit_size < bits_in_int && is_promoted(sctx_ expr))
-				sym = &int_ctype;
+			if (sym->bit_size < sctxp bits_in_int && is_promoted(sctx_ expr))
+				sym = &sctxp int_ctype;
 		} else if (is_fouled_type(sym)) {
-			sym = &int_ctype;
+			sym = &sctxp int_ctype;
 		}
 	}
 	examine_symbol_type(sctx_ sym);
@@ -2031,29 +2031,29 @@ static struct symbol *evaluate_sizeof(SCTX_ struct expression *expr)
 
 	size = type->bit_size;
 
-	if (size < 0 && is_void_type(type)) {
+	if (size < 0 && is_void_type(sctx_ type)) {
 		warning(sctx_ expr->pos->pos, "expression using sizeof(void)");
-		size = bits_in_char;
+		size = sctxp bits_in_char;
 	}
 
-	if (size == 1 && is_bool_type(type)) {
+	if (size == 1 && is_bool_type(sctx_ type)) {
 		warning(sctx_ expr->pos->pos, "expression using sizeof bool");
-		size = bits_in_char;
+		size = sctxp bits_in_char;
 	}
 
 	if (is_function(type->ctype.base_type)) {
 		warning(sctx_ expr->pos->pos, "expression using sizeof on a function");
-		size = bits_in_char;
+		size = sctxp bits_in_char;
 	}
 
-	if ((size < 0) || (size & (bits_in_char - 1)))
+	if ((size < 0) || (size & (sctxp bits_in_char - 1)))
 		expression_error(sctx_ expr, "cannot size expression");
 
 	expr->type = EXPR_VALUE;
-	expr->value = bits_to_bytes(size);
+	expr->value = bits_to_bytes(sctx_ size);
 	expr->taint = 0;
-	expr->ctype = size_t_ctype;
-	return size_t_ctype;
+	expr->ctype = sctxp size_t_ctype;
+	return sctxp size_t_ctype;
 }
 
 static struct symbol *evaluate_ptrsizeof(SCTX_ struct expression *expr)
@@ -2081,13 +2081,13 @@ static struct symbol *evaluate_ptrsizeof(SCTX_ struct expression *expr)
 		return NULL;
 	}
 	size = type->bit_size;
-	if (size & (bits_in_char-1))
+	if (size & (sctxp bits_in_char-1))
 		size = 0;
 	expr->type = EXPR_VALUE;
-	expr->value = bits_to_bytes(size);
+	expr->value = bits_to_bytes(sctx_ size);
 	expr->taint = 0;
-	expr->ctype = size_t_ctype;
-	return size_t_ctype;
+	expr->ctype = sctxp size_t_ctype;
+	return sctxp size_t_ctype;
 }
 
 static struct symbol *evaluate_alignof(SCTX_ struct expression *expr)
@@ -2101,8 +2101,8 @@ static struct symbol *evaluate_alignof(SCTX_ struct expression *expr)
 	expr->type = EXPR_VALUE;
 	expr->value = type->ctype.alignment;
 	expr->taint = 0;
-	expr->ctype = size_t_ctype;
-	return size_t_ctype;
+	expr->ctype = sctxp size_t_ctype;
+	return sctxp size_t_ctype;
 }
 
 static int evaluate_arguments(SCTX_ struct symbol *f, struct symbol *fn, struct expression_list *head)
@@ -2126,14 +2126,14 @@ static int evaluate_arguments(SCTX_ struct symbol *f, struct symbol *fn, struct 
 			struct symbol *type;
 			int class = classify_type(sctx_ ctype, &type);
 			if (is_int(class)) {
-				*p = cast_to(sctx_ expr, integer_promotion(type));
+				*p = cast_to(sctx_ expr, integer_promotion(sctx_ type));
 			} else if (class & TYPE_FLOAT) {
 				unsigned long mod = type->ctype.modifiers;
 				if (!(mod & (MOD_LONG_ALL)))
-					*p = cast_to(sctx_ expr, &double_ctype);
+					*p = cast_to(sctx_ expr, &sctxp double_ctype);
 			} else if (class & TYPE_PTR) {
-				if (expr->ctype == &null_ctype)
-					*p = cast_to(sctx_ expr, &ptr_ctype);
+				if (expr->ctype == &sctxp null_ctype)
+					*p = cast_to(sctx_ expr, &sctxp ptr_ctype);
 				else
 					degenerate(sctx_ expr);
 			}
@@ -2168,7 +2168,7 @@ static void convert_index(SCTX_ struct expression *e)
 	unsigned from = e->idx_from;
 	unsigned to = e->idx_to + 1;
 	e->type = EXPR_POS;
-	e->init_offset = from * bits_to_bytes(e->ctype->bit_size);
+	e->init_offset = from * bits_to_bytes(sctx_ e->ctype->bit_size);
 	e->init_nr = to - from;
 	e->init_expr = child;
 }
@@ -2395,7 +2395,7 @@ static void handle_list_initializer(SCTX_ struct expression *expr,
 				continue;
 			}
 			struct_sym = ctype->type == SYM_NODE ? ctype->ctype.base_type : ctype;
-			if (Wdesignated_init && struct_sym->designated_init)
+			if (sctxp Wdesignated_init && struct_sym->designated_init)
 				warning(sctx_ e->pos->pos, "%s%.*s%spositional init of field in %s %s, declared with attribute designated_init",
 					ctype->ident ? "in initializer for " : "",
 					ctype->ident ? ctype->ident->len : 0,
@@ -2460,7 +2460,7 @@ static int is_string_literal(SCTX_ struct expression **v)
 		e = e->unop;
 	if (!e || e->type != EXPR_STRING)
 		return 0;
-	if (e != *v && Wparen_string)
+	if (e != *v && sctxp Wparen_string)
 		warning(sctx_ e->pos->pos,
 			"array initialized from parenthesized string constant");
 	*v = e;
@@ -2523,7 +2523,7 @@ static struct expression *handle_scalar(SCTX_ struct expression *e, int nested)
 static int handle_simple_initializer(SCTX_ struct expression **ep, int nested,
 				     int class, struct symbol *ctype)
 {
-	int is_string = is_string_type(ctype);
+	int is_string = is_string_type(sctx_ ctype);
 	struct expression *e = *ep, *p;
 	struct symbol *type;
 
@@ -2593,10 +2593,10 @@ String:
 	*p = *e;
 	type = evaluate_expression(sctx_ p);
 	if (ctype->bit_size != -1) {
-		if (ctype->bit_size + bits_in_char < type->bit_size)
+		if (ctype->bit_size + sctxp bits_in_char < type->bit_size)
 			warning(sctx_ e->pos->pos,
 				"too long initializer-string for array of char");
-		else if (Winit_cstring && ctype->bit_size + bits_in_char == type->bit_size) {
+		else if (sctxp Winit_cstring && ctype->bit_size + sctxp bits_in_char == type->bit_size) {
 			warning(sctx_ e->pos->pos,
 				"too long initializer-string for array of char(no space for nul char)");
 		}
@@ -2641,7 +2641,7 @@ static struct symbol *evaluate_cast(SCTX_ struct expression *expr)
 		sym->initializer = target;
 		evaluate_symbol(sctx_ sym);
 
-		addr->ctype = &lazy_ptr_ctype;	/* Lazy eval */
+		addr->ctype = &sctxp lazy_ptr_ctype;	/* Lazy eval */
 		addr->symbol = sym;
 
 		expr->type = EXPR_PREOP;
@@ -2674,7 +2674,7 @@ static struct symbol *evaluate_cast(SCTX_ struct expression *expr)
 	 * "void" - that's an implicit "force". Note that
 	 * the same is _not_ true of "void *".
 	 */
-	if (t1 == &void_ctype)
+	if (t1 == &sctxp void_ctype)
 		goto out;
 
 	if (class1 & (TYPE_COMPOUND | TYPE_FN))
@@ -2706,14 +2706,14 @@ static struct symbol *evaluate_cast(SCTX_ struct expression *expr)
 				show_typename(sctx_ t2));
 	}
 
-	if (t1 == &ulong_ctype)
+	if (t1 == &sctxp ulong_ctype)
 		as1 = -1;
 	else if (class1 == TYPE_PTR) {
 		examine_pointer_target(sctx_ t1);
 		as1 = t1->ctype.as;
 	}
 
-	if (t2 == &ulong_ctype)
+	if (t2 == &sctxp ulong_ctype)
 		as2 = -1;
 	else if (class2 == TYPE_PTR) {
 		examine_pointer_target(sctx_ t2);
@@ -2725,17 +2725,17 @@ static struct symbol *evaluate_cast(SCTX_ struct expression *expr)
 	if (as1 > 0 && as2 > 0 && as1 != as2)
 		warning(sctx_ expr->pos->pos, "cast between address spaces (<asn:%d>-><asn:%d>)", as2, as1);
 	if (as1 > 0 && !as2 &&
-	    !is_null_pointer_constant(sctx_ target) && Wcast_to_as)
+	    !is_null_pointer_constant(sctx_ target) && sctxp Wcast_to_as)
 		warning(sctx_ expr->pos->pos,
 			"cast adds address space to expression (<asn:%d>)", as1);
 
 	if (!(t1->ctype.modifiers & MOD_PTRINHERIT) && class1 == TYPE_PTR &&
 	    !as1 && (target->flags & Int_const_expr)) {
-		if (t1->ctype.base_type == &void_ctype) {
+		if (t1->ctype.base_type == &sctxp void_ctype) {
 			if (is_zero_constant(sctx_ target)) {
 				/* NULL */
 				expr->type = EXPR_VALUE;
-				expr->ctype = &null_ctype;
+				expr->ctype = &sctxp null_ctype;
 				expr->value = 0;
 				return ctype;
 			}
@@ -2863,7 +2863,7 @@ static struct symbol *evaluate_offsetof(SCTX_ struct expression *expr)
 		expr->flags = Int_const_expr;
 		expr->value = offset;
 		expr->taint = 0;
-		expr->ctype = size_t_ctype;
+		expr->ctype = sctxp size_t_ctype;
 	} else {
 		if (!ctype) {
 			expression_error(sctx_ expr, "expected structure or union");
@@ -2881,7 +2881,7 @@ static struct symbol *evaluate_offsetof(SCTX_ struct expression *expr)
 			expr->flags = Int_const_expr;
 			expr->value = 0;
 			expr->taint = 0;
-			expr->ctype = size_t_ctype;
+			expr->ctype = sctxp size_t_ctype;
 		} else {
 			struct expression *idx = expr->index, *m;
 			struct symbol *i_type = evaluate_expression(sctx_ idx);
@@ -2891,16 +2891,16 @@ static struct symbol *evaluate_offsetof(SCTX_ struct expression *expr)
 				return NULL;
 			}
 			unrestrict(sctx_ idx, i_class, &i_type);
-			idx = cast_to(sctx_ idx, size_t_ctype);
+			idx = cast_to(sctx_ idx, sctxp size_t_ctype);
 			m = alloc_const_expression(sctx_ expr->tok,
-						   bits_to_bytes(ctype->bit_size));
-			m->ctype = size_t_ctype;
+						   bits_to_bytes(sctx_ ctype->bit_size));
+			m->ctype = sctxp size_t_ctype;
 			m->flags = Int_const_expr;
 			expr->type = EXPR_BINOP;
 			expr->left = idx;
 			expr->right = m;
 			expr->op = '*';
-			expr->ctype = size_t_ctype;
+			expr->ctype = sctxp size_t_ctype;
 			expr->flags = m->flags & idx->flags & Int_const_expr;
 		}
 	}
@@ -2914,11 +2914,11 @@ static struct symbol *evaluate_offsetof(SCTX_ struct expression *expr)
 		expr->type = EXPR_BINOP;
 		expr->flags = e->flags & copy->flags & Int_const_expr;
 		expr->op = '+';
-		expr->ctype = size_t_ctype;
+		expr->ctype = sctxp size_t_ctype;
 		expr->left = copy;
 		expr->right = e;
 	}
-	return size_t_ctype;
+	return sctxp size_t_ctype;
 }
 
 struct symbol *evaluate_expression(SCTX_ struct expression *expr)
@@ -2992,15 +2992,15 @@ struct symbol *evaluate_expression(SCTX_ struct expression *expr)
 		return expr->ctype;
 
 	case EXPR_LABEL:
-		expr->ctype = &ptr_ctype;
-		return &ptr_ctype;
+		expr->ctype = &sctxp ptr_ctype;
+		return &sctxp ptr_ctype;
 
 	case EXPR_TYPE:
 		/* Evaluate the type of the symbol .. */
 		evaluate_symbol(sctx_ expr->symbol);
 		/* .. but the type of the _expression_ is a "type" */
-		expr->ctype = &type_ctype;
-		return &type_ctype;
+		expr->ctype = &sctxp type_ctype;
+		return &sctxp type_ctype;
 
 	case EXPR_OFFSETOF:
 		return evaluate_offsetof(sctx_ expr);
@@ -3042,7 +3042,7 @@ static void check_duplicates(SCTX_ struct symbol *sym)
 			return;
 		if (!(mod & MOD_TOPLEVEL))
 			return;
-		if (!Wdecl)
+		if (!sctxp Wdecl)
 			return;
 		if (sym->ident == &main_ident)
 			return;
@@ -3107,10 +3107,10 @@ static struct symbol *evaluate_return_expression(SCTX_ struct statement *stmt)
 
 	evaluate_expression(sctx_ expr);
 	fntype = current_fn->ctype.base_type;
-	if (!fntype || fntype == &void_ctype) {
-		if (expr && expr->ctype != &void_ctype)
+	if (!fntype || fntype == &sctxp void_ctype) {
+		if (expr && expr->ctype != &sctxp void_ctype)
 			expression_error(sctx_ expr, "return expression in %s function", fntype?"void":"typeless");
-		if (expr && Wreturn_void)
+		if (expr && sctxp Wreturn_void)
 			warning(sctx_ stmt->pos->pos, "returning void-valued expression");
 		return NULL;
 	}
@@ -3354,8 +3354,8 @@ struct symbol *evaluate_statement(SCTX_ struct statement *stmt)
 	case STMT_EXPRESSION:
 		if (!evaluate_expression(sctx_ stmt->expression))
 			return NULL;
-		if (stmt->expression->ctype == &null_ctype)
-			stmt->expression = cast_to(sctx_ stmt->expression, &ptr_ctype);
+		if (stmt->expression->ctype == &sctxp null_ctype)
+			stmt->expression = cast_to(sctx_ stmt->expression, &sctxp ptr_ctype);
 		return degenerate(sctx_ stmt->expression);
 
 	case STMT_COMPOUND: {
@@ -3374,7 +3374,7 @@ struct symbol *evaluate_statement(SCTX_ struct statement *stmt)
 			type = evaluate_statement(sctx_ s);
 		} END_FOR_EACH_PTR(s);
 		if (!type)
-			type = &void_ctype;
+			type = &sctxp void_ctype;
 		return type;
 	}
 	case STMT_IF:

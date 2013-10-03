@@ -40,8 +40,8 @@ static int expand_symbol_expression(SCTX_ struct expression *expr)
 {
 	struct symbol *sym = expr->symbol;
 
-	if (sym == &zero_int) {
-		if (Wundef)
+	if (sym == &sctxp zero_int) {
+		if (sctxp Wundef)
 			warning(sctx_ expr->pos->pos, "undefined preprocessor identifier '%s'", show_ident(sctx_ expr->symbol_name));
 		expr->type = EXPR_VALUE;
 		expr->value = 0;
@@ -76,8 +76,8 @@ void cast_value(SCTX_ struct expression *expr, struct symbol *newtype,
 	long long value, mask, signmask;
 	long long oldmask, oldsignmask, dropped;
 
-	if (newtype->ctype.base_type == &fp_type ||
-	    oldtype->ctype.base_type == &fp_type)
+	if (newtype->ctype.base_type == &sctxp fp_type ||
+	    oldtype->ctype.base_type == &sctxp fp_type)
 		goto Float;
 
 	// For pointers and integers, we can just move the value around
@@ -93,7 +93,7 @@ void cast_value(SCTX_ struct expression *expr, struct symbol *newtype,
 
 Int:
 	// _Bool requires a zero test rather than truncation.
-	if (is_bool_type(newtype)) {
+	if (is_bool_type(sctx_ newtype)) {
 		expr->value = !!value;
 		if (!conservative && value != 0 && value != 1)
 			warning(sctx_ old->pos->pos, "odd constant _Bool cast (%llx becomes 1)", value);
@@ -106,7 +106,7 @@ Int:
 	expr->value = value & mask;
 
 	// Stop here unless checking for truncation
-	if (!Wcast_truncate || conservative)
+	if (!sctxp Wcast_truncate || conservative)
 		return;
 	
 	// Check if we dropped any bits..
@@ -124,14 +124,14 @@ Int:
 	return;
 
 Float:
-	if (!is_float_type(newtype)) {
+	if (!is_float_type(sctx_ newtype)) {
 		value = (long long)old->fvalue;
 		expr->type = EXPR_VALUE;
 		expr->taint = 0;
 		goto Int;
 	}
 
-	if (!is_float_type(oldtype))
+	if (!is_float_type(sctx_ oldtype))
 		expr->fvalue = (long double)get_longlong(sctx_ old);
 	else
 		expr->fvalue = old->fvalue;
@@ -892,7 +892,7 @@ static unsigned long bit_offset(SCTX_ const struct expression *expr)
 {
 	unsigned long offset = 0;
 	while (expr->type == EXPR_POS) {
-		offset += bytes_to_bits(expr->init_offset);
+		offset += bytes_to_bits(sctx_ expr->init_offset);
 		expr = expr->init_expr;
 	}
 	if (expr && expr->ctype)
@@ -936,7 +936,7 @@ static int expand_expression(SCTX_ struct expression *expr)
 {
 	if (!expr)
 		return 0;
-	if (!expr->ctype || expr->ctype == &bad_ctype)
+	if (!expr->ctype || expr->ctype == &sctxp bad_ctype)
 		return UNSAFE;
 
 	switch (expr->type) {
@@ -1061,7 +1061,7 @@ static int expand_if_statement(SCTX_ struct statement *stmt)
 {
 	struct expression *expr = stmt->if_conditional;
 
-	if (!expr || !expr->ctype || expr->ctype == &bad_ctype)
+	if (!expr || !expr->ctype || expr->ctype == &sctxp bad_ctype)
 		return UNSAFE;
 
 	expand_expression(sctx_ expr);

@@ -3,6 +3,7 @@
 #include "symbol.h"
 #include "target.h"
 
+#ifndef DO_CTX
 struct symbol *size_t_ctype = &uint_ctype;
 struct symbol *ssize_t_ctype = &int_ctype;
 
@@ -44,3 +45,5 @@ int pointer_alignment = 4;
  */
 int bits_in_enum = 32;
 int enum_alignment = 4;
+
+#endif

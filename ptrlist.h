@@ -1,7 +1,7 @@
 #ifndef PTR_LIST_H
 #define PTR_LIST_H
 
-#include "ctx.h"
+#include "ctx_def.h"
 #include <stdlib.h>
 
 /*

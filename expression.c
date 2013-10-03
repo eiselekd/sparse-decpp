@@ -82,7 +82,7 @@ static struct symbol *handle_func(SCTX_ struct token *token)
 
 	/* OK, it's one of ours */
 	array = alloc_symbol(sctx_ token, SYM_ARRAY);
-	array->ctype.base_type = &char_ctype;
+	array->ctype.base_type = &sctxp char_ctype;
 	array->ctype.alignment = 1;
 	array->endpos = token;
 	decl = alloc_symbol(sctx_ token, SYM_NODE);
@@ -106,7 +106,7 @@ static struct symbol *handle_func(SCTX_ struct token *token)
 	decl->initializer->ctype = decl;
 	decl->array_size = alloc_const_expression(sctx_  token, len + 1);
 	array->array_size = decl->array_size;
-	decl->bit_size = array->bit_size = bytes_to_bits(len + 1);
+	decl->bit_size = array->bit_size = bytes_to_bits(sctx_ len + 1);
 
 	return decl;
 }
@@ -271,7 +271,7 @@ static void get_number_value(SCTX_ struct expression *expr, struct token *token)
 	if (str[0] != '0' && !want_unsigned)
 		try_unsigned = 0;
 	if (!size) {
-		bits = bits_in_int - 1;
+		bits = sctxp bits_in_int - 1;
 		if (!(value & (~1ULL << bits))) {
 			if (!(value & (1ULL << bits))) {
 				goto got_it;
@@ -284,7 +284,7 @@ static void get_number_value(SCTX_ struct expression *expr, struct token *token)
 		do_warn = 1;
 	}
 	if (size < 2) {
-		bits = bits_in_long - 1;
+		bits = sctxp bits_in_long - 1;
 		if (!(value & (~1ULL << bits))) {
 			if (!(value & (1ULL << bits))) {
 				goto got_it;
@@ -297,7 +297,7 @@ static void get_number_value(SCTX_ struct expression *expr, struct token *token)
 		size = 2;
 		do_warn |= 1;
 	}
-	bits = bits_in_longlong - 1;
+	bits = sctxp bits_in_longlong - 1;
 	if (value & (~1ULL << bits))
 		goto Eoverflow;
 	if (!(value & (1ULL << bits)))
@@ -337,11 +337,11 @@ Float:
 		goto Enoint;
 
 	if (*end == 'f' || *end == 'F')
-		expr->ctype = &float_ctype;
+		expr->ctype = &sctxp float_ctype;
 	else if (*end == 'l' || *end == 'L')
-		expr->ctype = &ldouble_ctype;
+		expr->ctype = &sctxp ldouble_ctype;
 	else if (!*end)
-		expr->ctype = &double_ctype;
+		expr->ctype = &sctxp double_ctype;
 	else
 		goto Enoint;
 
@@ -361,7 +361,7 @@ struct token *primary_expression(SCTX_ struct token *token, struct expression **
 	case TOKEN_CHAR ... TOKEN_WIDE_CHAR_EMBEDDED_3:
 		expr = alloc_expression(sctx_ token, EXPR_VALUE);   
 		expr->flags = Int_const_expr;
-		expr->ctype = token_type(token) < TOKEN_WIDE_CHAR ? &int_ctype : &long_ctype;
+		expr->ctype = token_type(token) < TOKEN_WIDE_CHAR ? &sctxp int_ctype : &sctxp long_ctype;
 		get_char_constant(sctx_ token, &expr->value);
 		token = token->next;
 		break;
@@ -375,8 +375,8 @@ struct token *primary_expression(SCTX_ struct token *token, struct expression **
 	case TOKEN_ZERO_IDENT: {
 		expr = alloc_expression(sctx_ token, EXPR_SYMBOL);
 		expr->flags = Int_const_expr;
-		expr->ctype = &int_ctype;
-		expr->symbol = &zero_int;
+		expr->ctype = &sctxp int_ctype;
+		expr->symbol = &sctxp zero_int;
 		expr->symbol_name = token->ident;
 		token = token->next;
 		break;
@@ -657,7 +657,7 @@ static struct token *unary_expression(SCTX_ struct token *token, struct expressi
 			struct symbol *sym = label_symbol(sctx_ token->next);
 			if (!(sym->ctype.modifiers & MOD_ADDRESSABLE)) {
 				sym->ctype.modifiers |= MOD_ADDRESSABLE;
-				add_symbol(sctx_ &function_computed_target_list, sym);
+				add_symbol(sctx_ &(sctxp function_computed_target_list), sym);
 			}
 			label->label_symbol = sym;
 			*tree = label;
