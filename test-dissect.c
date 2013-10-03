@@ -139,7 +139,6 @@ static void r_symdef(SCTX_ struct symbol *sym)
 int main(int argc, char **argv)
 {
 	
-	struct sparse_ctx sctx;
 	static struct reporter reporter = {
 		.r_symdef = r_symdef,
 		.r_symbol = r_symbol,
@@ -147,12 +146,13 @@ int main(int argc, char **argv)
 	};
 	struct string_list *filelist = NULL;
 	char *file;
+	SPARSE_CTX_INIT;
 
-	sparse_initialize(&sctx, argc, argv, &filelist);
+	sparse_initialize(sctx_ argc, argv, &filelist);
 
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 		dotc_stream = input_stream_nr;
-		dissect(&sctx, __sparse(&sctx, file), &reporter);
+		dissect(sctx_ __sparse(sctx_ file), &reporter);
 	} END_FOR_EACH_PTR_NOTAG(file);
 
 	return 0;

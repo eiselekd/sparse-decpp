@@ -276,12 +276,12 @@ static void check_symbols(SCTX_ struct symbol_list *list)
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file;struct sparse_ctx sctx;
+	char *file; SPARSE_CTX_INIT;
 
 	// Expand, linearize and show it.
-	check_symbols(&sctx,sparse_initialize(&sctx,argc, argv, &filelist));
+	check_symbols(sctx_ sparse_initialize(sctx_ argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-	  check_symbols(&sctx,sparse(&sctx, file));
+		check_symbols(sctx_ sparse(sctx_ file));
 	} END_FOR_EACH_PTR_NOTAG(file);
 	return 0;
 }

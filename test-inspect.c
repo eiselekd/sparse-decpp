@@ -26,9 +26,10 @@ static void expand_symbols(SCTX_ struct symbol_list *list)
 
 int main(int argc, char **argv)
 {
-	struct string_list *filelist = NULL;
-	char *file; struct sparse_ctx __sctx; struct sparse_ctx *_sctx = &__sctx;
+	struct string_list *filelist = NULL; 
+	char *file; 
 	struct symbol_list *view_syms = NULL;
+	SPARSE_CTX_INIT;
 
 	gtk_init(&argc,&argv);
 	expand_symbols(sctx_ sparse_initialize(sctx_ argc, argv, &filelist));

@@ -43,6 +43,8 @@ static const char *statement_type_name(enum statement_type type)
 void inspect_statement(AstNode *node)
 {
 	struct statement *stmt = node->ptr;
+	/*struct sparse_ctx *_sctx = node->ctx;*/
+
 	node->text = g_strdup_printf("%s %s:", node->text, statement_type_name(stmt->type));
 	switch (stmt->type) {
 		case STMT_COMPOUND:
@@ -126,8 +128,10 @@ static const char *symbol_type_name(enum type type)
 void inspect_symbol(AstNode *node)
 {
 	struct symbol *sym = node->ptr;
+	struct sparse_ctx *_sctx = node->ctx;
+
 	node->text = g_strdup_printf("%s %s: %s", node->text, symbol_type_name(sym->type),
-				      builtin_typename(sym) ?: show_ident(sym->ident));
+				      builtin_typename(sctx_ sym) ?: show_ident(sctx_ sym->ident));
 	ast_append_child(node, "ctype.base_type:", sym->ctype.base_type,inspect_symbol);
 
 	switch (sym->namespace) {
@@ -188,6 +192,8 @@ static const char *expression_type_name(enum expression_type type)
 void inspect_expression(AstNode *node)
 {
 	struct expression *expr = node->ptr;
+	/*struct sparse_ctx *_sctx = node->ctx;*/
+
 	node->text = g_strdup_printf("%s %s", node->text, expression_type_name(expr->type));
 	switch (expr->type) {
 		case EXPR_STATEMENT:

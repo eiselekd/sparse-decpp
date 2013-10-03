@@ -10,7 +10,7 @@ endif
 
 OS = linux
 
-ALL_SRC = tokenize.c pre-process.c symbol.c lib.c scope.c \
+ALL_SRC = ctx.c tokenize.c pre-process.c symbol.c lib.c scope.c \
 expression.c evaluate.c expand.c  inline.c linearize.c \
 allocate.c ptrlist.c flow.c cse.c simplify.c memops.c \
 liveness.c  storage.c  unssa.c  dissect.c target.c \
@@ -108,11 +108,11 @@ sparse-llvm_EXTRA_OBJS := $(LLVM_LIBS)
 endif
 endif
 
-LIB_H=    token.h parse.h lib.h symbol.h scope.h expression.h target.h \
+LIB_H=    ctx.h token.h parse.h lib.h symbol.h scope.h expression.h target.h \
 	  linearize.h bitmap.h ident-list.h compat.h flow.h allocate.h \
 	  storage.h ptrlist.h dissect.h
 
-LIB_OBJS= target.o parse.o tokenize.o pre-process.o symbol.o lib.o scope.o \
+LIB_OBJS= ctx.o target.o parse.o tokenize.o pre-process.o symbol.o lib.o scope.o \
 	  expression.o show-parse.o evaluate.o expand.o inline.o linearize.o \
 	  char.o sort.o allocate.o compat-$(OS).o ptrlist.o \
 	  flow.o cse.o simplify.o memops.o liveness.o storage.o unssa.o dissect.o

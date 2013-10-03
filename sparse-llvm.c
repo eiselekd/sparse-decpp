@@ -1261,7 +1261,7 @@ static int compile(SCTX_ LLVMModuleRef module, struct symbol_list *list)
 int main(int argc, char **argv)
 {
 	struct string_list * filelist = NULL;
-	char *file; struct sparse_ctx __sctx; struct sparse_ctx *_sctx = &__sctx;
+	char *file; SPARSE_CTX_INIT;
 
 	LLVMModuleRef module = LLVMModuleCreateWithName("sparse");
 

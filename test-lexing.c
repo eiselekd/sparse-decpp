@@ -22,13 +22,13 @@ int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
 	char *file;
-	struct sparse_ctx sctx;
+	SPARSE_CTX_INIT
 
 	preprocess_only = 1;
-	sparse_initialize(&sctx, argc, argv, &filelist);
+	sparse_initialize(sctx_ argc, argv, &filelist);
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		sparse(&sctx, file);
+		sparse(sctx_ file);
 	} END_FOR_EACH_PTR_NOTAG(file);
-	show_identifier_stats(&sctx);
+	show_identifier_stats(sctx);
 	return 0;
 }

@@ -25,31 +25,31 @@ static xmlDocPtr doc = NULL;       /* document pointer */
 static xmlNodePtr root_node = NULL;/* root node pointer */
 static int idcount = 0;
 
-static void examine_symbol(struct symbol *sym, xmlNodePtr node);
+static void examine_symbol(SCTX_ struct symbol *sym, xmlNodePtr node);
 
-static xmlAttrPtr newProp(xmlNodePtr node, const char *name, const char *value)
+static xmlAttrPtr newProp(SCTX_ xmlNodePtr node, const char *name, const char *value)
 {
 	return xmlNewProp(node, BAD_CAST name, BAD_CAST value);
 }
 
-static xmlAttrPtr newNumProp(xmlNodePtr node, const char *name, int value)
+static xmlAttrPtr newNumProp(SCTX_ xmlNodePtr node, const char *name, int value)
 {
 	char buf[256];
 	snprintf(buf, 256, "%d", value);
-	return newProp(node, name, buf);
+	return newProp(sctx_ node, name, buf);
 }
 
-static xmlAttrPtr newIdProp(xmlNodePtr node, const char *name, unsigned int id)
+static xmlAttrPtr newIdProp(SCTX_ xmlNodePtr node, const char *name, unsigned int id)
 {
 	char buf[256];
 	snprintf(buf, 256, "_%d", id);
-	return newProp(node, name, buf);
+	return newProp(sctx_ node, name, buf);
 }
 
-static xmlNodePtr new_sym_node(struct symbol *sym, const char *name, xmlNodePtr parent)
+static xmlNodePtr new_sym_node(SCTX_ struct symbol *sym, const char *name, xmlNodePtr parent)
 {
 	xmlNodePtr node;
-	const char *ident = show_ident(sym->ident);
+	const char *ident = show_ident(sctx_ sym->ident);
 
 	assert(name != NULL);
 	assert(sym != NULL);
@@ -57,22 +57,22 @@ static xmlNodePtr new_sym_node(struct symbol *sym, const char *name, xmlNodePtr 
 
 	node = xmlNewChild(parent, NULL, BAD_CAST "symbol", NULL);
 
-	newProp(node, "type", name);
+	newProp(sctx_ node, "type", name);
 
-	newIdProp(node, "id", idcount);
+	newIdProp(sctx_ node, "id", idcount);
 
 	if (sym->ident && ident)
-		newProp(node, "ident", ident);
-	newProp(node, "file", stream_name(sym->pos->pos.stream));
+		newProp(sctx_ node, "ident", ident);
+	newProp(sctx_ node, "file", stream_name(sctx_ sym->pos->pos.stream));
 
-	newNumProp(node, "start-line", sym->pos->pos.line);
-	newNumProp(node, "start-col", sym->pos->pos.pos);
+	newNumProp(sctx_ node, "start-line", sym->pos->pos.line);
+	newNumProp(sctx_ node, "start-col", sym->pos->pos.pos);
 
 	if (sym->endpos) {
-		newNumProp(node, "end-line", sym->endpos->pos.line);
-		newNumProp(node, "end-col", sym->endpos->pos.pos);
+		newNumProp(sctx_ node, "end-line", sym->endpos->pos.line);
+		newNumProp(sctx_ node, "end-col", sym->endpos->pos.pos);
 		if (sym->pos->pos.stream != sym->endpos->pos.stream)
-			newProp(node, "end-file", stream_name(sym->endpos->pos.stream));
+			newProp(sctx_ node, "end-file", stream_name(sctx_ sym->endpos->pos.stream));
         }
 	sym->aux = node;
 
@@ -81,16 +81,16 @@ static xmlNodePtr new_sym_node(struct symbol *sym, const char *name, xmlNodePtr 
 	return node;
 }
 
-static inline void examine_members(struct symbol_list *list, xmlNodePtr node)
+static inline void examine_members(SCTX_ struct symbol_list *list, xmlNodePtr node)
 {
 	struct symbol *sym;
 
 	FOR_EACH_PTR(list, sym) {
-		examine_symbol(sym, node);
+		examine_symbol(sctx_ sym, node);
 	} END_FOR_EACH_PTR(sym);
 }
 
-static void examine_modifiers(struct symbol *sym, xmlNodePtr node)
+static void examine_modifiers(SCTX_ struct symbol *sym, xmlNodePtr node)
 {
 	const char *modifiers[] = {
 			"auto",
@@ -134,24 +134,24 @@ static void examine_modifiers(struct symbol *sym, xmlNodePtr node)
 	/*iterate over the 32 bit bitfield*/
 	for (i=0; i < 32; i++) {
 		if ((sym->ctype.modifiers & 1<<i) && modifiers[i])
-			newProp(node, modifiers[i], "1");
+			newProp(sctx_ node, modifiers[i], "1");
 	}
 }
 
 static void
-examine_layout(struct symbol *sym, xmlNodePtr node)
+examine_layout(SCTX_ struct symbol *sym, xmlNodePtr node)
 {
-	examine_symbol_type(sym);
+	examine_symbol_type(sctx_ sym);
 
-	newNumProp(node, "bit-size", sym->bit_size);
-	newNumProp(node, "alignment", sym->ctype.alignment);
-	newNumProp(node, "offset", sym->offset);
+	newNumProp(sctx_ node, "bit-size", sym->bit_size);
+	newNumProp(sctx_ node, "alignment", sym->ctype.alignment);
+	newNumProp(sctx_ node, "offset", sym->offset);
 	if (is_bitfield_type(sym)) {
-		newNumProp(node, "bit-offset", sym->bit_offset);
+		newNumProp(sctx_ node, "bit-offset", sym->bit_offset);
 	}
 }
 
-static void examine_symbol(struct symbol *sym, xmlNodePtr node)
+static void examine_symbol(SCTX_ struct symbol *sym, xmlNodePtr node)
 {
 	xmlNodePtr child = NULL;
 	const char *base;
@@ -165,44 +165,44 @@ static void examine_symbol(struct symbol *sym, xmlNodePtr node)
 	if (sym->ident && sym->ident->reserved)
 		return;
 
-	child = new_sym_node(sym, get_type_name(sym->type), node);
-	examine_modifiers(sym, child);
-	examine_layout(sym, child);
+	child = new_sym_node(sctx_ sym, get_type_name(sctx_ sym->type), node);
+	examine_modifiers(sctx_ sym, child);
+	examine_layout(sctx_ sym, child);
 
 	if (sym->ctype.base_type) {
-		if ((base = builtin_typename(sym->ctype.base_type)) == NULL) {
+		if ((base = builtin_typename(sctx_ sym->ctype.base_type)) == NULL) {
 			if (!sym->ctype.base_type->aux) {
-				examine_symbol(sym->ctype.base_type, root_node);
+				examine_symbol(sctx_ sym->ctype.base_type, root_node);
 			}
 			xmlNewProp(child, BAD_CAST "base-type",
 			           xmlGetProp((xmlNodePtr)sym->ctype.base_type->aux, BAD_CAST "id"));
 		} else {
-			newProp(child, "base-type-builtin", base);
+			newProp(sctx_ child, "base-type-builtin", base);
 		}
 	}
 	if (sym->array_size) {
 		/* TODO: modify get_expression_value to give error return */
-		array_size = get_expression_value(sym->array_size);
-		newNumProp(child, "array-size", array_size);
+		array_size = get_expression_value(sctx_ sym->array_size);
+		newNumProp(sctx_ child, "array-size", array_size);
 	}
 
 
 	switch (sym->type) {
 	case SYM_STRUCT:
 	case SYM_UNION:
-		examine_members(sym->symbol_list, child);
+		examine_members(sctx_ sym->symbol_list, child);
 		break;
 	case SYM_FN:
-		examine_members(sym->arguments, child);
+		examine_members(sctx_ sym->arguments, child);
 		break;
 	case SYM_UNINITIALIZED:
-		newProp(child, "base-type-builtin", builtin_typename(sym));
+		newProp(sctx_ child, "base-type-builtin", builtin_typename(sctx_ sym));
 		break;
 	}
 	return;
 }
 
-static struct token *get_expansion_end (struct token *token)
+static struct token *get_expansion_end (SCTX_ struct token *token)
 {
 	struct token *p1, *p2;
 
@@ -216,33 +216,33 @@ static struct token *get_expansion_end (struct token *token)
 		return NULL;
 }
 
-static void examine_macro(struct symbol *sym, xmlNodePtr node)
+static void examine_macro(SCTX_ struct symbol *sym, xmlNodePtr node)
 {
 	struct token *pos;
 
 	/* this should probably go in the main codebase*/
-	pos = get_expansion_end(sym->expansion);
+	pos = get_expansion_end(sctx_ sym->expansion);
 	if (pos)
 		sym->endpos = pos;
 	else
 		sym->endpos = sym->pos;
 
-	new_sym_node(sym, "macro", node);
+	new_sym_node(sctx_ sym, "macro", node);
 }
 
-static void examine_namespace(struct symbol *sym)
+static void examine_namespace(SCTX_ struct symbol *sym)
 {
 	if (sym->ident && sym->ident->reserved)
 		return;
 
 	switch(sym->namespace) {
 	case NS_MACRO:
-		examine_macro(sym, root_node);
+		examine_macro(sctx_ sym, root_node);
 		break;
 	case NS_TYPEDEF:
 	case NS_STRUCT:
 	case NS_SYMBOL:
-		examine_symbol(sym, root_node);
+		examine_symbol(sctx_ sym, root_node);
 		break;
 	case NS_NONE:
 	case NS_LABEL:
@@ -252,31 +252,31 @@ static void examine_namespace(struct symbol *sym)
 	case NS_KEYWORD:
 		break;
 	default:
-		sparse_die("Unrecognised namespace type %d",sym->namespace);
+		sparse_die(sctx_ "Unrecognised namespace type %d",sym->namespace);
 	}
 
 }
 
-static int get_stream_id (const char *name)
+static int get_stream_id (SCTX_ const char *name)
 {
 	int i;
 	for (i=0; i<input_stream_nr; i++) {
-		if (strcmp(name, stream_name(i))==0)
+		if (strcmp(name, stream_name(sctx_ i))==0)
 			return i;
 	}
 	return -1;
 }
 
-static inline void examine_symbol_list(const char *file, struct symbol_list *list)
+static inline void examine_symbol_list(SCTX_ const char *file, struct symbol_list *list)
 {
 	struct symbol *sym;
-	int stream_id = get_stream_id (file);
+	int stream_id = get_stream_id (sctx_ file);
 
 	if (!list)
 		return;
 	FOR_EACH_PTR(list, sym) {
 		if (sym->pos->pos.stream == stream_id)
-			examine_namespace(sym);
+			examine_namespace(sctx_ sym);
 	} END_FOR_EACH_PTR(sym);
 }
 
@@ -285,6 +285,7 @@ int main(int argc, char **argv)
 	struct string_list *filelist = NULL;
 	struct symbol_list *symlist = NULL;
 	char *file;
+	SPARSE_CTX_INIT;
 
 	doc = xmlNewDoc(BAD_CAST "1.0");
 	root_node = xmlNewNode(NULL, BAD_CAST "parse");
@@ -298,13 +299,13 @@ int main(int argc, char **argv)
 
 	xmlSetNs(root_node, ns);
 */
-	symlist = sparse_initialize(argc, argv, &filelist);
+	symlist = sparse_initialize(sctx_ argc, argv, &filelist);
 
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		examine_symbol_list(file, symlist);
-		sparse_keep_tokens(file);
-		examine_symbol_list(file, file_scope->symbols);
-		examine_symbol_list(file, global_scope->symbols);
+		examine_symbol_list(sctx_ file, symlist);
+		sparse_keep_tokens(sctx_ file);
+		examine_symbol_list(sctx_ file, file_scope->symbols);
+		examine_symbol_list(sctx_ file, global_scope->symbols);
 	} END_FOR_EACH_PTR_NOTAG(file);
 
 

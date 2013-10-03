@@ -39,11 +39,12 @@ static void clean_up_symbols(SCTX_ struct symbol_list *list)
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file;struct sparse_ctx sctx;
+	char *file;
+	SPARSE_CTX_INIT;
 
-	clean_up_symbols(&sctx, sparse_initialize(&sctx, argc, argv, &filelist));
+	clean_up_symbols(sctx_ sparse_initialize(sctx_ argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		clean_up_symbols(&sctx, sparse(&sctx, file));
+		clean_up_symbols(sctx_ sparse(sctx_ file));
 	} END_FOR_EACH_PTR_NOTAG(file);
 	return 0;
 }
