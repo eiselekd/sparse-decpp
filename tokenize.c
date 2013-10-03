@@ -902,6 +902,9 @@ struct token *built_in_token(SCTX_ int stream, const char *name)
 	token->pos.stream = stream;
 	token_type(token) = TOKEN_IDENT;
 	token->ident = built_in_ident(sctx_ name);
+#ifdef DO_CTX
+	token->ctx = sctx;
+#endif
 	return token;
 }
 

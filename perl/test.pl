@@ -25,17 +25,17 @@ use Devel::Peek;
 );
 
 
-@a = sparse::dissect("../lib.c");
+$s = sparse::sparse("../lib.c");
 
-foreach my $a (@a) {
-  if ($a->namespace != sparse::NS_PREPROCESSOR) {
-    my $cnt = $a->arguments;
-    my $symbt = $a->ctype->base_type;
-    
-    print "name         : ".$a->name."=".$a->ctype->typename."\n";
-    print "bttype       : ".$SYM_typ{$symbt->type}.":".sprintf("0x%x",$a->ctype->modifiers)."\n";
-  }
-}
+#foreach my $a (@a) {
+#  if ($a->namespace != sparse::NS_PREPROCESSOR) {
+#    my $cnt = $a->arguments;
+#    my $symbt = $a->ctype->base_type;
+#    
+#    print "name         : ".$a->name."=".$a->ctype->typename."\n";
+#    print "bttype       : ".$SYM_typ{$symbt->type}.":".sprintf("0x%x",$a->ctype->modifiers)."\n";
+#  }
+#}
 
 #$p = 
 #print($p->pos);

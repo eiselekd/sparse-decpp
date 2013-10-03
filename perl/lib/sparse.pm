@@ -120,8 +120,6 @@ sub load_imports {
 	NS_UNDEF 
 	NS_KEYWORD 
 
-
-
 	SYM_UNINITIALIZED 
 	SYM_PREPROCESSOR
 	SYM_BASETYPE
@@ -183,7 +181,6 @@ sub load_imports {
 	MOD_EXPLICITLY_SIGNED	
 	MOD_BITWISE	
 
-
       )],
 
 	);
@@ -217,53 +214,42 @@ use sparse::expand;
 
 1;
 __END__
-# Below is stub documentation for your module. You'd better edit it!
 
-=head1 NAME
+=head1 sparse
 
-d - Perl extension for blah blah blah
+d - Perl binding to Linux's Sparse
 
 =head1 SYNOPSIS
 
-  use d;
-  blah blah blah
+  use sparse;
+  my $s = sparse::sparse("test.c", "-E");
 
 =head1 DESCRIPTION
 
-Stub documentation for d, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
+Binding to the Linux static analyser Sparse.
 
 =head2 EXPORT
 
 None by default.
 
-
-
 =head1 SEE ALSO
 
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
-
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
+This version of sparse is based on repository https://github.com/eiselekd/sparse-decpp.git,
+a fork from sparse:5449cfbfe55eea2a602a40122c122b5040d67243. For the original sparse
+refer to https://sparse.wiki.kernel.org/index.php/Main_Page.
 
 =head1 AUTHOR
 
-eiselekd, E<lt>eiselekd@gmail.com<gt>
+Konrad Eisele, E<lt>eiselekd a t gmail.com<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013 by eiselekd
+Copyright (C) 2013 by Konrad Eisele
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.12.3 or,
 at your option, any later version of Perl 5 you may have available.
-
+Companies affiliated to the military complex are not allowed to use this
+binding and fork.
 
 =cut

@@ -211,6 +211,10 @@ struct sparse_ctx {
 	/* sparse-llvm.c */
 	ALLOCATOR_DEF(llfunc, "llfuncs", 0);
 	
+	/* perl/sparse.xs */
+	struct string_list *filelist;
+	struct symbol_list *symlist;
+	
 };
 
 extern void sparse_ctx_init_parse1(struct sparse_ctx *);

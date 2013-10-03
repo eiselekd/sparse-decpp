@@ -77,7 +77,9 @@ static const char **dirafter_includepath = includepath + 3;
 static struct token *alloc_token(SCTX_ struct position *pos)
 {
 	struct token *token = __alloc_token(sctx_ 0);
-
+#ifdef DO_CTX
+	token->ctx = sctx;
+#endif
 	token->pos.stream = pos->stream;
 	token->pos.line = pos->line;
 	token->pos.pos = pos->pos;
@@ -330,6 +332,9 @@ static struct token *dup_one(SCTX_ struct token *tok)
 {
 	struct token *newtok = __alloc_token(sctx_ 0);
 	*newtok = *tok;
+#ifdef DO_CTX
+	newtok->ctx = sctx;
+#endif
 	return newtok;
 }
 
@@ -341,6 +346,9 @@ static struct token *dup_list(SCTX_ struct token *list)
 	while (!eof_token(list)) {
 		struct token *newtok = __alloc_token(sctx_ 0);
 		*newtok = *list;
+#ifdef DO_CTX
+		newtok->ctx = sctx;
+#endif
 		*p = newtok;
 		p = &newtok->next;
 		list = list->next;
@@ -394,6 +402,10 @@ static struct token *stringify(SCTX_ struct token *arg)
 	token_type(token) = TOKEN_STRING;
 	token->string = string;
 	token->next = &eof_token_entry;
+#ifdef DO_CTX
+	token->ctx = sctx;
+#endif
+
 	return token;
 }
 

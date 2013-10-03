@@ -166,6 +166,9 @@ struct argcount {
  * pointers.
  */
 struct token {
+#ifdef DO_CTX
+	struct sparse_ctx *ctx;
+#endif
 	struct position pos;
 	struct token *next;
 	struct expansion *e;

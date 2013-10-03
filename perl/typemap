@@ -1,6 +1,7 @@
 TYPEMAP
 const_string		T_PV
 const_string_assume	CONST_STRING_ASSUME
+sparsectx		SPARSE_CTX
 sparsepos		SPARSE_POS
 sparsetok		SPARSE_TOK
 sparsestmt		SPARSE_STMT
@@ -27,6 +28,8 @@ long long               INT_ULL
 long double             UFLOAT_LD
 
 INPUT
+SPARSE_CTX
+	class_or_croak ($arg, sparsectx_class); $var = SvSPARSE_CTX($arg);
 SPARSE_POS
 	class_or_croak ($arg, sparsepos_class); $var = SvSPARSE_POS($arg);
 SPARSE_TOK
@@ -77,6 +80,8 @@ SPARSE_STRING
 	$var = 0
 
 OUTPUT
+SPARSE_CTX
+    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsectx_class_hv);
 SPARSE_POS
     sv_bless (sv_setref_pv ($arg, NULL, $var), sparsepos_class_hv);
 SPARSE_TOK

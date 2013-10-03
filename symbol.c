@@ -60,6 +60,9 @@ struct sym_context *alloc_context(SCTX)
 struct symbol *alloc_symbol(SCTX_ struct token *tok, int type)
 {
 	struct symbol *sym = __alloc_symbol(sctx_ 0);
+#ifdef DO_CTX
+	sym->ctx = sctx;
+#endif
 	sym->type = type;
 	sym->pos = tok;
 	sym->tok = tok;

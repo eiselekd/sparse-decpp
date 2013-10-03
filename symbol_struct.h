@@ -119,6 +119,9 @@ extern int expand_constant_p(SCTX_ struct expression *expr, int cost);
 #define SYM_ATTR_STRONG		2
 
 struct symbol {
+#ifdef DO_CTX
+	struct sparse_ctx *ctx;
+#endif
 	enum type type:8;
 	enum namespace namespace:9;
 	unsigned char used:1, attr:2, enum_member:1, bound:1;
