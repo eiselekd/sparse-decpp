@@ -1,4 +1,4 @@
-VERSION=0.4.4
+include Makefile.version
 
 # Generating file version.h if current version has changed
 SPARSE_VERSION:=$(shell git describe 2>/dev/null || echo '$(VERSION)')
@@ -218,7 +218,7 @@ dist:
 		echo 'Update VERSION in the Makefile before running "make dist".' ; \
 		exit 1 ; \
 	fi
-	git archive --format=tar --prefix=sparse-$(VERSION)/ HEAD^{tree} | gzip -9 > sparse-$(VERSION).tar.gz
+	git archive --format=tar --prefix=sparse-$(VERSION)/ HEAD^{tree} | gzip -9 > sparse-decpp-$(VERSION).tar.gz
 
 check: all
 	$(Q)cd validation && ./test-suite
@@ -236,3 +236,6 @@ clean-check:
 sparse-sparse:
 	./test-dissect -I/Users/eiselekd/bin/include $(ALL_SRC) $(BASIC_CFLAGS)
 
+.PHONY:perl
+perl:
+	cd perl; make -f Makefile.dist.mk dist

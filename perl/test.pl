@@ -1,6 +1,6 @@
 use POSIX;
 use sparse qw(:all);
-use Devel::Peek;
+#use Devel::Peek;
 
 %SYM_typ = (
 	sparse::SYM_UNINITIALIZED=>"SYM_UNINITIALIZED" ,

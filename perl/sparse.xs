@@ -16,6 +16,11 @@
 #include "../expression.h"
 #include "../symbol.h"
 #include "../scope.h"
+
+/* include the complete sparse tree */
+#define D_USE_ONE
+#include "../parse.c"
+
 #include "const-c.inc"
 
 #define TRACE(x) x

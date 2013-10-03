@@ -1,4 +1,4 @@
-use ExtUtils::testlib;  
+xuse ExtUtils::testlib;  
 package sparse;
 
 use 5.012003;

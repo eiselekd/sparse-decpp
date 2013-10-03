@@ -245,7 +245,7 @@ static int dead_insn(SCTX_ struct instruction *insn, pseudo_t *src1, pseudo_t *s
 	return REPEAT_CSE;
 }
 
-static inline int constant(pseudo_t pseudo)
+static inline int sparse_constant(pseudo_t pseudo)
 {
 	return pseudo->type == PSEUDO_VAL;
 }
@@ -488,12 +488,12 @@ static int simplify_binop(SCTX_ struct instruction *insn)
 {
 	if (dead_insn(sctx_ insn, &insn->src1, &insn->src2, NULL))
 		return REPEAT_CSE;
-	if (constant(insn->src1)) {
-		if (constant(insn->src2))
+	if (sparse_constant(insn->src1)) {
+		if (sparse_constant(insn->src2))
 			return simplify_constant_binop(sctx_ insn);
 		return simplify_constant_leftside(sctx_ insn);
 	}
-	if (constant(insn->src2))
+	if (sparse_constant(insn->src2))
 		return simplify_constant_rightside(sctx_ insn);
 	return 0;
 }
@@ -582,7 +582,7 @@ static int simplify_unop(SCTX_ struct instruction *insn)
 {
 	if (dead_insn(sctx_ insn, &insn->src1, NULL, NULL))
 		return REPEAT_CSE;
-	if (constant(insn->src1))
+	if (sparse_constant(insn->src1))
 		return simplify_constant_unop(sctx_ insn);
 	return 0;
 }
@@ -602,11 +602,11 @@ static int simplify_one_memop(SCTX_ struct instruction *insn, pseudo_t orig)
 		if (def->opcode == OP_ADD_LIN) {
 			new = def->src1;
 			off = def->src2;
-			if (constant(off))
+			if (sparse_constant(off))
 				goto offset;
 			new = off;
 			off = def->src1;
-			if (constant(off))
+			if (sparse_constant(off))
 				goto offset;
 			return 0;
 		}
@@ -678,7 +678,7 @@ static int simplify_cast(SCTX_ struct instruction *insn)
 	src = insn->src;
 
 	/* A cast of a constant? */
-	if (constant(src)) {
+	if (sparse_constant(src)) {
 		int sign = orig_type->ctype.modifiers & MOD_SIGNED;
 		long long val = get_cast_value(sctx_ src->value, orig_size, size, sign);
 		src = value_pseudo(sctx_ val);
@@ -720,7 +720,7 @@ static int simplify_select(SCTX_ struct instruction *insn)
 	cond = insn->src1;
 	src1 = insn->src2;
 	src2 = insn->src3;
-	if (constant(cond) || src1 == src2) {
+	if (sparse_constant(cond) || src1 == src2) {
 		pseudo_t *kill, take;
 		kill_use(sctx_ &insn->src1);
 		take = cond->value ? src1 : src2;
@@ -729,7 +729,7 @@ static int simplify_select(SCTX_ struct instruction *insn)
 		replace_with_pseudo(sctx_ insn, take);
 		return REPEAT_CSE;
 	}
-	if (constant(src1) && constant(src2)) {
+	if (sparse_constant(src1) && sparse_constant(src2)) {
 		long long val1 = src1->value;
 		long long val2 = src2->value;
 
@@ -802,7 +802,7 @@ static int simplify_branch(SCTX_ struct instruction *insn)
 		return 0;
 
 	/* Constant conditional */
-	if (constant(cond)) {
+	if (sparse_constant(cond)) {
 		insert_branch(sctx_ insn->bb, insn, cond->value ? insn->bb_true : insn->bb_false);
 		return REPEAT_CSE;
 	}
@@ -824,13 +824,13 @@ static int simplify_branch(SCTX_ struct instruction *insn)
 		struct instruction *def = cond->def;
 
 		if (def->opcode == OP_SET_NE || def->opcode == OP_SET_EQ) {
-			if (constant(def->src1) && !def->src1->value)
+			if (sparse_constant(def->src1) && !def->src1->value)
 				return simplify_cond_branch(sctx_ insn, cond, def, &def->src2);
-			if (constant(def->src2) && !def->src2->value)
+			if (sparse_constant(def->src2) && !def->src2->value)
 				return simplify_cond_branch(sctx_ insn, cond, def, &def->src1);
 		}
 		if (def->opcode == OP_SEL) {
-			if (constant(def->src2) && constant(def->src3)) {
+			if (sparse_constant(def->src2) && sparse_constant(def->src3)) {
 				long long val1 = def->src2->value;
 				long long val2 = def->src3->value;
 				if (!val1 && !val2) {
@@ -870,7 +870,7 @@ static int simplify_switch(SCTX_ struct instruction *insn)
 	long long val;
 	struct multijmp *jmp;
 
-	if (!constant(cond))
+	if (!sparse_constant(cond))
 		return 0;
 	val = insn->cond->value;
 

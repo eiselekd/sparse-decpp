@@ -1,0 +1,30 @@
+include ../Makefile.version
+
+PERL_VERSION=$(shell cat lib/sparse.pm | grep \$$VERSION | awk '{ print $$4; }' | sed -e "s/[;']//g" )
+
+all:
+
+# create a perl distribution for CPAN
+dist:
+	perl Makefile.PL
+	-rm -rf sparse-$(PERL_VERSION).tar.gz ../sparse-decpp-$(VERSION).tar.gz src ../perl_dist
+	mkdir -p src/
+	make -C .. dist; #cp ../sparse-decpp-$(VERSION).tar.gz src/
+	cd src/; tar  xvf  ../../sparse-decpp-$(VERSION).tar.gz
+	cp -r . ../perl_dist
+	echo "src/sparse-decpp-$(VERSION).tar.gz" > ../perl_dist/MANIFEST
+	find lib/                                 >>../perl_dist/MANIFEST
+	find src/                                 >>../perl_dist/MANIFEST
+	echo "Makefile.PL"                        >>../perl_dist/MANIFEST
+	echo "sparse.xs"                          >>../perl_dist/MANIFEST
+	echo "sparse.xsh"                         >>../perl_dist/MANIFEST
+	echo "sparse.pl"                          >>../perl_dist/MANIFEST
+	echo "typemap"                            >>../perl_dist/MANIFEST
+	echo "constdef.pl"                        >>../perl_dist/MANIFEST
+	echo "test.pl"                            >>../perl_dist/MANIFEST
+	perl -pi -e "s/#include \"\.\./#include \"src\/sparse-$(VERSION)/g"     ../perl_dist/sparse.xs
+	perl -pi -e "s/\.\.\/libsparse.a/src\/sparse-$(VERSION)\/libsparse.a/g" ../perl_dist/Makefile.PL
+	perl -pi -e "s/-I\.\./-Isrc\/sparse-$(VERSION)/g"                       ../perl_dist/Makefile.PL
+	perl -pi -e "s/-L\.\/\.\./-L\.\/src\/sparse-$(VERSION)/g"               ../perl_dist/Makefile.PL
+	cd ../perl_dist; make dist
+	cp ../perl_dist/sparse-$(PERL_VERSION).tar.gz .
