@@ -20,6 +20,7 @@
 #include "parse.h"
 #include "scope.h"
 #include "symbol.h"
+#include "token.h"
 
 static xmlDocPtr doc = NULL;       /* document pointer */
 static xmlNodePtr root_node = NULL;/* root node pointer */
