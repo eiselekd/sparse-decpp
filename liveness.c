@@ -169,12 +169,14 @@ int pseudo_in_list(SCTX_ struct pseudo_list *list, pseudo_t pseudo)
 	return 0;
 }
 
+#ifndef DO_CTX
 static int liveness_changed;
+#endif
 
 static void add_pseudo_exclusive(SCTX_ struct pseudo_list **list, pseudo_t pseudo)
 {
 	if (!pseudo_in_list(sctx_ *list, pseudo)) {
-		liveness_changed = 1;
+		sctxp liveness_changed = 1;
 		add_pseudo(sctx_ list, pseudo);
 	}
 }
@@ -248,11 +250,11 @@ void track_pseudo_liveness(SCTX_ struct entrypoint *ep)
 
 	/* Calculate liveness.. */
 	do {
-		liveness_changed = 0;
+		sctxp liveness_changed = 0;
 		FOR_EACH_PTR_REVERSE(ep->bbs, bb) {
 			track_bb_liveness(sctx_ bb);
 		} END_FOR_EACH_PTR_REVERSE(bb);
-	} while (liveness_changed);
+	} while (sctxp liveness_changed);
 
 	/* Remove the pseudos from the "defines" list that are used internally */
 	FOR_EACH_PTR(ep->bbs, bb) {

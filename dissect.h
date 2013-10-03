@@ -51,7 +51,9 @@ struct reporter
 	int indent;
 };
 
+#ifdef DO_CTX
 extern struct reporter *reporter;
+#endif
 
 extern void dissect(SCTX_ struct symbol_list *, struct reporter *);
 extern int dissect_arr(SCTX_ int argc, char **argv);

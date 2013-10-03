@@ -35,8 +35,10 @@
 
 typedef unsigned usage_t;
 
+#ifndef DO_CTX
 struct reporter *reporter;
 static struct symbol *return_type;
+#endif
 
 static void do_sym_list(SCTX_ struct symbol_list *list);
 
@@ -119,8 +121,8 @@ static struct symbol *report_member(SCTX_ mode_t mode, struct token *pos,
 {
 	struct symbol *ret = mem->ctype.base_type;
 
-	if (reporter->r_member)
-		reporter->r_member(sctx_ fix_mode(sctx_ ret, mode), pos, type, mem);
+	if (sctxp reporter->r_member)
+		sctxp reporter->r_member(sctx_ fix_mode(sctx_ ret, mode), pos, type, mem);
 
 	return ret;
 }
@@ -130,11 +132,11 @@ static void report_implicit(SCTX_ usage_t mode, struct token *pos, struct symbol
 	if (type->type != SYM_STRUCT && type->type != SYM_UNION)
 		return;
 
-	if (!reporter->r_member)
+	if (!sctxp reporter->r_member)
 		return;
 
 	if (type->ident != NULL)
-		reporter->r_member(sctx_ mode, pos, type, NULL);
+		sctxp reporter->r_member(sctx_ mode, pos, type, NULL);
 
 	DO_LIST(type->symbol_list, mem,
 		report_implicit(sctx_ mode, pos, base_type_dis(sctx_ mem)));
@@ -168,8 +170,8 @@ static struct symbol *report_symbol(SCTX_ usage_t mode, struct expression *expr)
 	if (0 && ret->type == SYM_ENUM)
 		return report_member(sctx_ mode, expr->pos, ret, expr->symbol);
 
-	if (reporter->r_symbol)
-		reporter->r_symbol(sctx_ fix_mode(sctx_ ret, mode), expr->pos, sym);
+	if (sctxp reporter->r_symbol)
+		sctxp reporter->r_symbol(sctx_ fix_mode(sctx_ ret, mode), expr->pos, sym);
 
 	return ret;
 }
@@ -218,8 +220,8 @@ static void examine_sym_node(SCTX_ struct symbol *node, struct ident *root)
 
 			if (!base->ident && name)
 				base->ident = mk_name(sctx_ root, name);
-			if (base->ident && reporter->r_symdef)
-				reporter->r_symdef(sctx_ base);
+			if (base->ident && sctxp reporter->r_symdef)
+				sctxp reporter->r_symdef(sctx_ base);
 			DO_LIST(base->symbol_list, mem,
 				examine_sym_node(sctx_ mem, base->ident ?: root));
 		default:
@@ -448,7 +450,7 @@ static struct symbol *do_statement(SCTX_ usage_t mode, struct statement *stmt)
 		ret = do_expression(sctx_ mode, stmt->expression);
 
 	break; case STMT_RETURN:
-		do_expression(sctx_ u_lval(sctx_ return_type), stmt->expression);
+		do_expression(sctx_ u_lval(sctx_ sctxp return_type), stmt->expression);
 
 	break; case STMT_ASM:
 		do_expression(sctx_ U_R_VAL, stmt->asm_string);
@@ -544,26 +546,26 @@ static inline struct symbol *do_symbol(SCTX_ struct symbol *sym)
 
 	type = base_type_dis(sctx_ sym);
 
-	if (reporter->r_symdef)
-		reporter->r_symdef(sctx_ sym);
+	if (sctxp reporter->r_symdef)
+		sctxp reporter->r_symdef(sctx_ sym);
 
-	reporter->indent++;
+	sctxp reporter->indent++;
 	switch (type->type) {
 	default:
 		if (!sym->initializer)
 			break;
-		if (reporter->r_symbol)
-			reporter->r_symbol(sctx_ U_W_VAL, sym->pos, sym);
+		if (sctxp reporter->r_symbol)
+			sctxp reporter->r_symbol(sctx_ U_W_VAL, sym->pos, sym);
 		do_initializer(sctx_ type, sym->initializer);
 		
 	break; case SYM_FN:
 		do_sym_list(sctx_ type->arguments);
-		return_type = base_type_dis(sctx_ type);
+		sctxp return_type = base_type_dis(sctx_ type);
 		do_statement(sctx_ U_VOID, sym->ctype.modifiers & MOD_INLINE
 					? type->inline_stmt
 					: type->stmt);
 	}
-	reporter->indent--;
+	sctxp reporter->indent--;
 
 	return type;
 }
@@ -575,7 +577,7 @@ static void do_sym_list(SCTX_ struct symbol_list *list)
 
 void dissect(SCTX_ struct symbol_list *list, struct reporter *rep)
 {
-	reporter = rep;
+	sctxp reporter = rep;
 	do_sym_list(sctx_ list);
 }
 
@@ -611,13 +613,13 @@ const char *dissect_show_mode(SCTX_ unsigned mode)
 }
 
 #define PUSH_REPORT(n,r) do {						\
-		int i = reporter->defs_pos++;				\
-		if (i >= reporter->defs_cnt)  {				\
-			reporter->defs_cnt = (i+1)*2;			\
-			reporter->defs = realloc(reporter->defs,reporter->defs_cnt*sizeof(void*)); \
+		int i = sctxp reporter->defs_pos++;				\
+		if (i >= sctxp reporter->defs_cnt)  {				\
+			sctxp reporter->defs_cnt = (i+1)*2;			\
+			sctxp reporter->defs = realloc(sctxp reporter->defs,sctxp reporter->defs_cnt*sizeof(void*)); \
 		}							\
-		r = (struct reporter_def*)(reporter->defs[i] = malloc(sizeof(struct reporter_def)));	\
-		r->indent = reporter->indent;				\
+		r = (struct reporter_def*)(sctxp reporter->defs[i] = malloc(sizeof(struct reporter_def)));	\
+		r->indent = sctxp reporter->indent;				\
 	} while(0);
 
 static void r_symdef(SCTX_ struct symbol *sym)

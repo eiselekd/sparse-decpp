@@ -18,8 +18,10 @@
 ALLOCATOR(storage, "storages", 0);
 ALLOCATOR(storage_hash, "storage hash", 0);
 
-#define MAX_STORAGE_HASH 64
+/*#define MAX_STORAGE_HASH 64*/
+#ifndef DO_CTX
 static struct storage_hash_list *storage_hash_table[MAX_STORAGE_HASH];
+#endif
 
 static inline unsigned int storage_hash(struct basic_block *bb, pseudo_t pseudo, enum inout_enum inout)
 {
@@ -50,7 +52,7 @@ struct storage_hash_list *gather_storage(SCTX_ struct basic_block *bb, enum inou
 
 	for (i = 0; i < MAX_STORAGE_HASH; i++) {
 		struct storage_hash *hash;
-		FOR_EACH_PTR(storage_hash_table[i], hash) {
+		FOR_EACH_PTR(sctxp storage_hash_table[i], hash) {
 			if (hash->bb == bb && hash->inout == inout)
 				add_ptr_list(&list, hash);
 		} END_FOR_EACH_PTR(hash);
@@ -76,7 +78,7 @@ static void name_storage(SCTX)
 
 	for (i = 0; i < MAX_STORAGE_HASH; i++) {
 		struct storage_hash *hash;
-		FOR_EACH_PTR(storage_hash_table[i], hash) {
+		FOR_EACH_PTR(sctxp storage_hash_table[i], hash) {
 			struct storage *storage = hash->storage;
 			if (storage->name)
 				continue;
@@ -87,7 +89,7 @@ static void name_storage(SCTX)
 
 struct storage *lookup_storage(SCTX_ struct basic_block *bb, pseudo_t pseudo, enum inout_enum inout)
 {
-	struct storage_hash_list *list = storage_hash_table[storage_hash(bb,pseudo,inout)];
+	struct storage_hash_list *list = sctxp storage_hash_table[storage_hash(bb,pseudo,inout)];
 	struct storage_hash *hash;
 
 	FOR_EACH_PTR(list, hash) {
@@ -99,7 +101,7 @@ struct storage *lookup_storage(SCTX_ struct basic_block *bb, pseudo_t pseudo, en
 
 void add_storage(SCTX_ struct storage *storage, struct basic_block *bb, pseudo_t pseudo, enum inout_enum inout)
 {
-	struct storage_hash_list **listp = storage_hash_table + storage_hash(bb,pseudo,inout);
+	struct storage_hash_list **listp = sctxp storage_hash_table + storage_hash(bb,pseudo,inout);
 	struct storage_hash *hash = alloc_storage_hash(sctx_ storage);
 
 	hash->bb = bb;
@@ -162,8 +164,8 @@ void free_storage(SCTX)
 	int i;
 
 	for (i = 0; i < MAX_STORAGE_HASH; i++) {
-		vrfy_storage(sctx_ storage_hash_table + i);
-		free_ptr_list(storage_hash_table + i);
+		vrfy_storage(sctx_ sctxp storage_hash_table + i);
+		free_ptr_list(sctxp storage_hash_table + i);
 	}
 }
 

@@ -39,7 +39,7 @@ static void print_usage(SCTX_ struct token *pos, struct symbol *sym, unsigned mo
 		printf("\nFILE: %s\n\n", stream_name(sctx_ curr_stream));
 	}
 
-	printf("%s%4d:%-3d %c %-5.3s", reporter->indent ? "\t" : "",
+	printf("%s%4d:%-3d %c %-5.3s", sctxp reporter->indent ? "\t" : "",
 		pos->pos.line, pos->pos.pos, storage(sym), show_mode(mode));
 }
 
@@ -102,7 +102,7 @@ static void r_symbol(SCTX_ unsigned mode, struct token *pos, struct symbol *sym)
 	if (isfunc(sctx_ sym))
 		strcat(b, "()");
 	
-	printf("%s%-32.*s %s 0x%x 0x%p %s\n", reporter->indent ? "\t" : "",
+	printf("%s%-32.*s %s 0x%x 0x%p %s\n", sctxp reporter->indent ? "\t" : "",
 	       (int)strlen(b), b,
 	       show_typename(sctx_ sym->ctype.base_type),
 	       (unsigned int )sym->ctype.modifiers, sym, symbol_type_name(sym->type));
@@ -122,7 +122,7 @@ static void r_member(SCTX_ unsigned mode, struct token *pos, struct symbol *sym,
 	/* mem == NULL means entire struct accessed */
 	mi = mem ? (mem->ident ?: ni) : MK_IDENT("*");
 
-	printf("%s%.*s.%-*.*s %s 0x%x 0x%p %s\n", reporter->indent ? "\t" : "",
+	printf("%s%.*s.%-*.*s %s 0x%x 0x%p %s\n", sctxp reporter->indent ? "\t" : "",
 		si->len, si->name,
 		32-1 - si->len, mi->len, mi->name,
 	       show_typename(sctx_ mem ? mem->ctype.base_type : sym), 

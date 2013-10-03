@@ -49,6 +49,17 @@ struct ctype_name {
 };
 
 struct sparse_ctx {
+	/* dissect.c */
+	struct reporter *reporter;
+	/*static*/ struct symbol *return_type;
+	
+	/* liveness.c */
+	/*static*/ int liveness_changed;
+
+	/* storage.c */
+#define MAX_STORAGE_HASH 64
+	/*static*/ struct storage_hash_list *storage_hash_table[MAX_STORAGE_HASH];
+
 	/* show-parse.c */
 	struct ctype_name *typenames; /* todo: release */
 	int typenames_cnt;
