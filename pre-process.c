@@ -200,7 +200,7 @@ static void preprocessor_line(SCTX_ struct stream *stream, struct token **line);
 
 static struct token *collect_arg(SCTX_ struct token *prev, int vararg, struct position *pos)
 {
-	struct stream *stream = input_streams + prev->pos.stream;
+	struct stream *stream = sctxp input_streams + prev->pos.stream;
 	struct token **p = &prev->next;
 	struct token *next;
 	int nesting = 0;
@@ -218,7 +218,7 @@ static struct token *collect_arg(SCTX_ struct token *prev, int vararg, struct po
 		switch (token_type(next)) {
 		case TOKEN_STREAMEND:
 		case TOKEN_STREAMBEGIN:
-			*p = &eof_token_entry;
+			*p = &sctxp eof_token_entry;
 			return next;
 		}
 		if (false_nesting) {
@@ -239,7 +239,7 @@ static struct token *collect_arg(SCTX_ struct token *prev, int vararg, struct po
 		next->pos.pos = pos->pos;
 		p = &next->next;
 	}
-	*p = &eof_token_entry;
+	*p = &sctxp eof_token_entry;
 	return next;
 }
 
@@ -358,7 +358,7 @@ static struct token *dup_list(SCTX_ struct token *list)
 
 static struct token *dup_list_e(SCTX_ struct token *list, struct expansion *e)
 {
-	return list_e(dup_list(sctx_ list), e);
+	return list_e(sctx_ dup_list(sctx_ list), e);
 }
 
 static const char *show_token_sequence(SCTX_ struct token *token, int quote)
@@ -401,7 +401,7 @@ static struct token *stringify(SCTX_ struct token *arg)
 	token->pos = arg->pos;
 	token_type(token) = TOKEN_STRING;
 	token->string = string;
-	token->next = &eof_token_entry;
+	token->next = &sctxp eof_token_entry;
 #ifdef DO_CTX
 	token->ctx = sctx;
 #endif
@@ -415,7 +415,7 @@ static void expand_arguments_pp(SCTX_ int count, struct arg *args, struct expans
 	for (i = 0; i < count; i++) {
 		struct token *arg = args[i].arg;
 		if (!arg)
-			arg = &eof_token_entry;
+			arg = &sctxp eof_token_entry;
 		if (args[i].n_str)
 			args[i].str = stringify(sctx_ arg);
 		if (args[i].n_normal) {
@@ -596,7 +596,7 @@ static struct token **copy(SCTX_ struct token **where, struct token *list, int *
 		where = &token->next;
 		list = list->next;
 	}
-	*where = &eof_token_entry;
+	*where = &sctxp eof_token_entry;
 	return where;
 }
 
@@ -720,7 +720,7 @@ static struct token **substitute(SCTX_ struct token **list, struct token *body, 
 		}
 		state = Normal;
 	}
-	*list = &eof_token_entry;
+	*list = &sctxp eof_token_entry;
 	return list;
 }
 
@@ -807,7 +807,7 @@ static int already_tokenized(SCTX_ const char *path)
 	int stream, next;
 
 	for (stream = *hash_stream(sctx_ path); stream >= 0 ; stream = next) {
-		struct stream *s = input_streams + stream;
+		struct stream *s = sctxp input_streams + stream;
 
 		next = s->next_stream;
 		if (s->once) {
@@ -1086,7 +1086,7 @@ static struct token *parse_arguments(SCTX_ struct token **arglist)
 
 	if (match_op(arg, ')')) {
 		next = arg->next;
-		list->next = &eof_token_entry;
+		list->next = &sctxp eof_token_entry;
 		return next;
 	}
 
@@ -1106,7 +1106,7 @@ static struct token *parse_arguments(SCTX_ struct token **arglist)
 		if (match_op(next, ')')) {
 			set_arg_count(next);
 			next = next->next;
-			arg->next->next = &eof_token_entry;
+			arg->next->next = &sctxp eof_token_entry;
 			return next;
 		}
 
@@ -1117,7 +1117,7 @@ static struct token *parse_arguments(SCTX_ struct token **arglist)
 				set_arg_count(next);
 				next->count.vararg = 1;
 				next = next->next;
-				arg->next->next = &eof_token_entry;
+				arg->next->next = &sctxp eof_token_entry;
 				return next->next;
 			}
 
@@ -1144,7 +1144,7 @@ static struct token *parse_arguments(SCTX_ struct token **arglist)
 		set_arg_count(next);
 		next->count.vararg = 1;
 		next = next->next;
-		arg->next->next = &eof_token_entry;
+		arg->next->next = &sctxp eof_token_entry;
 		return next;
 	}
 
@@ -1990,7 +1990,7 @@ static void preprocessor_line(SCTX_ struct stream *stream, struct token **line)
 		tp = &next->next;
 	}
 	*line = next;
-	*tp = &eof_token_entry;
+	*tp = &sctxp eof_token_entry;
 	handle_preprocessor_line(sctx_ stream, line, start);
 }
 
@@ -1999,7 +1999,7 @@ static struct token *do_preprocess(SCTX_ struct token **list)
 	struct token *next; struct token *l = NULL; /*, **c = &l;*/
 
 	while (!eof_token(next = scan_next(list))) {
-		struct stream *stream = input_streams + next->pos.stream;
+		struct stream *stream = sctxp input_streams + next->pos.stream;
 
 		if (next->pos.newline && match_op(next, '#')) {
 			if (!next->pos.noexpand) {

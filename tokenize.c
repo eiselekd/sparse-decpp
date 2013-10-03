@@ -23,13 +23,16 @@
 
 #define EOF (-1)
 
+#ifndef DO_CTX
 int input_stream_nr = 0;
 struct stream *input_streams;
 static int input_streams_allocated;
 unsigned int tabstop = 8;
+#endif
 
 #define BUFSIZE (8192)
 
+/* ctx.h 
 typedef struct {
 	int fd, offset, size;
 	int pos, line, nr;
@@ -38,12 +41,13 @@ typedef struct {
 	struct token *token;
 	unsigned char *buffer;
 } stream_t;
+*/
 
 const char *stream_name(SCTX_ int stream)
 {
-	if (stream < 0 || stream > input_stream_nr)
+	if (stream < 0 || stream > sctxp input_stream_nr)
 		return "<bad stream>";
-	return input_streams[stream].name;
+	return sctxp input_streams[stream].name;
 }
 
 static struct position stream_pos(SCTX_ stream_t *stream)
@@ -261,11 +265,15 @@ const char *quote_token(SCTX_ const struct token *token)
 	}
 }
 
+
+/* ctx.h
 #define HASHED_INPUT_BITS (6)
 #define HASHED_INPUT (1 << HASHED_INPUT_BITS)
 #define HASH_PRIME 0x9e370001UL
-
+*/
+#ifndef DO_CTX
 static int input_stream_hashes[HASHED_INPUT] = { [0 ... HASHED_INPUT-1] = -1 };
+#endif
 
 int *hash_stream(SCTX_ const char *name)
 {
@@ -277,29 +285,29 @@ int *hash_stream(SCTX_ const char *name)
 
 	hash *= HASH_PRIME;
 	hash >>= 32 - HASHED_INPUT_BITS;
-	return input_stream_hashes + hash;
+	return sctxp input_stream_hashes + hash;
 }
 
 int init_stream(SCTX_ const char *name, int fd, const char **next_path)
 {
-	int stream = input_stream_nr, *hash;
+	int stream = sctxp input_stream_nr, *hash;
 	struct stream *current;
 
-	if (stream >= input_streams_allocated) {
+	if (stream >= sctxp input_streams_allocated) {
 		int newalloc = stream * 4 / 3 + 10;
-		input_streams = realloc(input_streams, newalloc * sizeof(struct stream));
-		if (!input_streams)
+		sctxp input_streams = realloc(sctxp input_streams, newalloc * sizeof(struct stream));
+		if (!sctxp input_streams)
 			sparse_die(sctx_ "Unable to allocate more streams space");
-		input_streams_allocated = newalloc;
+		sctxp input_streams_allocated = newalloc;
 	}
-	current = input_streams + stream;
+	current = sctxp input_streams + stream;
 	memset(current, 0, sizeof(*current));
 	current->name = name;
 	current->fd = fd;
 	current->next_path = next_path;
 	current->path = NULL;
 	current->constant = CONSTANT_FILE_MAYBE;
-	input_stream_nr = stream+1;
+	sctxp input_stream_nr = stream+1;
 	hash = hash_stream(sctx_ name);
 	current->next_stream = *hash;
 	*hash = stream;
@@ -351,7 +359,7 @@ norm:
 	if (!had_backslash) {
 		switch (c) {
 		case '\t':
-			stream->pos += tabstop - stream->pos % tabstop;
+			stream->pos += sctxp tabstop - stream->pos % sctxp tabstop;
 			break;
 		case '\n':
 			stream->line++;
@@ -421,7 +429,9 @@ static inline int nextchar(SCTX_ stream_t *stream)
 	return nextchar_slow(sctx_ stream);
 }
 
+#ifndef DO_CTX
 struct token eof_token_entry;
+#endif
 
 static struct token *mark_eof(SCTX_ stream_t *stream)
 {
@@ -431,10 +441,10 @@ static struct token *mark_eof(SCTX_ stream_t *stream)
 	token_type(end) = TOKEN_STREAMEND;
 	end->pos.newline = 1;
 
-	eof_token_entry.next = &eof_token_entry;
-	eof_token_entry.pos.newline = 1;
+	sctxp eof_token_entry.next = &sctxp eof_token_entry;
+	sctxp eof_token_entry.pos.newline = 1;
 
-	end->next =  &eof_token_entry;
+	end->next =  &sctxp eof_token_entry;
 	*stream->tokenlist = end;
 	stream->tokenlist = NULL;
 	return end;
@@ -785,6 +795,7 @@ static int get_one_special(SCTX_ int c, stream_t *stream)
 	return next;
 }
 
+/* ctx.h 
 #define IDENT_HASH_BITS (13)
 #define IDENT_HASH_SIZE (1<<IDENT_HASH_BITS)
 #define IDENT_HASH_MASK (IDENT_HASH_SIZE-1)
@@ -792,9 +803,12 @@ static int get_one_special(SCTX_ int c, stream_t *stream)
 #define ident_hash_init(c)		(c)
 #define ident_hash_add(oldhash,c)	((oldhash)*11 + (c))
 #define ident_hash_end(hash)		((((hash) >> IDENT_HASH_BITS) + (hash)) & IDENT_HASH_MASK)
+*/
 
+#ifndef DO_CTX
 static struct ident *hash_table[IDENT_HASH_SIZE];
 static int ident_hit, ident_miss, idents;
+#endif
 
 void show_identifier_stats(SCTX)
 {
@@ -802,13 +816,13 @@ void show_identifier_stats(SCTX)
 	int distribution[100];
 
 	fprintf(stderr, "identifiers: %d hits, %d misses\n",
-		ident_hit, ident_miss);
+		sctxp ident_hit, sctxp ident_miss);
 
 	for (i = 0; i < 100; i++)
 		distribution[i] = 0;
 
 	for (i = 0; i < IDENT_HASH_SIZE; i++) {
-		struct ident * ident = hash_table[i];
+		struct ident * ident = sctxp hash_table[i];
 		int count = 0;
 
 		while (ident) {
@@ -838,9 +852,9 @@ static struct ident *alloc_ident(SCTX_ const char *name, int len)
 
 static struct ident * insert_hash(SCTX_ struct ident *ident, unsigned long hash)
 {
-	ident->next = hash_table[hash];
-	hash_table[hash] = ident;
-	ident_miss++;
+	ident->next = sctxp hash_table[hash];
+	sctxp hash_table[hash] = ident;
+	sctxp ident_miss++;
 	return ident;
 }
 
@@ -849,13 +863,13 @@ static struct ident *create_hashed_ident(SCTX_ const char *name, int len, unsign
 	struct ident *ident;
 	struct ident **p;
 
-	p = &hash_table[hash];
+	p = &sctxp hash_table[hash];
 	while ((ident = *p) != NULL) {
 		if (ident->len == (unsigned char) len) {
 			if (strncmp(name, ident->name, len) != 0)
 				goto next;
 
-			ident_hit++;
+			sctxp ident_hit++;
 			return ident;
 		}
 next:
@@ -865,8 +879,8 @@ next:
 	ident = alloc_ident(sctx_ name, len);
 	*p = ident;
 	ident->next = NULL;
-	ident_miss++;
-	idents++;
+	sctxp ident_miss++;
+	sctxp idents++;
 	return ident;
 }
 
@@ -1014,7 +1028,7 @@ struct expansion * tokenize_buffer(SCTX_ void *buffer, unsigned long size, struc
 
 	e = setup_stream(sctx_ &stream, 0, -1, buffer, size);
 	*endtoken = tokenize_stream(sctx_ &stream);
-	list_e(e->s, e);
+	list_e(sctx_ e->s, e);
 	return e;
 }
 
@@ -1040,7 +1054,7 @@ struct expansion * tokenize(SCTX_ const char *name, int fd, struct token *endtok
 	if (endtoken)
 		end->next = endtoken;
 
-	list_e(e->s, e);
+	list_e(sctx_ e->s, e);
 
 	return e;
 }

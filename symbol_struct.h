@@ -9,7 +9,7 @@
  *  Licensed under the Open Software License version 1.1
  */
 
-#include "token.h"
+#include "token_struct.h"
 
 /*
  * An identifier with semantic meaning is a "symbol".

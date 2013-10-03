@@ -7,6 +7,7 @@
  */
 
 #include "dissect.h"
+#include "token.h"
 
 #define	U_VOID	 0x00
 #define	U_SELF	((1 << U_SHIFT) - 1)
@@ -664,7 +665,7 @@ int dissect_arr(SCTX_ int argc, char **argv)
 	sparse_initialize(sctx_ argc, argv, &filelist);
 
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		dotc_stream = input_stream_nr;
+		dotc_stream = sctxp input_stream_nr;
 		dissect(sctx_ __sparse(sctx_ file), &reporter);
 	} END_FOR_EACH_PTR_NOTAG(file);
 

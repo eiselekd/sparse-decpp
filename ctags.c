@@ -15,6 +15,7 @@
 
 #include "parse.h"
 #include "scope.h"
+#include "token.h"
 
 static struct symbol_list *taglist = NULL;
 

@@ -73,6 +73,9 @@ struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *ctx) {
 	{ "dead", &ctx->dbg_dead},
 	};
 	memcpy(ctx->debugs, debugs, sizeof(ctx->debugs));
+	/* tokenize.c */
+	ctx->tabstop = 8;
+	memset(ctx->input_stream_hashes,-1,sizeof(ctx->input_stream_hashes));
 	
 	/* target.c */
 	ctx->size_t_ctype = &ctx->uint_ctype;

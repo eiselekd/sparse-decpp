@@ -578,7 +578,7 @@ static char **handle_switch_ftabstop(SCTX_ char *arg, char **next)
 	/* we silently ignore silly values */
 	val = strtoul(arg, &end, 10);
 	if (*end == '\0' && 1 <= val && val <= 100)
-		tabstop = val;
+		sctxp tabstop = val;
 
 	return next;
 }
@@ -981,7 +981,7 @@ static struct symbol_list *sparse_initial(SCTX)
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_CMDLINE;
 	e->s = sctxp pre_buffer_begin;
-	list_e(e->s, e);
+	list_e(sctx_ e->s, e);
 
 	return sparse_tokenstream(sctx_ e);
 }

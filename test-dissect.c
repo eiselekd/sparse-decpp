@@ -1,5 +1,6 @@
 #include "dissect.h"
 #include "string.h"
+#include "token.h"
 
 static unsigned dotc_stream;
 
@@ -151,7 +152,7 @@ int main(int argc, char **argv)
 	sparse_initialize(sctx_ argc, argv, &filelist);
 
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		dotc_stream = input_stream_nr;
+		dotc_stream = sctxp input_stream_nr;
 		dissect(sctx_ __sparse(sctx_ file), &reporter);
 	} END_FOR_EACH_PTR_NOTAG(file);
 

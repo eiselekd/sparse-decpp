@@ -5,6 +5,7 @@
 #include "lib.h"
 #include "symbol_struct.h"
 #include "allocate_struct.h"
+#include "token_struct.h"
 
 /* lib.c */
 #ifndef __GNUC__
@@ -48,7 +49,39 @@ struct ctype_name {
 	const char *name;
 };
 
+/* tokenize.c */
+typedef struct {
+	int fd, offset, size;
+	int pos, line, nr;
+	int newline, whitespace;
+	struct token **tokenlist;
+	struct token *token;
+	unsigned char *buffer;
+} stream_t;
+#define HASHED_INPUT_BITS (6)
+#define HASHED_INPUT (1 << HASHED_INPUT_BITS)
+#define HASH_PRIME 0x9e370001UL
+
+#define IDENT_HASH_BITS (13)
+#define IDENT_HASH_SIZE (1<<IDENT_HASH_BITS)
+#define IDENT_HASH_MASK (IDENT_HASH_SIZE-1)
+
+#define ident_hash_init(c)		(c)
+#define ident_hash_add(oldhash,c)	((oldhash)*11 + (c))
+#define ident_hash_end(hash)		((((hash) >> IDENT_HASH_BITS) + (hash)) & IDENT_HASH_MASK)
+
 struct sparse_ctx {
+
+	/* tokenize.c */
+	int input_stream_nr/* = 0*/;
+	struct stream *input_streams;
+	/*static*/ int input_streams_allocated;
+	unsigned int tabstop /* = 8 */;
+	/*static*/ int input_stream_hashes[HASHED_INPUT]/* = { [0 ... HASHED_INPUT-1] = -1 }*/;
+	struct token eof_token_entry;
+	/*static */struct ident *hash_table[IDENT_HASH_SIZE];
+	/*static */ int ident_hit, ident_miss, idents;
+
 	/* dissect.c */
 	struct reporter *reporter;
 	/*static*/ struct symbol *return_type;
