@@ -11,6 +11,7 @@ WriteMakefile(
     ($] >= 5.005 ?
       (ABSTRACT_FROM  => 'lib/sparse.pm', # retrieve abstract from module
        AUTHOR         => 'Konrad Eisele <eiselekd@gmail.com>') : ()),
+    LICENSE  => ['perl','BSD' ],
     LIBS              => ['-L./.. '], # e.g., '-lm'
     DEFINE            => '-DGCC_BASE="\"'.$gcc.'\""',
     INC               => '-I. -I..', 

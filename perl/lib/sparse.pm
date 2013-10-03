@@ -217,7 +217,7 @@ __END__
 
 =head1 sparse
 
-d - Perl binding to Linux's Sparse
+sparse - Perl binding to Linux's Sparse
 
 =head1 SYNOPSIS
 
