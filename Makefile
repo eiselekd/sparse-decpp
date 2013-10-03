@@ -106,6 +106,7 @@ INST_PROGRAMS += sparse-llvm sparsec
 sparse-llvm_EXTRA_DEPS := sparse-llvm.o
 sparse-llvm.o $(sparse-llvm_EXTRA_DEPS): BASIC_CFLAGS += $(LLVM_CFLAGS)
 sparse-llvm_EXTRA_OBJS := $(LLVM_LIBS)
+CFLAGS += -DHAVE_LLVM $(LLVM_CFLAGS)
 endif
 endif
 

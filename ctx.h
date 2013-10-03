@@ -4,6 +4,7 @@
 #include "ctx_def.h"
 #include "lib.h"
 #include "symbol_struct.h"
+#include "allocate_struct.h"
 
 /* lib.c */
 #ifndef __GNUC__
@@ -167,6 +168,37 @@ struct sparse_ctx {
 			null_ctype;
 	struct symbol	zero_int;
 
+	/* linearize.c */
+	ALLOCATOR_DEF(pseudo_user, "pseudo_user", 0);
+	ALLOCATOR_DEF(asm_rules, "asm rules", 0);
+	ALLOCATOR_DEF(asm_constraint, "asm constraints", 0);
+  
+	/* allocate.c */
+	ALLOCATOR_DEF(ident, "identifiers",0);
+	ALLOCATOR_DEF(token, "tokens",1);
+	ALLOCATOR_DEF(expansion, "expansions",1);
+	ALLOCATOR_DEF(sym_context, "sym_contexts",0);
+	ALLOCATOR_DEF(symbol, "symbols",0);
+	ALLOCATOR_DEF(expression, "expressions",0);
+	ALLOCATOR_DEF(statement, "statements",0);
+	ALLOCATOR_DEF(string, "strings",0);
+	ALLOCATOR_DEF(scope, "scopes",0);
+	ALLOCATOR_DEF(bytes, "bytes",0);
+	ALLOCATOR_DEF(basic_block, "basic_block",0);
+	ALLOCATOR_DEF(entrypoint, "entrypoint",0);
+	ALLOCATOR_DEF(instruction, "instruction",0);
+	ALLOCATOR_DEF(multijmp, "multijmp",0);
+	ALLOCATOR_DEF(pseudo, "pseudo",0);
+
+	/* ptrlist.c */
+	ALLOCATOR_DEF(ptrlist, "ptr list",0);
+	
+	/* storage.c */
+	ALLOCATOR_DEF(storage, "storages", 0);
+	ALLOCATOR_DEF(storage_hash, "storage hash", 0);
+
+	/* sparse-llvm.c */
+	ALLOCATOR_DEF(llfunc, "llfuncs", 0);
 	
 };
 

@@ -3,8 +3,8 @@
 
 struct sparse_ctx;
 
-#define USE_CTX
 #undef  USE_CTX
+#define USE_CTX
 
 #ifdef  USE_CTX
 

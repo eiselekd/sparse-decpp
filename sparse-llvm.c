@@ -719,10 +719,7 @@ static void output_op_switch(SCTX_ struct function *fn, struct instruction *insn
 	insn->target->priv = target;
 }
 
-struct llfunc {
-	char		name[256];	/* wasteful */
-	LLVMValueRef	func;
-};
+#include "sparse-llvm.h"
 
 DECLARE_ALLOCATOR(llfunc);
 DECLARE_PTR_LIST(llfunc_list, struct llfunc);

@@ -1,8 +1,23 @@
 #include "ctx.h"
 #include "lib.h"
 #include "string.h"
+#include "allocate.h"
+#include "lib.h"
+#include "allocate.h"
+#include "compat.h"
+#include "token.h"
+#include "symbol.h"
+#include "scope.h"
+#include "expression.h"
+#include "linearize.h"
+#include "storage.h"
+#include "sparse-llvm.h"
 
 struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *ctx) {
+#ifdef DO_CTX
+	struct sparse_ctx *_sctx = ctx;
+#endif
+
 	memset(ctx, 0, sizeof(struct sparse_ctx));
 	ctx->gcc_major = __GNUC__;
 	ctx->gcc_minor = __GNUC_MINOR__;
@@ -91,6 +106,37 @@ struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *ctx) {
 	sparse_ctx_init_parse1(ctx);
 	sparse_ctx_init_parse2(ctx);
 
-	
+	/* linearize.c */
+	ALLOCATOR_INIT(pseudo_user, "pseudo_user", 0);
+	ALLOCATOR_INIT(asm_rules, "asm rules", 0);
+	ALLOCATOR_INIT(asm_constraint, "asm constraints", 0);
+
+	/* allocate.c */
+	ALLOCATOR_INIT(ident, "identifiers",0);
+	ALLOCATOR_INIT(token, "tokens",1);
+	ALLOCATOR_INIT(expansion, "expansions",1);
+	ALLOCATOR_INIT(sym_context, "sym_contexts",0);
+	ALLOCATOR_INIT(symbol, "symbols",0);
+	ALLOCATOR_INIT(expression, "expressions",0);
+	ALLOCATOR_INIT(statement, "statements",0);
+	ALLOCATOR_INIT(string, "strings",0);
+	ALLOCATOR_INIT(scope, "scopes",0);
+	__DO_ALLOCATOR_INIT(void, 0, 1, "bytes", bytes,0);
+	ALLOCATOR_INIT(basic_block, "basic_block",0);
+	ALLOCATOR_INIT(entrypoint, "entrypoint",0);
+	ALLOCATOR_INIT(instruction, "instruction",0);
+	ALLOCATOR_INIT(multijmp, "multijmp",0);
+	ALLOCATOR_INIT(pseudo, "pseudo",0);
+
+	/* ptrlist.c */
+	__ALLOCATOR_INIT(struct ptr_list, "ptr list", ptrlist, 0);
+
+	/* storage.c */
+	ALLOCATOR_INIT(storage, "storages", 0);
+	ALLOCATOR_INIT(storage_hash, "storage hash", 0);
+
+	/* sparse-llvm.c */
+	ALLOCATOR_INIT(llfunc, "llfuncs", 0);
+
 	return ctx;
 }
