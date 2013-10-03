@@ -94,7 +94,7 @@ typedef struct scope      *sparsescope_ptr;
 typedef struct expansion  *sparseexpand_ptr;
 typedef struct sparse_ctx *sparsectx_ptr;
 
-#define SvSPARSE(s,type)  ((type) SvIV((SV*) SvRV(s)))
+#define SvSPARSE(s,type)  ((type) (long)SvIV((SV*) SvRV(s)))
 #define SvSPARSE_CTX(s)       SvSPARSE(s,sparsectx)
 #define SvSPARSE_POS(s)       SvSPARSE(s,sparsepos)
 #define SvSPARSE_TOK(s)       SvSPARSE(s,sparsetok)
