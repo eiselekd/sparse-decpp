@@ -39,20 +39,20 @@ int main(int argc, char **argv)
 {
 	char *file;
 	struct string_list *filelist = NULL;
-	struct sparse_ctx sctx;
+	SPARSE_CTX_INIT;
 
-	clean_up_symbols(&sctx,sparse_initialize(&sctx,argc, argv, &filelist));
+	clean_up_symbols(sctx_ sparse_initialize(sctx_ argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 		struct symbol_list *list;
 		const char *basename = strrchr(file, '/');
 		basename = basename ?  basename+1 : file;
 
-		list = sparse(&sctx,file);
+		list = sparse(sctx_ file);
 
 		// Do type evaluation and simplification
-		emit_unit_begin(&sctx,basename);
-		clean_up_symbols(&sctx,list);
-		emit_unit_end(&sctx);
+		emit_unit_begin(sctx_ basename);
+		clean_up_symbols(sctx_ list);
+		emit_unit_end(sctx );
 	} END_FOR_EACH_PTR_NOTAG(file);
 
 #if 0

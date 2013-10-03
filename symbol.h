@@ -69,6 +69,7 @@ extern void debug_symbol(SCTX_ struct symbol *);
 extern void merge_type(SCTX_ struct symbol *sym, struct symbol *base_type);
 extern void check_declaration(SCTX_ struct symbol *sym);
 
+#include "target.h"
 
 static inline struct symbol *get_base_type(SCTX_ const struct symbol *sym)
 {

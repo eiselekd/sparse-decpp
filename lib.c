@@ -410,10 +410,7 @@ static char **handle_switch_o(SCTX_ char *arg, char **next)
 }
 
 #ifndef DO_CTX
-static const struct warning {
-	const char *name;
-	int *flag;
-} warnings[WCNT] = {
+static const struct warning warnings[WCNT] = {
 	{ "address-space", &Waddress_space },
 	{ "bitwise", &Wbitwise },
 	{ "cast-to-as", &Wcast_to_as },

@@ -2,6 +2,12 @@
 #define CTX_DEF_SPARSE_H
 
 struct sparse_ctx;
+
+#define USE_CTX
+#undef  USE_CTX
+
+#ifdef  USE_CTX
+
 #define SCTX_ struct sparse_ctx *_sctx, 
 #define SCTX  struct sparse_ctx *_sctx
 
@@ -15,5 +21,21 @@ struct sparse_ctx;
 #define SPARSE_CTX_INIT struct sparse_ctx __sctx; struct sparse_ctx *_sctx = sparse_ctx_init(&__sctx);
 
 extern struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *);
+
+#else
+
+#define SCTX_  
+#define SCTX  void
+
+#define sctx_ 
+#define sctx  
+#define sctxp 
+
+#define SCTXCNT 0
+#undef  DO_CTX
+
+#define SPARSE_CTX_INIT ;
+
+#endif
 
 #endif

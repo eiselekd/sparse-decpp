@@ -50,11 +50,11 @@ static void emit_symbol_list(SCTX_ struct symbol_list *list)
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file;struct sparse_ctx sctx;
+	char *file; SPARSE_CTX_INIT;
 
-	emit_symbol_list(&sctx, sparse_initialize(&sctx, argc, argv, &filelist));
+	emit_symbol_list(sctx_ sparse_initialize(sctx_ argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		emit_symbol_list(&sctx, sparse(&sctx, file));
+		emit_symbol_list(sctx_ sparse(sctx_ file));
 	} END_FOR_EACH_PTR_NOTAG(file);
 	return 0;
 }

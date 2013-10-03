@@ -146,30 +146,30 @@ int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
 	char *file;
-	struct symbol *sym; struct sparse_ctx sctx;
-
+	struct symbol *sym;
 	struct symbol_list *fsyms, *all_syms=NULL;
+	SPARSE_CTX_INIT;
 
 	printf("digraph call_graph {\n");
-	fsyms = sparse_initialize(&sctx, argc, argv, &filelist);
-	concat_symbol_list(&sctx, fsyms, &all_syms);
+	fsyms = sparse_initialize(sctx_ argc, argv, &filelist);
+	concat_symbol_list(sctx_ fsyms, &all_syms);
 
 	/* Linearize all symbols, graph internal basic block
 	 * structures and intra-file calls */
 	FOR_EACH_PTR_NOTAG(filelist, file) {
 
-		fsyms = sparse(&sctx, file);
-		concat_symbol_list(&sctx, fsyms, &all_syms);
+		fsyms = sparse(sctx_ file);
+		concat_symbol_list(sctx_ fsyms, &all_syms);
 
 		FOR_EACH_PTR(fsyms, sym) {
-			expand_symbol(&sctx, sym);
-			linearize_symbol(&sctx, sym);
+			expand_symbol(sctx_ sym);
+			linearize_symbol(sctx_ sym);
 		} END_FOR_EACH_PTR(sym);
 
 		FOR_EACH_PTR(fsyms, sym) {
 			if (sym->ep) {
-				graph_ep(&sctx, sym->ep);
-				graph_calls(&sctx, sym->ep, 1);
+				graph_ep(sctx_ sym->ep);
+				graph_calls(sctx_ sym->ep, 1);
 			}
 		} END_FOR_EACH_PTR_NOTAG(sym);
 
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 	/* Graph inter-file calls */
 	FOR_EACH_PTR(all_syms, sym) {
 		if (sym->ep)
-			graph_calls(&sctx, sym->ep, 0);
+			graph_calls(sctx_ sym->ep, 0);
 	} END_FOR_EACH_PTR_NOTAG(sym);
 
 	printf("}\n");

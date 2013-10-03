@@ -197,15 +197,16 @@ static inline void examine_symbol_list(SCTX_ struct symbol_list *list)
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
-	char *file; struct sparse_ctx sctx;
+	char *file;
+	SPARSE_CTX_INIT;
 
-	examine_symbol_list(&sctx,sparse_initialize(&sctx,argc, argv, &filelist));
+	examine_symbol_list(sctx_ sparse_initialize(sctx_ argc, argv, &filelist));
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		sparse(&sctx,file);
-		examine_symbol_list(&sctx,file_scope->symbols);
+		sparse(sctx_ file);
+		examine_symbol_list(sctx_ file_scope->symbols);
 	} END_FOR_EACH_PTR_NOTAG(file);
-	examine_symbol_list(&sctx,global_scope->symbols);
-	sort_list(&sctx,(struct ptr_list **)&taglist, cmp_sym);
-	show_tags(&sctx,taglist);
+	examine_symbol_list(sctx_ global_scope->symbols);
+	sort_list(sctx_ (struct ptr_list **)&taglist, cmp_sym);
+	show_tags(sctx_ taglist);
 	return 0;
 }
