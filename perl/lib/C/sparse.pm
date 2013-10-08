@@ -9,7 +9,7 @@ use warnings;
 
 our $AUTOLOAD;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 require XSLoader;
 

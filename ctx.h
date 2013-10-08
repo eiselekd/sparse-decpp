@@ -228,6 +228,11 @@ struct sparse_ctx {
 	struct symbol_list *translation_unit_used_list;
 	/*static*/ struct symbol_list *restr, *fouled;
 	struct symbol *current_fn;
+  
+#undef  __IDENT
+#define __IDENT(n,str,res) struct ident n;
+
+#include "ident-list.h"
 	
 	/*scope.c*/
 	struct scope builtin_scope;
@@ -273,11 +278,13 @@ struct sparse_ctx {
 	struct string_list *filelist;
 	struct symbol_list *symlist;
 	
+  
 };
 
 extern void sparse_ctx_init_parse1(struct sparse_ctx *);
 extern void sparse_ctx_init_parse2(struct sparse_ctx *);
 extern void sparse_ctx_init_show_parse(struct sparse_ctx *);
 extern void sparse_ctx_init_scope(struct sparse_ctx *);
+extern void sparse_ctx_init_symbols(struct sparse_ctx *);
 
 #endif

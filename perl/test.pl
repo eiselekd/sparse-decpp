@@ -25,7 +25,12 @@ use C::sparse qw(:all);
 );
 
 
-$s = C::sparse::sparse("../lib.c");
+$s0 = C::sparse::sparse("../lib.c");
+$s1 = C::sparse::sparse("../lib.c");
+$s2 = C::sparse::sparse("../lib.c");
+
+@files0 = $s0->streams;
+@files1 = $s1->streams;
 
 #while(1) {}
 #foreach my $a (@a) {

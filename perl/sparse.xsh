@@ -1,3 +1,15 @@
+C::sparse::stream(sparsestream):
+    int  : fd
+    int  : constant
+    int  : dirty
+    int  : next_stream
+    int  : once
+    const char *   : name
+    const char *   : path
+    sparseident    : protect    { new=>1 }
+    sparsetok      : ifndef     { new=>1 }
+    sparsetok      : top_if     { new=>1 }
+
 C::sparse::pos(sparsepos):
     int            : type       {}
     int            : stream     {}

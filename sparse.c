@@ -174,11 +174,11 @@ static void check_call_instruction(SCTX_ struct instruction *insn)
 {
 	pseudo_t fn = insn->func;
 	struct ident *ident;
-	static const struct checkfn check_fn[] = {
-		{ &memset_ident, check_memset },
-		{ &memcpy_ident, check_memcpy },
-		{ &copy_to_user_ident, check_ctu },
-		{ &copy_from_user_ident, check_cfu },
+	/*static*/ const struct checkfn check_fn[] = {
+		{ &sctxp memset_ident, check_memset },
+		{ &sctxp memcpy_ident, check_memcpy },
+		{ &sctxp copy_to_user_ident, check_ctu },
+		{ &sctxp copy_from_user_ident, check_cfu },
 	};
 	int i;
 

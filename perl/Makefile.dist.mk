@@ -1,6 +1,6 @@
 include ../Makefile.version
 
-PERL_VERSION=$(shell cat lib/sparse.pm | grep \$$VERSION | awk '{ print $$4; }' | sed -e "s/[;']//g" )
+PERL_VERSION=$(shell cat lib/C/sparse.pm | grep \$$VERSION | awk '{ print $$4; }' | sed -e "s/[;']//g" )
 
 all:
 
@@ -30,9 +30,9 @@ dist:
 	perl -pi -e "s/-I\.\./-Isrc\/sparse-$(VERSION)/g"                       ../perl_dist/Makefile.PL
 	perl -pi -e "s/-L\.\/\.\./-L\.\/src\/sparse-$(VERSION)/g"               ../perl_dist/Makefile.PL
 	cd ../perl_dist; make dist
-	cp ../perl_dist/sparse-$(PERL_VERSION).tar.gz .
+	cp ../perl_dist/C-sparse-$(PERL_VERSION).tar.gz .
 
 upload: dist
-       if [ -f ../../cpan-upload-do ]; then \
-               ../../cpan-upload-do -verbose sparse-$(PERL_VERSION).tar.gz; \
-       fi
+	if [ -f ../../cpan-upload-do ]; then \
+               ../../cpan-upload-do -verbose C-sparse-$(PERL_VERSION).tar.gz; \
+        fi

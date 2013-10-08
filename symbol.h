@@ -30,10 +30,11 @@ extern struct symbol	bool_ctype, void_ctype, type_ctype,
 extern struct symbol	zero_int;
 #endif
 
-
+#ifndef DO_CTX
 #define __IDENT(n,str,res) \
 	extern struct ident n
 #include "ident-list.h"
+#endif
 
 #define symbol_is_typename(sym) ((sym)->type == SYM_TYPE)
 

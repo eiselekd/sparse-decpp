@@ -13,6 +13,7 @@ sparsectype		SPARSE_CTYPE
 sparsesymctx		SPARSE_SYMCTX
 sparsescope		SPARSE_SCOPE
 sparseexpand		SPARSE_EXPAND
+sparsestream		SPARSE_STREAM
 sparsepos_assume	SPARSE_POS_ASSUME
 sparsetok_assume	SPARSE_TOK_ASSUME
 sparsestmt_assume	SPARSE_STMT_ASSUME
@@ -50,6 +51,8 @@ SPARSE_SCOPE
 	class_or_croak ($arg, sparsescope_class); $var = SvSPARSE_SCOPE($arg);
 SPARSE_EXPAND
 	class_or_croak ($arg, sparseexpand_class); $var = SvSPARSE_EXPAND($arg);
+SPARSE_STREAM
+	class_or_croak ($arg, sparsestream_class); $var = SvSPARSE_STREAM($arg);
 SPARSE_POS_ASSUME
         SPARSE_POS_ASSUME ($var, $arg)
 SPARSE_TOK_ASSUME
@@ -102,6 +105,8 @@ SPARSE_SCOPE
     sv_bless (sv_setref_pv ($arg, NULL, $var), sparsescope_class_hv);
 SPARSE_EXPAND
     sv_bless (sv_setref_pv ($arg, NULL, $var), sparseexpand_class_hv);
+SPARSE_STREAM
+    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsestream_class_hv);
 RANDSTATE
     sv_setref_pv ($arg, rand_class, $var);
 MALLOCED_STRING

@@ -774,19 +774,40 @@ struct symbol	bool_ctype, void_ctype, type_ctype,
 struct symbol	zero_int;
 #endif
 
+#undef  __IDENT
+#ifndef DO_CTX
+
 #define __INIT_IDENT(str, res) { .len = sizeof(str)-1, .name = str, .reserved = res }
 #define __IDENT(n,str,res) \
 	struct ident n  = __INIT_IDENT(str,res)
 
 #include "ident-list.h"
 
+#else
+
+void sparse_ctx_init_symbols(SCTX) {
+
+#define __IDENT(n,str,res) \
+  sctxp n.len = sizeof(str)-1; strcpy(sctxp n.name,str); sctxp n.reserved = res;
+
+#include "ident-list.h"
+}
+
+#endif
+
 void init_symbols(SCTX)
 {
 	int stream = init_stream(sctx_ "builtin", -1, includepath);
 	struct sym_init *ptr;
 
+#undef  __IDENT
+#ifndef DO_CTX
 #define __IDENT(n,str,res) \
 	hash_ident(sctx_ &n)
+#else
+#define __IDENT(n,str,res) \
+	hash_ident(sctx_ & sctxp n)
+#endif
 #include "ident-list.h"
 
 	init_parser(sctx_ stream);

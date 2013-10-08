@@ -1540,7 +1540,7 @@ static struct token *declaration_specifiers(SCTX_ struct token *token, struct de
 				if (class == CReal) {
 					specifier_conflict(sctx_ token->pos,
 							   Set_Vlong,
-							   &double_ident);
+							   &sctxp double_ident);
 					break;
 				}
 				seen |= Set_Vlong;
@@ -1584,7 +1584,7 @@ static struct token *abstract_array_declarator(SCTX_ struct token *token, struct
 {
 	struct expression *expr = NULL;
 
-	if (match_idents(sctx_ token, &restrict_ident, &__restrict_ident, NULL))
+	if (match_idents(sctx_ token, &sctxp restrict_ident, &sctxp __restrict_ident, NULL))
 		token = token->next;
 	token = parse_expression(sctx_ token, &expr);
 	sym->array_size = expr;
@@ -2004,10 +2004,10 @@ static struct token *parse_asm_statement(SCTX_ struct token *token, struct state
 
 	token = token->next;
 	stmt->type = STMT_ASM;
-	if (match_idents(sctx_ token, &__volatile___ident, &__volatile_ident, &volatile_ident, NULL)) {
+	if (match_idents(sctx_ token, &sctxp __volatile___ident, &sctxp __volatile_ident, &sctxp volatile_ident, NULL)) {
 		token = token->next;
 	}
-	if (token_type(token) == TOKEN_IDENT && token->ident == &goto_ident) {
+	if (token_type(token) == TOKEN_IDENT && token->ident == &sctxp goto_ident) {
 		is_goto = 1;
 		token = token->next;
 	}
@@ -2061,9 +2061,9 @@ static void start_iterator(SCTX_ struct statement *stmt)
 
 	start_symbol_scope(sctx);
 	cont = alloc_symbol(sctx_ stmt->tok, SYM_NODE);
-	bind_symbol(sctx_ cont, &continue_ident, NS_ITERATOR);
+	bind_symbol(sctx_ cont, &sctxp continue_ident, NS_ITERATOR);
 	brk = alloc_symbol(sctx_ stmt->tok, SYM_NODE);
-	bind_symbol(sctx_ brk, &break_ident, NS_ITERATOR);
+	bind_symbol(sctx_ brk, &sctxp break_ident, NS_ITERATOR);
 
 	stmt->type = STMT_ITERATOR;
 	stmt->iterator_break = brk;
@@ -2087,7 +2087,7 @@ static struct statement *start_function(SCTX_ struct token *token, struct symbol
 	ret->ctype = sym->ctype.base_type->ctype;
 	ret->ctype.modifiers &= ~(MOD_STORAGE | MOD_CONST | MOD_VOLATILE | MOD_TLS | MOD_INLINE | MOD_ADDRESSABLE | MOD_NOCAST | MOD_NODEREF | MOD_ACCESSED | MOD_TOPLEVEL);
 	ret->ctype.modifiers |= (MOD_AUTO | MOD_REGISTER);
-	bind_symbol(sctx_ ret, &return_ident, NS_ITERATOR);
+	bind_symbol(sctx_ ret, &sctxp return_ident, NS_ITERATOR);
 	stmt->ret = ret;
 	fn_local_symbol(sctx_ ret);
 
@@ -2121,10 +2121,10 @@ static void start_switch(SCTX_ struct statement *stmt)
 
 	start_symbol_scope(sctx );
 	brk = alloc_symbol(sctx_ stmt->tok, SYM_NODE);
-	bind_symbol(sctx_ brk, &break_ident, NS_ITERATOR);
+	bind_symbol(sctx_ brk, &sctxp break_ident, NS_ITERATOR);
 
 	switch_case = alloc_symbol(sctx_ stmt->tok, SYM_NODE);
-	bind_symbol(sctx_ switch_case, &case_ident, NS_ITERATOR);
+	bind_symbol(sctx_ switch_case, &sctxp case_ident, NS_ITERATOR);
 	switch_case->stmt = stmt;
 
 	stmt->type = STMT_SWITCH;
@@ -2144,7 +2144,7 @@ static void end_switch(SCTX_ struct statement *stmt)
 
 static void add_case_statement(SCTX_ struct statement *stmt)
 {
-	struct symbol *target = lookup_symbol(sctx_ &case_ident, NS_ITERATOR);
+	struct symbol *target = lookup_symbol(sctx_ &sctxp case_ident, NS_ITERATOR);
 	struct symbol *sym;
 
 	if (!target) {
@@ -2161,7 +2161,7 @@ static void add_case_statement(SCTX_ struct statement *stmt)
 
 static struct token *parse_return_statement(SCTX_ struct token *token, struct statement *stmt)
 {
-	struct symbol *target = lookup_symbol(sctx_ &return_ident, NS_ITERATOR);
+	struct symbol *target = lookup_symbol(sctx_ &sctxp return_ident, NS_ITERATOR);
 
 	if (!target)
 		error_die(sctx_ token->pos, "internal error: return without a function target");
@@ -2229,7 +2229,7 @@ static struct token *parse_do_statement(SCTX_ struct token *token, struct statem
 
 	start_iterator(sctx_ stmt);
 	token = statement(sctx_ token->next, &iterator);
-	if (token_type(token) == TOKEN_IDENT && token->ident == &while_ident)
+	if (token_type(token) == TOKEN_IDENT && token->ident == &sctxp while_ident)
 		token = token->next;
 	else
 		sparse_error(sctx_ token->pos, "expected 'while' after 'do'");
@@ -2252,7 +2252,7 @@ static struct token *parse_if_statement(SCTX_ struct token *token, struct statem
 	token = statement(sctx_ token, &stmt->if_true);
 	if (token_type(token) != TOKEN_IDENT)
 		return token;
-	if (token->ident != &else_ident)
+	if (token->ident != &sctxp else_ident)
 		return token;
 	return statement(sctx_ token->next, &stmt->if_false);
 }
@@ -2396,7 +2396,7 @@ static struct token * statement_list(SCTX_ struct token *token, struct statement
 {
 	int seen_statement = 0;
 	while (token_type(token) == TOKEN_IDENT &&
-	       token->ident == &__label___ident)
+	       token->ident == &sctxp __label___ident)
 		token = label_statement(sctx_ token->next);
 	for (;;) {
 		struct statement * stmt;
