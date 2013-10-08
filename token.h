@@ -36,6 +36,7 @@ static inline struct token *list_e(SCTX_ struct token *l, struct expansion *e)
 
 extern int init_stream(SCTX_ const char *, int fd, const char **next_path);
 extern const char *stream_name(SCTX_ int stream);
+extern struct stream *stream_get(SCTX_ int stream);
 extern struct ident *hash_ident(SCTX_ struct ident *);
 extern struct ident *built_in_ident(SCTX_ const char *);
 extern struct token *built_in_token(SCTX_ int, const char *);

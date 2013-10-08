@@ -25,12 +25,14 @@ use C::sparse qw(:all);
 );
 
 
-$s0 = C::sparse::sparse("../lib.c");
-$s1 = C::sparse::sparse("../lib.c");
-$s2 = C::sparse::sparse("../lib.c");
+$s0 = C::sparse::sparse("t/test.c");
+$s1 = C::sparse::sparse("t/test.c");
+$s2 = C::sparse::sparse("t/test.c");
 
-@files0 = $s0->streams;
-@files1 = $s1->streams;
+print("Files0:\n");
+map { print " ".$_->name."\n" } @files0 = $s0->streams;
+print("Files1:\n");
+map { print " ".$_->name."\n" } @files1 = $s1->streams;
 
 #while(1) {}
 #foreach my $a (@a) {

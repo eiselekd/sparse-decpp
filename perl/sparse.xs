@@ -438,7 +438,7 @@ sparse(...)
         a = (char **)malloc(sizeof(void *) * (items+2));
 	a[0] = "sparse";
         for (i = 0; i < items; i++) {
-            a[i+1] = SvPV_nolen(ST(i));
+            a[i+1] = strdup(SvPV_nolen(ST(i)));
 	}
         a[items+1] = 0;
 	TRACE(printf("sparse_initialize("));
@@ -452,6 +452,31 @@ sparse(...)
 	RETVAL = new_sparsectx((sparsectx_t)sctx);
     OUTPUT:
 	RETVAL	
+
+MODULE = C::sparse   PACKAGE = C::sparse
+PROTOTYPES: ENABLE
+
+void
+streams(p,...)
+	sparsectx p
+    PREINIT:
+    struct token *t; int cnt = 0; SPARSE_CTX_GEN(0); int id = 0; struct stream *s;
+    PPCODE:
+        SPARSE_CTX_SET((struct sparse_ctx *)p->m);
+	while(s = stream_get(sctx_ id)) { 
+	    printf(" - %p:",s->name); fflush(stdout);
+ 	    printf(" - %s\n",s->name ? s->name : "<null>");
+	    if (GIMME_V == G_ARRAY) {
+	        EXTEND(SP, 1);
+		PUSHs(bless_stream (s));
+            }
+            id++; cnt++;
+	}
+ 	if (GIMME_V == G_SCALAR) {
+ 	    EXTEND(SP, 1);
+            PUSHs(sv_2mortal(newSViv(cnt)));
+	}
+
 
 #	FOR_EACH_PTR(symlist, sym) {
 #	    EXTEND(SP, 1);

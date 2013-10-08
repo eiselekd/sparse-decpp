@@ -210,6 +210,8 @@ use C::sparse::sym;
 use C::sparse::stmt;
 use C::sparse::expr;
 use C::sparse::expand;
+use C::sparse::ctx;
+use C::sparse::stream;
 
 
 1;
