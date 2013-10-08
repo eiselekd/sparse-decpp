@@ -5,11 +5,11 @@ use ExtUtils::Constant 0.23 'WriteConstants';
 my $gcc = system("gcc --print-file-name=");
 
 WriteMakefile(
-    NAME              => 'sparse',
-    VERSION_FROM      => 'lib/sparse.pm', # finds $VERSION
+    NAME              => 'C::sparse',
+    VERSION_FROM      => 'lib/C/sparse.pm', # finds $VERSION
     PREREQ_PM         => {}, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?
-      (ABSTRACT_FROM  => 'lib/sparse.pm', # retrieve abstract from module
+      (ABSTRACT_FROM  => 'lib/C/sparse.pm', # retrieve abstract from module
        AUTHOR         => 'Konrad Eisele <eiselekd@gmail.com>') : ()),
     LICENSE  => ['perl','BSD' ],
     LIBS              => ['-L./.. '], # e.g., '-lm'
@@ -100,6 +100,6 @@ my @names =
 
 WriteConstants(
     DEFAULT_TYPE => 'IV',
-    NAME => 'sparse',
+    NAME => 'C::sparse',
     NAMES => \@names,
 );

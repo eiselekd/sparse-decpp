@@ -1,32 +1,33 @@
 use POSIX;
-use sparse qw(:all);
+use C::sparse qw(:all);
 #use Devel::Peek;
 
 %SYM_typ = (
-	sparse::SYM_UNINITIALIZED=>"SYM_UNINITIALIZED" ,
-	sparse::SYM_PREPROCESSOR =>"SYM_PREPROCESSOR"  ,
-	sparse::SYM_BASETYPE     =>"SYM_BASETYPE"      ,
-	sparse::SYM_NODE         =>"SYM_NODE"          ,
-	sparse::SYM_PTR          =>"SYM_PTR"           ,
-	sparse::SYM_FN           =>"SYM_FN"            ,
-	sparse::SYM_ARRAY        =>"SYM_ARRAY"         ,
-	sparse::SYM_STRUCT       =>"SYM_STRUCT"        ,
-	sparse::SYM_UNION        =>"SYM_UNION"         ,
-	sparse::SYM_ENUM         =>"SYM_ENUM"          ,
-	sparse::SYM_TYPEDEF      =>"SYM_TYPEDEF"       ,
-	sparse::SYM_TYPEOF       =>"SYM_TYPEOF"        ,
-	sparse::SYM_MEMBER       =>"SYM_MEMBER"        ,
-	sparse::SYM_BITFIELD     =>"SYM_BITFIELD"      ,
-	sparse::SYM_LABEL        =>"SYM_LABEL"         ,
-	sparse::SYM_RESTRICT     =>"SYM_RESTRICT"      ,
-	sparse::SYM_FOULED       =>"SYM_FOULED"        ,
-	sparse::SYM_KEYWORD      =>"SYM_KEYWORD"       ,
-	sparse::SYM_BAD          =>"SYM_BAD"           
+	C::sparse::SYM_UNINITIALIZED=>"SYM_UNINITIALIZED" ,
+	C::sparse::SYM_PREPROCESSOR =>"SYM_PREPROCESSOR"  ,
+	C::sparse::SYM_BASETYPE     =>"SYM_BASETYPE"      ,
+	C::sparse::SYM_NODE         =>"SYM_NODE"          ,
+	C::sparse::SYM_PTR          =>"SYM_PTR"           ,
+	C::sparse::SYM_FN           =>"SYM_FN"            ,
+	C::sparse::SYM_ARRAY        =>"SYM_ARRAY"         ,
+	C::sparse::SYM_STRUCT       =>"SYM_STRUCT"        ,
+	C::sparse::SYM_UNION        =>"SYM_UNION"         ,
+	C::sparse::SYM_ENUM         =>"SYM_ENUM"          ,
+	C::sparse::SYM_TYPEDEF      =>"SYM_TYPEDEF"       ,
+	C::sparse::SYM_TYPEOF       =>"SYM_TYPEOF"        ,
+	C::sparse::SYM_MEMBER       =>"SYM_MEMBER"        ,
+	C::sparse::SYM_BITFIELD     =>"SYM_BITFIELD"      ,
+	C::sparse::SYM_LABEL        =>"SYM_LABEL"         ,
+	C::sparse::SYM_RESTRICT     =>"SYM_RESTRICT"      ,
+	C::sparse::SYM_FOULED       =>"SYM_FOULED"        ,
+	C::sparse::SYM_KEYWORD      =>"SYM_KEYWORD"       ,
+	C::sparse::SYM_BAD          =>"SYM_BAD"           
 );
 
 
-$s = sparse::sparse("../lib.c");
+$s = C::sparse::sparse("../lib.c");
 
+#while(1) {}
 #foreach my $a (@a) {
 #  if ($a->namespace != sparse::NS_PREPROCESSOR) {
 #    my $cnt = $a->arguments;

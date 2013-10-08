@@ -15,6 +15,7 @@ dist:
 	echo "src/sparse-decpp-$(VERSION).tar.gz" > ../perl_dist/MANIFEST
 	find lib/                                 >>../perl_dist/MANIFEST
 	find src/                                 >>../perl_dist/MANIFEST
+	find scripts/                             >>../perl_dist/MANIFEST
 	echo "README"                             >>../perl_dist/MANIFEST
 	echo "Makefile.PL"                        >>../perl_dist/MANIFEST
 	echo "sparse.xs"                          >>../perl_dist/MANIFEST

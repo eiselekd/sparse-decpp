@@ -75,7 +75,7 @@ while ($m =~ /($idre)$RE_balanced_smothbrackets:\s*\n/m) {
       if ($$a{'arr'}) {
 
 my $g = "
-MODULE = sparse   PACKAGE = ${id}
+MODULE = C::sparse   PACKAGE = ${id}
 PROTOTYPES: ENABLE
 
 void
@@ -102,7 +102,7 @@ ${name}(p,...)
       } else {
       
 my $g = "
-MODULE = sparse   PACKAGE = ${id}
+MODULE = C::sparse   PACKAGE = ${id}
 PROTOTYPES: ENABLE
 
 ".nrmspace($t)." $vpost

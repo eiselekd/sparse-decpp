@@ -1,40 +1,21 @@
-use ExtUtils::testlib;  
-package sparse;
+use Data::Dumper;
+use Getopt::Long;
+use Getopt::Long;
+use Carp;
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+use Cwd;
+use Cwd 'abs_path';
 
-use 5.012003;
-use strict;
-use warnings;
+print("
+MODULE = C::sparse         PACKAGE = C::sparse
 
-#our @ISA = qw(Exporter);
+BOOT:
+    sparsestash = gv_stashpv(\"C::sparse\", TRUE);
 
-our $AUTOLOAD;
+");
 
-our $VERSION = '0.01';
-
-require XSLoader;
-
-my $loaded;
-
-sub import {
-    my $pkg = shift;
-
-    load_imports() unless $loaded++;
-
-    # Grandfather old foo_h form to new :foo_h form
-    s/^(?=\w+_h$)/:/ for my @list = @_;
-
-    local $Exporter::ExportLevel = 1;
-    Exporter::import($pkg,@list);
-}
-
-XSLoader::load('sparse', $VERSION);
-
-sub load_imports {
-    
-    our %EXPORT_TAGS = ( 
-	constants =>	
-	[qw(
-
+foreach my $v (qw(
 	TOKEN_EOF
 	TOKEN_ERROR
 	TOKEN_IDENT
@@ -181,75 +162,10 @@ sub load_imports {
 	MOD_EXPLICITLY_SIGNED	
 	MOD_BITWISE	
 
-      )],
+    )) {
+     print("    newCONSTSUB(sparsestash, \"$v\",            newSViv($v));\n");
+   }
 
-	);
+print("
+");
 
-    # Exporter::export_tags();
-    {
-	# De-duplicate the export list: 
-	my %export;
-	@export{map {@$_} values %EXPORT_TAGS} = ();
-	# Doing the de-dup with a temporary hash has the advantage that the SVs in
-	# @EXPORT are actually shared hash key scalars, which will save some memory.
-	our @EXPORT = keys %export;
-
-    }
-    
-    {
-	my %seen;
-	push @{$EXPORT_TAGS{all}},
-	grep {!$seen{$_}++} @{$EXPORT_TAGS{$_}} foreach keys %EXPORT_TAGS;
-    }
-    
-    require Exporter;
-}
-
-use sparse::tok;
-use sparse::sym;
-use sparse::stmt;
-use sparse::expr;
-use sparse::expand;
-
-
-1;
-__END__
-
-=head1 sparse
-
-sparse - Perl binding to Linux's Sparse
-
-=head1 SYNOPSIS
-
-  use sparse;
-  my $s = sparse::sparse("test.c", "-E");
-
-=head1 DESCRIPTION
-
-Binding to the Linux static analyser Sparse.
-
-=head2 EXPORT
-
-None by default.
-
-=head1 SEE ALSO
-
-This version of sparse is based on repository https://github.com/eiselekd/sparse-decpp.git,
-a fork from sparse:5449cfbfe55eea2a602a40122c122b5040d67243. For the original sparse
-refer to https://sparse.wiki.kernel.org/index.php/Main_Page.
-
-=head1 AUTHOR
-
-Konrad Eisele, E<lt>eiselekd a t gmail.com<gt>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright (C) 2013 by Konrad Eisele
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.12.3 or,
-at your option, any later version of Perl 5 you may have available.
-Companies affiliated to the military complex are not allowed to use this
-binding and fork.
-
-=cut

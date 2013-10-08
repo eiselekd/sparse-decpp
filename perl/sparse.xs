@@ -31,17 +31,17 @@
 #define assert_support(x) x
 #endif
 
-static const char sparsectx_class[]  = "sparse::ctx";
-static const char sparsepos_class[]  = "sparse::pos";
-static const char sparsetok_class[]  = "sparse::tok";
-static const char sparsestmt_class[]  = "sparse::stmt";
-static const char sparsesym_class[]  = "sparse::sym";
-static const char sparseexpr_class[]  = "sparse::expr";
-static const char sparseident_class[]  = "sparse::ident";
-static const char sparsectype_class[]  = "sparse::ctype";
-static const char sparsesymctx_class[]  = "sparse::symctx";
-static const char sparsescope_class[]  = "sparse::scope";
-static const char sparseexpand_class[]  = "sparse::expand";
+static const char sparsectx_class[]  = "C::sparse::ctx";
+static const char sparsepos_class[]  = "C::sparse::pos";
+static const char sparsetok_class[]  = "C::sparse::tok";
+static const char sparsestmt_class[]  = "C::sparse::stmt";
+static const char sparsesym_class[]  = "C::sparse::sym";
+static const char sparseexpr_class[]  = "C::sparse::expr";
+static const char sparseident_class[]  = "C::sparse::ident";
+static const char sparsectype_class[]  = "C::sparse::ctype";
+static const char sparsesymctx_class[]  = "C::sparse::symctx";
+static const char sparsescope_class[]  = "C::sparse::scope";
+static const char sparseexpand_class[]  = "C::sparse::expand";
 static HV *sparsectx_class_hv;
 static HV *sparsepos_class_hv;
 static HV *sparsetok_class_hv;
@@ -176,36 +176,36 @@ CREATE_SPARSE(sparseexpand);
 CREATE_SPARSE(sparsectx);
 
 static char *token_types_class[] =  {
-	"sparse::tok::TOKEN_EOF",
-	"sparse::tok::TOKEN_ERROR",
-	"sparse::tok::TOKEN_IDENT",
-	"sparse::tok::TOKEN_ZERO_IDENT",
-	"sparse::tok::TOKEN_NUMBER",
-	"sparse::tok::TOKEN_CHAR",
-	"sparse::tok::TOKEN_CHAR_EMBEDDED_0",
-	"sparse::tok::TOKEN_CHAR_EMBEDDED_1",
-	"sparse::tok::TOKEN_CHAR_EMBEDDED_2",
-	"sparse::tok::TOKEN_CHAR_EMBEDDED_3",
-	"sparse::tok::TOKEN_WIDE_CHAR",
-	"sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_0",
-	"sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_1",
-	"sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_2",
-	"sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_3",
-	"sparse::tok::TOKEN_STRING",
-	"sparse::tok::TOKEN_WIDE_STRING",
-	"sparse::tok::TOKEN_SPECIAL",
-	"sparse::tok::TOKEN_STREAMBEGIN",
-	"sparse::tok::TOKEN_STREAMEND",
-	"sparse::tok::TOKEN_MACRO_ARGUMENT",
-	"sparse::tok::TOKEN_STR_ARGUMENT",
-	"sparse::tok::TOKEN_QUOTED_ARGUMENT",
-	"sparse::tok::TOKEN_CONCAT",
-	"sparse::tok::TOKEN_GNU_KLUDGE",
-	"sparse::tok::TOKEN_UNTAINT",
-	"sparse::tok::TOKEN_ARG_COUNT",
-	"sparse::tok::TOKEN_IF",
-	"sparse::tok::TOKEN_SKIP_GROUPS",
-	"sparse::tok::TOKEN_ELSE",
+	"C::sparse::tok::TOKEN_EOF",
+	"C::sparse::tok::TOKEN_ERROR",
+	"C::sparse::tok::TOKEN_IDENT",
+	"C::sparse::tok::TOKEN_ZERO_IDENT",
+	"C::sparse::tok::TOKEN_NUMBER",
+	"C::sparse::tok::TOKEN_CHAR",
+	"C::sparse::tok::TOKEN_CHAR_EMBEDDED_0",
+	"C::sparse::tok::TOKEN_CHAR_EMBEDDED_1",
+	"C::sparse::tok::TOKEN_CHAR_EMBEDDED_2",
+	"C::sparse::tok::TOKEN_CHAR_EMBEDDED_3",
+	"C::sparse::tok::TOKEN_WIDE_CHAR",
+	"C::sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_0",
+	"C::sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_1",
+	"C::sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_2",
+	"C::sparse::tok::TOKEN_WIDE_CHAR_EMBEDDED_3",
+	"C::sparse::tok::TOKEN_STRING",
+	"C::sparse::tok::TOKEN_WIDE_STRING",
+	"C::sparse::tok::TOKEN_SPECIAL",
+	"C::sparse::tok::TOKEN_STREAMBEGIN",
+	"C::sparse::tok::TOKEN_STREAMEND",
+	"C::sparse::tok::TOKEN_MACRO_ARGUMENT",
+	"C::sparse::tok::TOKEN_STR_ARGUMENT",
+	"C::sparse::tok::TOKEN_QUOTED_ARGUMENT",
+	"C::sparse::tok::TOKEN_CONCAT",
+	"C::sparse::tok::TOKEN_GNU_KLUDGE",
+	"C::sparse::tok::TOKEN_UNTAINT",
+	"C::sparse::tok::TOKEN_ARG_COUNT",
+	"C::sparse::tok::TOKEN_IF",
+	"C::sparse::tok::TOKEN_SKIP_GROUPS",
+	"C::sparse::tok::TOKEN_ELSE",
 	0
 };
 static SV *bless_tok(sparsetok_t e) {
@@ -213,20 +213,20 @@ static SV *bless_tok(sparsetok_t e) {
     return sv_bless (newsv_sparsetok (e), gv_stashpv (token_types_class[token_type(e)],1));
 }
 static char *stmt_types_class[] =  {
-	"sparse::stmt::STMT_NONE",
-	"sparse::stmt::STMT_DECLARATION",
-	"sparse::stmt::STMT_EXPRESSION",
-	"sparse::stmt::STMT_COMPOUND",
-	"sparse::stmt::STMT_IF",
-	"sparse::stmt::STMT_RETURN",
-	"sparse::stmt::STMT_CASE",
-	"sparse::stmt::STMT_SWITCH",
-	"sparse::stmt::STMT_ITERATOR",
-	"sparse::stmt::STMT_LABEL",
-	"sparse::stmt::STMT_GOTO",
-	"sparse::stmt::STMT_ASM",
-	"sparse::stmt::STMT_CONTEXT",
-	"sparse::stmt::STMT_RANGE"
+	"C::sparse::stmt::STMT_NONE",
+	"C::sparse::stmt::STMT_DECLARATION",
+	"C::sparse::stmt::STMT_EXPRESSION",
+	"C::sparse::stmt::STMT_COMPOUND",
+	"C::sparse::stmt::STMT_IF",
+	"C::sparse::stmt::STMT_RETURN",
+	"C::sparse::stmt::STMT_CASE",
+	"C::sparse::stmt::STMT_SWITCH",
+	"C::sparse::stmt::STMT_ITERATOR",
+	"C::sparse::stmt::STMT_LABEL",
+	"C::sparse::stmt::STMT_GOTO",
+	"C::sparse::stmt::STMT_ASM",
+	"C::sparse::stmt::STMT_CONTEXT",
+	"C::sparse::stmt::STMT_RANGE"
 };
 static SV *bless_stmt(sparsestmt_t e) {
     if (!e) return &PL_sv_undef;
@@ -235,25 +235,25 @@ static SV *bless_stmt(sparsestmt_t e) {
 static SV *bless_sparsestmt(sparsestmt_t e) { return bless_stmt(e); }
 
 static char *sym_types_class[] =  {
-	"sparse::sym::SYM_UNINITIALIZED",
-	"sparse::sym::SYM_PREPROCESSOR",
-	"sparse::sym::SYM_BASETYPE",
-	"sparse::sym::SYM_NODE",
-	"sparse::sym::SYM_PTR",
-	"sparse::sym::SYM_FN",
-	"sparse::sym::SYM_ARRAY",
-	"sparse::sym::SYM_STRUCT",
-	"sparse::sym::SYM_UNION",
-	"sparse::sym::SYM_ENUM",
-	"sparse::sym::SYM_TYPEDEF",
-	"sparse::sym::SYM_TYPEOF",
-	"sparse::sym::SYM_MEMBER",
-	"sparse::sym::SYM_BITFIELD",
-	"sparse::sym::SYM_LABEL",
-	"sparse::sym::SYM_RESTRICT",
-	"sparse::sym::SYM_FOULED",
-	"sparse::sym::SYM_KEYWORD",
-	"sparse::sym::SYM_BAD",
+	"C::sparse::sym::SYM_UNINITIALIZED",
+	"C::sparse::sym::SYM_PREPROCESSOR",
+	"C::sparse::sym::SYM_BASETYPE",
+	"C::sparse::sym::SYM_NODE",
+	"C::sparse::sym::SYM_PTR",
+	"C::sparse::sym::SYM_FN",
+	"C::sparse::sym::SYM_ARRAY",
+	"C::sparse::sym::SYM_STRUCT",
+	"C::sparse::sym::SYM_UNION",
+	"C::sparse::sym::SYM_ENUM",
+	"C::sparse::sym::SYM_TYPEDEF",
+	"C::sparse::sym::SYM_TYPEOF",
+	"C::sparse::sym::SYM_MEMBER",
+	"C::sparse::sym::SYM_BITFIELD",
+	"C::sparse::sym::SYM_LABEL",
+	"C::sparse::sym::SYM_RESTRICT",
+	"C::sparse::sym::SYM_FOULED",
+	"C::sparse::sym::SYM_KEYWORD",
+	"C::sparse::sym::SYM_BAD",
 };
 static SV *bless_sym(sparsesym_t e)   { 
     if (!e) return &PL_sv_undef;
@@ -262,37 +262,37 @@ static SV *bless_sym(sparsesym_t e)   {
 static SV *bless_sparsesym(sparsesym_t e)   { return bless_sym(e); }
 
 static char *expr_types_class[] =  {
-        "sparse::expr::EXPR_NONE",
-	"sparse::expr::EXPR_VALUE",
-	"sparse::expr::EXPR_STRING",
-	"sparse::expr::EXPR_SYMBOL",
-	"sparse::expr::EXPR_TYPE",
-	"sparse::expr::EXPR_BINOP",
-	"sparse::expr::EXPR_ASSIGNMENT",
-	"sparse::expr::EXPR_LOGICAL",
-	"sparse::expr::EXPR_DEREF",
-	"sparse::expr::EXPR_PREOP",
-	"sparse::expr::EXPR_POSTOP",
-	"sparse::expr::EXPR_CAST",
-	"sparse::expr::EXPR_FORCE_CAST",
-	"sparse::expr::EXPR_IMPLIED_CAST",
-	"sparse::expr::EXPR_SIZEOF",
-	"sparse::expr::EXPR_ALIGNOF",
-	"sparse::expr::EXPR_PTRSIZEOF",
-	"sparse::expr::EXPR_CONDITIONAL",
-	"sparse::expr::EXPR_SELECT",
-	"sparse::expr::EXPR_STATEMENT",
-	"sparse::expr::EXPR_CALL",
-	"sparse::expr::EXPR_COMMA",
-	"sparse::expr::EXPR_COMPARE",
-	"sparse::expr::EXPR_LABEL",
-	"sparse::expr::EXPR_INITIALIZER",
-	"sparse::expr::EXPR_IDENTIFIER",
-	"sparse::expr::EXPR_INDEX",
-	"sparse::expr::EXPR_POS",
-	"sparse::expr::EXPR_FVALUE",
-	"sparse::expr::EXPR_SLICE",
-	"sparse::expr::EXPR_OFFSETOF"
+        "C::sparse::expr::EXPR_NONE",
+	"C::sparse::expr::EXPR_VALUE",
+	"C::sparse::expr::EXPR_STRING",
+	"C::sparse::expr::EXPR_SYMBOL",
+	"C::sparse::expr::EXPR_TYPE",
+	"C::sparse::expr::EXPR_BINOP",
+	"C::sparse::expr::EXPR_ASSIGNMENT",
+	"C::sparse::expr::EXPR_LOGICAL",
+	"C::sparse::expr::EXPR_DEREF",
+	"C::sparse::expr::EXPR_PREOP",
+	"C::sparse::expr::EXPR_POSTOP",
+	"C::sparse::expr::EXPR_CAST",
+	"C::sparse::expr::EXPR_FORCE_CAST",
+	"C::sparse::expr::EXPR_IMPLIED_CAST",
+	"C::sparse::expr::EXPR_SIZEOF",
+	"C::sparse::expr::EXPR_ALIGNOF",
+	"C::sparse::expr::EXPR_PTRSIZEOF",
+	"C::sparse::expr::EXPR_CONDITIONAL",
+	"C::sparse::expr::EXPR_SELECT",
+	"C::sparse::expr::EXPR_STATEMENT",
+	"C::sparse::expr::EXPR_CALL",
+	"C::sparse::expr::EXPR_COMMA",
+	"C::sparse::expr::EXPR_COMPARE",
+	"C::sparse::expr::EXPR_LABEL",
+	"C::sparse::expr::EXPR_INITIALIZER",
+	"C::sparse::expr::EXPR_IDENTIFIER",
+	"C::sparse::expr::EXPR_INDEX",
+	"C::sparse::expr::EXPR_POS",
+	"C::sparse::expr::EXPR_FVALUE",
+	"C::sparse::expr::EXPR_SLICE",
+	"C::sparse::expr::EXPR_OFFSETOF"
 };
 static SV *bless_expr(sparseexpr_t e) {
     if (!e) return &PL_sv_undef;
@@ -317,12 +317,12 @@ static SV *bless_scope(sparsescope_t e) {
 static SV *bless_sparsescope(sparsesymctx_t e) { return bless_symctx(e); }
 
 static char *expand_types_class[] =  {
-	"sparse::expand::EXPANSION_CMDLINE",
-	"sparse::expand::EXPANSION_STREAM",
-	"sparse::expand::EXPANSION_MACRO",
-	"sparse::expand::EXPANSION_MACROARG",
-	"sparse::expand::EXPANSION_CONCAT",
-	"sparse::expand::EXPANSION_PREPRO",
+	"C::sparse::expand::EXPANSION_CMDLINE",
+	"C::sparse::expand::EXPANSION_STREAM",
+	"C::sparse::expand::EXPANSION_MACRO",
+	"C::sparse::expand::EXPANSION_MACROARG",
+	"C::sparse::expand::EXPANSION_CONCAT",
+	"C::sparse::expand::EXPANSION_PREPRO",
 };
 static SV *bless_expand(sparseexpand_t e) {
     if (!e) return &PL_sv_undef;
@@ -366,7 +366,7 @@ sparse_main(SCTX_ int argc, char **argv)
 }
 
 
-MODULE = sparse         PACKAGE = sparse
+MODULE = C::sparse         PACKAGE = C::sparse
 
 INCLUDE: const-xs.inc
 
@@ -384,14 +384,14 @@ BOOT:
     sparsescope_class_hv = gv_stashpv (sparsescope_class, 1);
     sparseexpand_class_hv = gv_stashpv (sparseexpand_class, 1);
 
-INCLUDE_COMMAND: perl constdef.pl
+INCLUDE_COMMAND: perl scripts/constdef.pl
 
 void
 END()
 CODE:
     TRACE (printf ("sparse end\n"));
 
-MODULE = sparse		PACKAGE = sparse		
+MODULE = C::sparse		PACKAGE = C::sparse		
 
 SV *
 hello()
@@ -452,17 +452,18 @@ sparse(...)
 #	} END_FOR_EACH_PTR_NOTAG(file);
 #	free(a);
 
-MODULE = sparse   PACKAGE = sparse::tok
+MODULE = C::sparse   PACKAGE = C::sparse::tok
 PROTOTYPES: ENABLE
 
 void
 list(p,...)
 	sparsetok p
     PREINIT:
-	struct token *t; int cnt = 0;
+    struct token *t; int cnt = 0; SPARSE_CTX_GEN(0);
     PPCODE:
+        SPARSE_CTX_SET(t->ctx)
 	t = p->m;
-	while(!eof_token(t)) {
+        while(!eof_token(t)) {
 	        cnt++;
  	    	if (GIMME_V == G_ARRAY) {
 		   EXTEND(SP, 1);
@@ -475,7 +476,7 @@ list(p,...)
             PUSHs(sv_2mortal(newSViv(cnt)));
 	}
 
-MODULE = sparse   PACKAGE = sparse::ident
+MODULE = C::sparse   PACKAGE = C::sparse::ident
 PROTOTYPES: ENABLE
 
 SV *
@@ -488,7 +489,7 @@ name(i)
     OUTPUT:
 	RETVAL
 
-MODULE = sparse   PACKAGE = sparse::sym
+MODULE = C::sparse   PACKAGE = C::sparse::sym
 PROTOTYPES: ENABLE
 
 SV *
@@ -504,7 +505,7 @@ name(s)
     OUTPUT:
 	RETVAL
 
-MODULE = sparse   PACKAGE = sparse::ctype
+MODULE = C::sparse   PACKAGE = C::sparse::ctype
 PROTOTYPES: ENABLE
 
 SV *
@@ -536,4 +537,4 @@ typename(s)
 	RETVAL
 
 
-INCLUDE_COMMAND: perl sparse.pl sparse.xsh
+INCLUDE_COMMAND: perl scripts/sparse.pl sparse.xsh

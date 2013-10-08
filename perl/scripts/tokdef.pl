@@ -18,8 +18,8 @@ foreach my $v (qw(
 
 
     )) {
-     print("package sparse::exp::$v;\n");
-     print("our \@ISA = qw (sparse::exp);\n");
+     print("package C::sparse::exp::$v;\n");
+     print("our \@ISA = qw (C::sparse::exp);\n");
 
    }
 
