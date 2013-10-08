@@ -1,9 +1,9 @@
 C::sparse::stream(sparsestream):
-    int  : fd
-    int  : constant
-    int  : dirty
-    int  : next_stream
-    int  : once
+    int            : fd
+    int            : constant
+    int            : dirty
+    int            : next_stream
+    int            : once
     const char *   : name
     const char *   : path
     sparseident    : protect    { new=>1 }

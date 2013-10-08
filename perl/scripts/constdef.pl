@@ -162,6 +162,12 @@ foreach my $v (qw(
 	MOD_EXPLICITLY_SIGNED	
 	MOD_BITWISE	
 
+        CONSTANT_FILE_MAYBE
+        CONSTANT_FILE_IFNDEF
+        CONSTANT_FILE_NOPE
+        CONSTANT_FILE_YES
+
+
     )) {
      print("    newCONSTSUB(sparsestash, \"$v\",            newSViv($v));\n");
    }

@@ -45,7 +45,7 @@ typedef struct {
 
 struct stream *stream_get(SCTX_ int stream)
 {
-	if (stream < 0 || stream > sctxp input_stream_nr)
+	if (stream < 0 || stream >= sctxp input_stream_nr)
 		return 0;
 	return &sctxp input_streams[stream];
 }

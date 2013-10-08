@@ -449,9 +449,25 @@ sparse(...)
 	New (SPARSE_MALLOC_ID,  _sctx, 1, struct sparse_ctx);
 	_sctx = sparse_ctx_init( _sctx);
 	_sctx ->symlist = sparse_initialize(sctx_ items+1, a, &_sctx->filelist);
+	FOR_EACH_PTR_NOTAG(_sctx->filelist, file) {
+            concat_symbol_list(sctx_ sparse(sctx_ file), &_sctx ->symlist);
+        } END_FOR_EACH_PTR_NOTAG(file);
 	RETVAL = new_sparsectx((sparsectx_t)sctx);
     OUTPUT:
 	RETVAL	
+
+MODULE = C::sparse   PACKAGE = C::sparse::ctx
+PROTOTYPES: ENABLE
+
+void
+DESTROY (r)
+        sparsectx r
+    PREINIT:
+        struct starse_ctx *c = r->m;
+    CODE:
+        TRACE (printf ("%s DESTROY\n", sparsectx_class));
+        assert_support (sparsectx_count--);
+        TRACE_ACTIVE ();
 
 MODULE = C::sparse   PACKAGE = C::sparse
 PROTOTYPES: ENABLE
@@ -464,8 +480,6 @@ streams(p,...)
     PPCODE:
         SPARSE_CTX_SET((struct sparse_ctx *)p->m);
 	while(s = stream_get(sctx_ id)) { 
-	    printf(" - %p:",s->name); fflush(stdout);
- 	    printf(" - %s\n",s->name ? s->name : "<null>");
 	    if (GIMME_V == G_ARRAY) {
 	        EXTEND(SP, 1);
 		PUSHs(bless_stream (s));
