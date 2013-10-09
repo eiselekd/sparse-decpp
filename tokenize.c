@@ -330,8 +330,8 @@ static struct token * alloc_token_stream(SCTX_ stream_t *stream)
 	token->space = 0;
 #ifdef DO_CTX
 	token->ctx = sctx;
-	token->space = stream->space;
 #endif
+	token->space = stream->space;
 	return token;
 }
 
@@ -548,7 +548,7 @@ static const long cclass[257] = {
 	['?' + 1] = Escape,
 };
 
-/*
+/*x
  * pp-number:
  *	digit
  *	. digit
@@ -1026,6 +1026,7 @@ static struct expansion *setup_stream(SCTX_ stream_t *stream, int idx, int fd,
 	stream->newline = 1;
 	stream->whitespace = 0;
 	stream->pos = 0;
+	stream->space = 0;
 
 	stream->token = NULL;
 	stream->fd = fd;

@@ -490,9 +490,7 @@ tok2str(p,...)
         SPARSE_CTX_SET(t->ctx);
 	EXTEND(SP, 1);
         n = show_token(sctx_ t);
-if (t->space)
-printf("%p %d\n",t->space->data,t->space->size); fflush(stdout);
-        if (t->space && t->space->data) { pre = t->space->data;}
+        if (t->space && t->space->data) { pre = (char *)t->space->data;}
         v = malloc(strlen(n) + strlen(pre) + 1);
         v[0] = 0; strcat(v, pre); strcat(v, n);
         PUSHs(sv_2mortal(newSVpv(v, strlen(v))));
