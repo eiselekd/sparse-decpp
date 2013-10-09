@@ -225,6 +225,9 @@ C::sparse - Perl binding to Linux's Sparse
 
   use C::sparse;
   my $s = C::sparse::sparse("test.c", "-E");
+  my @f = $s->streams # get all streams, 0: <cmdline>, 1:<builtin, 2:test.c
+  my @s = $f[2]->e->s # get pre  pre-processor tokenstream of test.c (source)
+  my @d = $f[2]->e->d # get post pre-processor tokenstream of test.c (dest)
 
 =head1 DESCRIPTION
 

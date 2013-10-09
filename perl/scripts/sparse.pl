@@ -75,6 +75,9 @@ while ($m =~ /($idre)$RE_balanced_smothbrackets:\s*\n/m) {
 
       my $ne;
       if (($ne = $$a{'array'})) {
+	my $nn = $$ne[0];
+	my $nt = $$ne[1];
+	my $ni = $$ne[2];
 
 	  
 
@@ -87,18 +90,19 @@ ${name}(p,...)
         $typ p
     PREINIT:
         void *ptr; int i = 0;
-        ${t}_t l;
+        ${t}_t l; SPARSE_CTX_GEN(0);
     PPCODE:
-        l = (${t}_t)(p->m->$n);
+        /*printf(\"e:%p x:%p %p\\n\",p->m, p->m->$n, p->m->$n->next);*/
+        $ni; l = (${t}_t)(p->m->$n);
  	if (GIMME_V == G_ARRAY) {
-	    while(l) {
+	    while(l && !$nt(l)) {
 	        EXTEND(SP, 1);
 	        PUSHs(bless_${t}((${t}_t)l));
-                l = l->$ne;
+                l = l->$nn;
             }
         } else {
             EXTEND(SP, 1);
-	    while(l) { i++; l = l->$ne; };
+	    while(l && !$nt(l)) { i++; l = l->$nn; };
             PUSHs(sv_2mortal(newSViv(i)));
         }
 

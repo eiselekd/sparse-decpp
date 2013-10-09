@@ -430,6 +430,9 @@ static void expand_arguments_pp(SCTX_ int count, struct arg *args, struct expans
 			
 			e = __alloc_expansion(sctx_ 0);
 			memset(e, 0, sizeof(struct expansion));
+#ifdef DO_CTX
+			e->ctx = sctx;
+#endif
 			e->typ = EXPANSION_MACROARG;
 			e->s = arg;
 			e->mac = m;
@@ -515,6 +518,9 @@ static int merge(SCTX_ struct token *left, struct token *right)
 
 	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
+#ifdef DO_CTX
+	e->ctx = sctx;
+#endif
 	e->typ = EXPANSION_CONCAT;
 	e->s = dup_one(sctx_ left);
 	e->s->next = tok = dup_one(sctx_ right); tok->next = NULL;
@@ -745,6 +751,9 @@ static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *m
 	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_MACRO;
+#ifdef DO_CTX
+	e->ctx = sctx;
+#endif
 	e->s = sym->expansion;
 	e->d = dup_list_e(sctx_ sym->expansion, e);
 	e->tok = mtok;
@@ -1958,6 +1967,9 @@ static void handle_preprocessor_line(SCTX_ struct stream *stream, struct token *
 
 	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
+#ifdef DO_CTX
+	e->ctx = sctx;
+#endif
 	e->typ = EXPANSION_PREPRO;
 	e->s = start;
 	e->d = dup_list_e(sctx_ token,e);
@@ -2064,5 +2076,7 @@ struct token * preprocess(SCTX_ struct expansion *e)
 	// clear_expression_alloc();
 	sctxp preprocessing = 0;
 
+	/*printf("e:%p d:%p %p\n",e, e->d, e->d->next);*/
+	
 	return e->d;
 }

@@ -1,16 +1,16 @@
 #undef  DEFINE_A0
-#define DEFINE_A0  /*1;*/
+#define DEFINE_A0  int a; /*1;*/
 #include "test.h"
 
 #undef  DEFINE_A0
-#define DEFINE_A0 /*2;*/
+#define DEFINE_A0 int b; /*2;*/
 #include "test.h"
 
 #undef  DEFINE_A0
-#define DEFINE_A0 /*3;*/
+#define DEFINE_A0 int c; /*3;*/
 #include "test.h"
 
 #undef  DEFINE_A0
-#define DEFINE_A0 /*4;*/
+#define DEFINE_A0 int d;/*4;*/
 #include "test.h"
 

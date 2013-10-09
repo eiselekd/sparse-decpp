@@ -517,7 +517,7 @@ list(p,...)
     PREINIT:
     struct token *t; int cnt = 0; SPARSE_CTX_GEN(0);
     PPCODE:
-        SPARSE_CTX_SET(t->ctx)
+        SPARSE_CTX_SET(t->ctx);
 	t = p->m;
         while(!eof_token(t)) {
 	        cnt++;

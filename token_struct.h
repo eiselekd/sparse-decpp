@@ -201,6 +201,9 @@ enum expansion_typ {
 };
 
 struct expansion {
+#ifdef DO_CTX
+	struct sparse_ctx *ctx;
+#endif
 	int typ;
 	struct token *s, *d, **e;
 	union {

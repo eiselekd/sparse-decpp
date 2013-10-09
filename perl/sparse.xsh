@@ -27,15 +27,15 @@ C::sparse::tok(sparsetok):
     sparsetok    : next             { new=>1 }
     sparseexpand : e                { new=>1 }
 
-C::sparse::exp(sparseexpand):
+C::sparse::expand(sparseexpand):
     int   : typ 
-    sparsetok :  s                  { new=>1, array=>'next' }
-    sparsetok :  d                  { new=>1, array=>'next' }
+    sparsetok :  s                  { new=>1, array=>['next','eof_token','SPARSE_CTX_SET(p->m->ctx)'] }
+    sparsetok :  d                  { new=>1, array=>['next','eof_token','SPARSE_CTX_SET(p->m->ctx)'] }
 
-C::sparse::exp::EXPANSION_MACROARG(sparseexpand):
+C::sparse::expand::EXPANSION_MACROARG(sparseexpand):
     sparseexpand :  mac             { new=>1 }
 
-C::sparse::exp::EXPANSION_MACRO(sparseexpand):
+C::sparse::expand::EXPANSION_MACRO(sparseexpand):
     sparsesym :  msym               { new=>1 }
     sparsetok :  tok                { new=>1 }
 
