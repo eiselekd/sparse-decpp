@@ -454,20 +454,6 @@ streams(p,...)
             PUSHs(sv_2mortal(newSViv(cnt)));
 	}
 
-
-#	FOR_EACH_PTR(symlist, sym) {
-#	    EXTEND(SP, 1);
-#	    PUSHs(bless_sym (sym));
-#	} END_FOR_EACH_PTR(sym);
-#	FOR_EACH_PTR_NOTAG(filelist, file) {
-#	    symlist = sparse(file);
-#	    FOR_EACH_PTR(symlist, sym) {
-#	        EXTEND(SP, 1);
-#		PUSHs(bless_sym (sym));
-#	    } END_FOR_EACH_PTR(sym);
-#	} END_FOR_EACH_PTR_NOTAG(file);
-#	free(a);
-
 MODULE = C::sparse   PACKAGE = C::sparse::tok
 PROTOTYPES: ENABLE
 
@@ -496,17 +482,15 @@ void
 tok2str(p,...)
 	sparsetok p
     PREINIT:
-        struct token *t; int cnt = 0; SPARSE_CTX_GEN(0); int prec = 1; char *separator = "";
+        struct token *t; int cnt = 0; SPARSE_CTX_GEN(0); 
+        int prec = 1; char *separator = "";
         const char *n; SV *r;
     PPCODE:
         t = p->m;
         SPARSE_CTX_SET(t->ctx);
 	EXTEND(SP, 1);
         n = show_token(sctx_ t);
-        ST(0) = r = newSVpv(n, strlen(n));
-        sv_2mortal(ST(0));
-
-
+        PUSHs(sv_2mortal(newSVpv(n, strlen(n))));
 
 MODULE = C::sparse   PACKAGE = C::sparse::ident
 PROTOTYPES: ENABLE

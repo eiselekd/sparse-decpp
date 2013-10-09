@@ -327,6 +327,9 @@ static struct token * alloc_token_stream(SCTX_ stream_t *stream)
 {
 	struct token *token = __alloc_token(sctx_ 0);
 	token->pos = stream_pos(sctx_ stream);
+#ifdef DO_CTX
+	token->ctx = sctx;
+#endif
 	return token;
 }
 
@@ -1082,7 +1085,7 @@ struct expansion * tokenize(SCTX_ const char *name, int fd, struct token *endtok
 	end = tokenize_stream(sctx_ &stream);
 	if (endtoken)
 		end->next = endtoken;
-
+	
 	list_e(sctx_ e->s, e);
 
 	return e;
