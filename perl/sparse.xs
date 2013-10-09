@@ -483,14 +483,20 @@ tok2str(p,...)
 	sparsetok p
     PREINIT:
         struct token *t; int cnt = 0; SPARSE_CTX_GEN(0); 
-        int prec = 1; char *separator = "";
+        int prec = 1; char *separator = ""; char *pre = "", *v;
         const char *n; SV *r;
     PPCODE:
         t = p->m;
         SPARSE_CTX_SET(t->ctx);
 	EXTEND(SP, 1);
         n = show_token(sctx_ t);
-        PUSHs(sv_2mortal(newSVpv(n, strlen(n))));
+if (t->space)
+printf("%p %d\n",t->space->data,t->space->size); fflush(stdout);
+        if (t->space && t->space->data) { pre = t->space->data;}
+        v = malloc(strlen(n) + strlen(pre) + 1);
+        v[0] = 0; strcat(v, pre); strcat(v, n);
+        PUSHs(sv_2mortal(newSVpv(v, strlen(v))));
+        free(v);
 
 MODULE = C::sparse   PACKAGE = C::sparse::ident
 PROTOTYPES: ENABLE

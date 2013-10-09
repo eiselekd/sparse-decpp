@@ -80,6 +80,7 @@ static struct token *alloc_token(SCTX_ struct position *pos)
 #ifdef DO_CTX
 	token->ctx = sctx;
 #endif
+	token->space = 0;
 	token->pos.stream = pos->stream;
 	token->pos.line = pos->line;
 	token->pos.pos = pos->pos;
@@ -398,6 +399,7 @@ static struct token *stringify(SCTX_ struct token *arg)
 
 	memcpy(string->data, s, size);
 	string->length = size;
+	token->space = 0;
 	token->pos = arg->pos;
 	token_type(token) = TOKEN_STRING;
 	token->string = string;
@@ -584,6 +586,7 @@ static struct token *dup_token(SCTX_ struct token *token, struct position *strea
 	alloc->pos.whitespace = token->pos.whitespace;
 	alloc->number = token->number;
 	alloc->pos.noexpand = token->pos.noexpand;
+	alloc->space = token->space;
 	return alloc;	
 }
 
@@ -1329,6 +1332,7 @@ static struct token *parse_expansion(SCTX_ struct token *expansion, struct token
 	token = alloc_token(sctx_ &expansion->pos);
 	token_type(token) = TOKEN_UNTAINT;
 	token->ident = name;
+	token->space = 0;
 	token->next = *p;
 	*p = token;
 	return expansion;

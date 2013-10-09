@@ -157,8 +157,16 @@ enum special_token {
 
 struct string {
 	unsigned int length;
+	unsigned int used;
 	char data[];
 };
+
+typedef struct CString {
+    int size; /* size in bytes */
+    void *data; /* either 'char *' or 'nwchar_t *' */
+    int size_allocated;
+    void *data_allocated; /* if non NULL, data has been malloced */
+} CString;
 
 /* will fit into 32 bits */
 struct argcount {
@@ -177,6 +185,7 @@ struct token {
 #ifdef DO_CTX
 	struct sparse_ctx *ctx;
 #endif
+	CString *space;
 	struct position pos;
 	struct token *next;
 	struct expansion *e;

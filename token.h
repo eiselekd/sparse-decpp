@@ -50,7 +50,9 @@ extern struct expansion * tokenize_buffer(SCTX_ void *, unsigned , unsigned long
 extern void init_preprocessor(SCTX);
 extern unsigned long hash_name(SCTX_ const char *name, int len);
 extern struct ident *create_hashed_ident(SCTX_ const char *name, int len, unsigned long hash);
-
+extern void cstr_ccat(SCTX_ CString *cstr, int ch);
+extern void cstr_new(SCTX_ CString *cstr);
+extern void cstr_cstring(SCTX_ CString *cstr);
 
 extern void show_identifier_stats(SCTX);
 extern struct token *preprocess(SCTX_ struct expansion *);

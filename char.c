@@ -5,6 +5,72 @@
 #include "token.h"
 #include "expression.h"
 
+/* CString handling */
+
+static void cstr_realloc(SCTX_ CString *cstr, int new_size)
+{
+	int size;
+	void *data;
+
+	size = cstr->size_allocated;
+	if (size == 0)
+		size = 8; /* no need to allocate a too small first string */
+	while (size < new_size)
+		size = size * 2;
+	data = realloc(cstr->data_allocated, size);
+	if (!data) {
+		struct position pos;
+		pos.stream = -1;
+		sparse_error(sctx_ pos, "memory full");
+	}
+	cstr->data_allocated = data;
+	cstr->size_allocated = size;
+	cstr->data = data;
+}
+
+/* add a byte */
+void cstr_ccat(SCTX_ CString *cstr, int ch)
+{
+	int size;
+	size = cstr->size + 2;
+	if (size > cstr->size_allocated)
+		cstr_realloc(sctx_ cstr, size);
+	((unsigned char *)cstr->data)[size - 2] = ch;
+	((unsigned char *)cstr->data)[size - 1] = 0;
+	cstr->size++;
+}
+
+void cstr_cat(SCTX_ CString *cstr, const char *str)
+{
+	int c;
+	for(;;) {
+		c = *str;
+		if (c == '\0')
+			break;
+		cstr_ccat(sctx_ cstr, c);
+		str++;
+	}
+}
+
+void cstr_cstring(SCTX_ CString *cstr)
+{
+	if (!cstr->size || ((unsigned char *)cstr->data)[cstr->size-1] != 0)
+		cstr_ccat(sctx_ cstr, 0);
+}
+
+
+void cstr_new(SCTX_ CString *cstr)
+{
+	memset(cstr, 0, sizeof(CString));
+}
+
+/* free string and reset it to NULL */
+void cstr_free(SCTX_ CString *cstr)
+{
+	free(cstr->data_allocated);
+	cstr_new(sctx_ cstr);
+}
+
 static const char *parse_escape(SCTX_ const char *p, unsigned *val, const char *end, int bits, struct position pos)
 {
 	unsigned c = *p++;
@@ -123,6 +189,7 @@ struct token *get_string_constant(SCTX_ struct token *token, struct expression *
 	if (len >= string->length)	/* can't cannibalize */
 		string = __alloc_string(sctx_ len+1);
 	string->length = len+1;
+	string->used = string->length;
 	memcpy(string->data, buffer, len);
 	string->data[len] = '\0';
 	expr->string = string;

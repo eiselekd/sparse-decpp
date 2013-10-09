@@ -129,6 +129,7 @@ struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *ctx) {
 	ALLOCATOR_INIT(expression, "expressions",0);
 	ALLOCATOR_INIT(statement, "statements",0);
 	ALLOCATOR_INIT(string, "strings",0);
+	ALLOCATOR_INIT(CString, "CStrings",0);
 	ALLOCATOR_INIT(scope, "scopes",0);
 	__DO_ALLOCATOR_INIT(void, 0, 1, "bytes", bytes,0);
 	ALLOCATOR_INIT(basic_block, "basic_block",0);

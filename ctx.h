@@ -58,6 +58,7 @@ typedef struct {
 	struct token **tokenlist;
 	struct token *token;
 	unsigned char *buffer;
+	CString *space;
 } stream_t;
 #define HASHED_INPUT_BITS (6)
 #define HASHED_INPUT (1 << HASHED_INPUT_BITS)
@@ -259,6 +260,7 @@ struct sparse_ctx {
 	ALLOCATOR_DEF(expression, "expressions",0);
 	ALLOCATOR_DEF(statement, "statements",0);
 	ALLOCATOR_DEF(string, "strings",0);
+	ALLOCATOR_DEF(CString, "CStrings",0);
 	ALLOCATOR_DEF(scope, "scopes",0);
 	ALLOCATOR_DEF(bytes, "bytes",0);
 	ALLOCATOR_DEF(basic_block, "basic_block",0);

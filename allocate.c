@@ -119,6 +119,7 @@ ALLOCATOR(symbol, "symbols",0);
 ALLOCATOR(expression, "expressions",0);
 ALLOCATOR(statement, "statements",0);
 ALLOCATOR(string, "strings",0);
+ALLOCATOR(CString, "CStrings",0);
 ALLOCATOR(scope, "scopes",0);
 __DO_ALLOCATOR(void, 0, 1, "bytes", bytes,0);
 ALLOCATOR(basic_block, "basic_block",0);
