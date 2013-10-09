@@ -31,75 +31,14 @@
 #define assert_support(x) x
 #endif
 
-static const char sparsectx_class[]  = "C::sparse::ctx";
-static const char sparsepos_class[]  = "C::sparse::pos";
-static const char sparsetok_class[]  = "C::sparse::tok";
-static const char sparsestmt_class[]  = "C::sparse::stmt";
-static const char sparsesym_class[]  = "C::sparse::sym";
-static const char sparseexpr_class[]  = "C::sparse::expr";
-static const char sparseident_class[]  = "C::sparse::ident";
-static const char sparsectype_class[]  = "C::sparse::ctype";
-static const char sparsesymctx_class[]  = "C::sparse::symctx";
-static const char sparsescope_class[]  = "C::sparse::scope";
-static const char sparseexpand_class[]  = "C::sparse::expand";
-static const char sparsestream_class[]  = "C::sparse::stream";
-static HV *sparsectx_class_hv;
-static HV *sparsepos_class_hv;
-static HV *sparsetok_class_hv;
-static HV *sparsestmt_class_hv;
-static HV *sparseexpr_class_hv;
-static HV *sparsesym_class_hv;
-static HV *sparseident_class_hv;
-static HV *sparsectype_class_hv;
-static HV *sparsesymctx_class_hv;
-static HV *sparsescope_class_hv;
-static HV *sparseexpand_class_hv;
-static HV *sparsestream_class_hv;
 static HV *sparsestash;
-
-assert_support (static long sparsectx_count = 0;)
-assert_support (static long sparsepos_count = 0;)
-assert_support (static long sparsetok_count = 0;)
-assert_support (static long sparsestmt_count = 0;)
-assert_support (static long sparsesym_count = 0;)
-assert_support (static long sparseexpr_count = 0;)
-assert_support (static long sparseident_count = 0;)
-assert_support (static long sparsectype_count = 0;)
-assert_support (static long sparsesymctx_count = 0;)
-assert_support (static long sparsescope_count = 0;)
-assert_support (static long sparseexpand_count = 0;)
-assert_support (static long sparsestream_count = 0;)
 
 typedef struct token     t_token;
 typedef struct position  t_position;
 typedef struct position  sparse__pos;
 typedef struct token     sparse__tok;
-typedef struct position  *sparsepos_t;
-typedef struct token     *sparsetok_t;
-typedef struct statement *sparsestmt_t;
-typedef struct expression *sparseexpr_t;
-typedef struct symbol    *sparsesym_t;
-typedef struct ident     *sparseident_t;
-typedef struct sym_context*sparsesymctx_t;
-typedef struct ctype      *sparsectype_t;
-typedef struct scope      *sparsescope_t;
-typedef struct expansion  *sparseexpand_t;
-typedef struct stream     *sparsestream_t;
-typedef struct starse_ctx *sparsectx_t;
-typedef struct position  *sparsepos_ptr;
-typedef struct token     *sparsetok_ptr;
-typedef struct statement *sparsestmt_ptr;
-typedef struct expression *sparseexpr_ptr;
-typedef struct symbol     *sparsesym_ptr;
-typedef struct ident      *sparseident_ptr;
-typedef struct sym_context*sparsesymctx_ptr;
-typedef struct ctype      *sparsectype_ptr;
-typedef struct scope      *sparsescope_ptr;
-typedef struct expansion  *sparseexpand_ptr;
-typedef struct stream     *sparsestream_ptr;
-typedef struct sparse_ctx *sparsectx_ptr;
 
-#define SvSPARSE(s,type)  ((type) (long)SvIV((SV*) SvRV(s)))
+#define SvSPARSE(s,type)      ((type) (long)SvIV((SV*) SvRV(s)))
 #define SvSPARSE_CTX(s)       SvSPARSE(s,sparsectx)
 #define SvSPARSE_POS(s)       SvSPARSE(s,sparsepos)
 #define SvSPARSE_TOK(s)       SvSPARSE(s,sparsetok)
@@ -125,7 +64,12 @@ typedef struct sparse_ctx *sparsectx_ptr;
 #define SPARSE_MALLOC_ID  42
 #define SPARSE_HASHSIZE 1024
 
-#define CREATE_SPARSE(type)						\
+#define CREATE_SPARSE(type,package,structtype)				\
+  static const char type##_class[]  = #package;				\
+  static HV *type##_class_hv;						\
+  typedef struct structtype  *type##_ptr;				\
+  typedef struct structtype  *type##_t;					\
+  assert_support (static long type##_count = 0;)			\
 									\
   struct type##_elem {							\
     type##_t            m;						\
@@ -185,19 +129,18 @@ typedef struct sparse_ctx *sparsectx_ptr;
     return sv_setref_pv (sv_newmortal(), NULL, new_##type (e));		\
   }									\
 
-
-CREATE_SPARSE(sparsepos);
-CREATE_SPARSE(sparsetok);
-CREATE_SPARSE(sparsestmt);
-CREATE_SPARSE(sparseexpr);
-CREATE_SPARSE(sparsesym);
-CREATE_SPARSE(sparseident);
-CREATE_SPARSE(sparsectype);
-CREATE_SPARSE(sparsesymctx);
-CREATE_SPARSE(sparsescope);
-CREATE_SPARSE(sparseexpand);
-CREATE_SPARSE(sparsectx);
-CREATE_SPARSE(sparsestream);
+CREATE_SPARSE(sparsepos,   C::sparse::pos   , position);
+CREATE_SPARSE(sparsetok,   C::sparse::tok   , token);
+CREATE_SPARSE(sparsestmt,  C::sparse::stmt  , statement);
+CREATE_SPARSE(sparseexpr,  C::sparse::expr  , expression);
+CREATE_SPARSE(sparsesym,   C::sparse::sym   , symbol);
+CREATE_SPARSE(sparseident, C::sparse::ident , ident);
+CREATE_SPARSE(sparsectype, C::sparse::ctype , ctype);
+CREATE_SPARSE(sparsesymctx,C::sparse::symctx, sym_context);
+CREATE_SPARSE(sparsescope, C::sparse::scope , scope);
+CREATE_SPARSE(sparseexpand,C::sparse::expand, expansion);
+CREATE_SPARSE(sparsectx,   C::sparse::ctx   , sparse_ctx);
+CREATE_SPARSE(sparsestream,C::sparse::stream, stream);
 
 static char *token_types_class[] =  {
 	"C::sparse::tok::TOKEN_EOF",
@@ -471,7 +414,7 @@ sparse(...)
 	FOR_EACH_PTR_NOTAG(_sctx->filelist, file) {
             concat_symbol_list(sctx_ sparse(sctx_ file), &_sctx ->symlist);
         } END_FOR_EACH_PTR_NOTAG(file);
-	RETVAL = new_sparsectx((struct starse_ctx*)_sctx);
+	RETVAL = new_sparsectx((sparsectx_t)_sctx);
     OUTPUT:
 	RETVAL	
 
@@ -482,7 +425,7 @@ void
 DESTROY (r)
         sparsectx r
     PREINIT:
-        struct starse_ctx *c;
+        struct sparse_ctx *c;
     CODE:
         c = r->m;
         /*TRACE (printf ("%s DESTROY %p\n", sparsectx_class, r);fflush(stdout););*/
