@@ -7,43 +7,16 @@
 #include "parse.h"
 #include "symbol.h"
 
-struct instruction;
-DECLARE_PTR_LIST(pseudo_ptr_list, pseudo_t);
-
-struct pseudo_user {
-	struct instruction *insn;
-	pseudo_t *userp;
-};
+#include "linearize_struct.h"
 
 DECLARE_ALLOCATOR(pseudo_user);
 DECLARE_PTR_LIST(pseudo_user_list, struct pseudo_user);
 
-
-enum pseudo_type {
-	PSEUDO_VOID,
-	PSEUDO_REG,
-	PSEUDO_SYM,
-	PSEUDO_VAL,
-	PSEUDO_ARG,
-	PSEUDO_PHI,
-};
-
-struct pseudo {
-	int nr;
-	enum pseudo_type type;
-	struct pseudo_user_list *users;
-	struct ident *ident;
-	union {
-		struct symbol *sym;
-		struct instruction *def;
-		long long value;
-	};
-	void *priv;
-};
-
+#ifndef DO_CTX
 extern struct pseudo void_pseudo;
+#endif
 
-#define VOID (&void_pseudo)
+#define VOID (&sctxp void_pseudo)
 
 struct multijmp {
 	struct basic_block *target;

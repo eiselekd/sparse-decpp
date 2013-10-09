@@ -192,35 +192,35 @@ void kill_instruction(SCTX_ struct instruction *insn)
 		insn->bb = NULL;
 		kill_use(sctx_ &insn->src1);
 		kill_use(sctx_ &insn->src2);
-		repeat_phase |= REPEAT_CSE;
+		sctxp repeat_phase |= REPEAT_CSE;
 		return;
 
 	case OP_NOT_LIN: case OP_NEG:
 		insn->bb = NULL;
 		kill_use(sctx_ &insn->src1);
-		repeat_phase |= REPEAT_CSE;
+		sctxp repeat_phase |= REPEAT_CSE;
 		return;
 
 	case OP_PHI:
 		insn->bb = NULL;
-		repeat_phase |= REPEAT_CSE;
+		sctxp repeat_phase |= REPEAT_CSE;
 		return;
 
 	case OP_SYMADDR:
 		insn->bb = NULL;
-		repeat_phase |= REPEAT_CSE | REPEAT_SYMBOL_CLEANUP;
+		sctxp repeat_phase |= REPEAT_CSE | REPEAT_SYMBOL_CLEANUP;
 		return;
 
 	case OP_RANGE_LIN:
 		insn->bb = NULL;
-		repeat_phase |= REPEAT_CSE;
+		sctxp repeat_phase |= REPEAT_CSE;
 		kill_use(sctx_ &insn->src1);
 		kill_use(sctx_ &insn->src2);
 		kill_use(sctx_ &insn->src3);
 		return;
 	case OP_BR:
 		insn->bb = NULL;
-		repeat_phase |= REPEAT_CSE;
+		sctxp repeat_phase |= REPEAT_CSE;
 		if (insn->cond)
 			kill_use(sctx_ &insn->cond);
 		return;

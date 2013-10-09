@@ -17,10 +17,11 @@
 #include "linearize.h"
 #include "flow.h"
 
-#define INSN_HASH_SIZE 256
+/*#define INSN_HASH_SIZE 256 ctx.h */
+#ifndef DO_CTX
 static struct instruction_list *insn_hash_table[INSN_HASH_SIZE];
-
 int repeat_phase;
+#endif
 
 static int phi_compare(SCTX_ pseudo_t phi1, pseudo_t phi2)
 {
@@ -42,7 +43,7 @@ static void clean_up_one_instruction(SCTX_ struct basic_block *bb, struct instru
 	if (!insn->bb)
 		return;
 	assert(insn->bb == bb);
-	repeat_phase |= simplify_instruction(sctx_ insn);
+	sctxp repeat_phase |= simplify_instruction(sctx_ insn);
 	hash = (insn->opcode << 3) + (insn->size >> 3);
 	switch (insn->opcode) {
 	case OP_SEL:
@@ -120,7 +121,7 @@ static void clean_up_one_instruction(SCTX_ struct basic_block *bb, struct instru
 	}
 	hash += hash >> 16;
 	hash &= INSN_HASH_SIZE-1;
-	add_instruction(sctx_ insn_hash_table + hash, insn);
+	add_instruction(sctx_ sctxp insn_hash_table + hash, insn);
 }
 
 static void clean_up_insns(SCTX_ struct entrypoint *ep)
@@ -265,7 +266,7 @@ static struct instruction * cse_one_instruction(SCTX_ struct instruction *insn, 
 
 	insn->opcode = OP_NOP;
 	insn->bb = NULL;
-	repeat_phase |= REPEAT_CSE;
+	sctxp repeat_phase |= REPEAT_CSE;
 	return def;
 }
 
@@ -367,10 +368,10 @@ void cleanup_and_cse(SCTX_ struct entrypoint *ep)
 
 	simplify_memops(sctx_ ep);
 repeat:
-	repeat_phase = 0;
+	sctxp repeat_phase = 0;
 	clean_up_insns(sctx_ ep);
 	for (i = 0; i < INSN_HASH_SIZE; i++) {
-		struct instruction_list **list = insn_hash_table + i;
+		struct instruction_list **list = sctxp insn_hash_table + i;
 		if (*list) {
 			if (instruction_list_size(sctx_ *list) > 1) {
 				struct instruction *insn, *last;
@@ -392,9 +393,9 @@ repeat:
 		}
 	}
 
-	if (repeat_phase & REPEAT_SYMBOL_CLEANUP)
+	if (sctxp repeat_phase & REPEAT_SYMBOL_CLEANUP)
 		simplify_memops(sctx_ ep);
 
-	if (repeat_phase & REPEAT_CSE)
+	if (sctxp repeat_phase & REPEAT_CSE)
 		goto repeat;
 }

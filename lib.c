@@ -224,13 +224,10 @@ int dbg_entry = 0;
 int dbg_dead = 0;
 
 int preprocess_only;
-#endif
 
-static enum { STANDARD_C89,
-              STANDARD_C94,
-              STANDARD_C99,
-              STANDARD_GNU89,
-              STANDARD_GNU99, } standard = STANDARD_GNU89;
+enum standard_enum standard = STANDARD_GNU89;
+
+#endif
 
 /* ctx.h:
 #ifdef __x86_64__
@@ -526,7 +523,7 @@ static void handle_switch_W_finalize(SCTX)
 	/* default Wdeclarationafterstatement based on the C dialect */
 	if (-1 == sctxp Wdeclarationafterstatement)
 	{
-		switch (standard)
+		switch (sctxp standard)
 		{
 			case STANDARD_C89:
 			case STANDARD_C94:
@@ -611,7 +608,7 @@ static char **handle_switch_G(SCTX_ char *arg, char **next)
 static char **handle_switch_a(SCTX_ char *arg, char **next)
 {
 	if (!strcmp (arg, "ansi"))
-		standard = STANDARD_C89;
+		sctxp standard = STANDARD_C89;
 
 	return next;
 }
@@ -624,22 +621,22 @@ static char **handle_switch_s(SCTX_ char *arg, char **next)
 
 		if (!strcmp (arg, "c89") ||
 		    !strcmp (arg, "iso9899:1990"))
-			standard = STANDARD_C89;
+			sctxp standard = STANDARD_C89;
 
 		else if (!strcmp (arg, "iso9899:199409"))
-			standard = STANDARD_C94;
+			sctxp standard = STANDARD_C94;
 
 		else if (!strcmp (arg, "c99") ||
 			 !strcmp (arg, "c9x") ||
 			 !strcmp (arg, "iso9899:1999") ||
 			 !strcmp (arg, "iso9899:199x"))
-			standard = STANDARD_C99;
+			sctxp standard = STANDARD_C99;
 
 		else if (!strcmp (arg, "gnu89"))
-			standard = STANDARD_GNU89;
+			sctxp standard = STANDARD_GNU89;
 
 		else if (!strcmp (arg, "gnu99") || !strcmp (arg, "gnu9x"))
-			standard = STANDARD_GNU99;
+			sctxp standard = STANDARD_GNU99;
 
 		else
 			sparse_die (sctx_ "Unsupported C dialect");
@@ -851,7 +848,7 @@ void create_builtin_stream(SCTX)
 		add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __SIZE_TYPE__ unsigned int\n");
 	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __STDC__ 1\n");
 
-	switch (standard)
+	switch (sctxp standard)
 	{
 		case STANDARD_C89:
 			add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __STRICT_ANSI__\n");
@@ -954,7 +951,7 @@ static struct symbol_list *sparse_file(SCTX_ const char *filename)
 	}
 
 	// Tokenize the input stream
-	e = tokenize(sctx_ filename, fd, NULL, includepath);
+	e = tokenize(sctx_ filename, fd, NULL, sctxp includepath);
 	close(fd);
 
 	return sparse_tokenstream(sctx_ e);

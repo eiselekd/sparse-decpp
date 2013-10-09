@@ -584,7 +584,9 @@ void dissect(SCTX_ struct symbol_list *list, struct reporter *rep)
 
 /******** disssect arr ********/
 
+#ifndef DO_CTX
 static unsigned dotc_stream;
+#endif
 
 char dissect_storage(SCTX_ struct symbol *sym)
 {
@@ -592,7 +594,7 @@ char dissect_storage(SCTX_ struct symbol *sym)
 	unsigned m = sym->ctype.modifiers;
 
 	if (m & MOD_INLINE || t == SYM_STRUCT || t == SYM_UNION /*|| t == SYM_ENUM*/)
-		return sym->pos->pos.stream == dotc_stream ? 's' : 'g';
+		return sym->pos->pos.stream == sctxp dotc_stream ? 's' : 'g';
 
 	return (m & MOD_STATIC) ? 's' : (m & MOD_NONLOCAL) ? 'g' : 'l';
 }
@@ -665,7 +667,7 @@ int dissect_arr(SCTX_ int argc, char **argv)
 	sparse_initialize(sctx_ argc, argv, &filelist);
 
 	FOR_EACH_PTR_NOTAG(filelist, file) {
-		dotc_stream = sctxp input_stream_nr;
+		sctxp dotc_stream = sctxp input_stream_nr;
 		dissect(sctx_ __sparse(sctx_ file), &reporter);
 	} END_FOR_EACH_PTR_NOTAG(file);
 

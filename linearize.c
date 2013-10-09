@@ -33,9 +33,8 @@ struct access_data;
 static pseudo_t add_load(SCTX_ struct entrypoint *ep, struct access_data *);
 static pseudo_t linearize_initializer(SCTX_ struct entrypoint *ep, struct expression *initializer, struct access_data *);
 
-struct pseudo void_pseudo = {};
-
 #ifndef DO_CTX
+struct pseudo void_pseudo = {};
 static struct position current_pos;
 #endif
 
@@ -1860,7 +1859,7 @@ static pseudo_t linearize_return(SCTX_ struct entrypoint *ep, struct statement *
 	struct basic_block *active;
 	pseudo_t src = linearize_expression(sctx_ ep, expr);
 	active = ep->active;
-	if (active && src != &void_pseudo) {
+	if (active && src != &sctxp void_pseudo) {
 		struct instruction *phi_node = first_instruction(sctx_ bb_return->insns);
 		pseudo_t phi;
 		if (!phi_node) {
@@ -2179,7 +2178,7 @@ repeat:
 	do {
 		cleanup_and_cse(sctx_ ep);
 		pack_basic_blocks(sctx_ ep);
-	} while (repeat_phase & REPEAT_CSE);
+	} while (sctxp repeat_phase & REPEAT_CSE);
 
 	kill_unreachable_bbs(sctx_ ep);
 	vrfy_flow(sctx_ ep);

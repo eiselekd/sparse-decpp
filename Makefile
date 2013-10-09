@@ -234,7 +234,7 @@ clean-check:
 
 
 sparse-sparse:
-	./test-dissect -I/Users/eiselekd/bin/include $(ALL_SRC) $(BASIC_CFLAGS)
+	./test-globals -I/Users/eiselekd/bin/include $(ALL_SRC) $(BASIC_CFLAGS)
 
 .PHONY:perl
 perl:

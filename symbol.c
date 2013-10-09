@@ -802,8 +802,8 @@ void init_symbols(SCTX)
 	struct sym_init *ptr;
 	int stream;
 	
-	sctxp stream_sc = init_stream(sctx_ "<cmdline>", -1, includepath);
-	sctxp stream_sb = init_stream(sctx_ "<builtin>", -1, includepath);
+	sctxp stream_sc = init_stream(sctx_ "<cmdline>", -1, sctxp includepath);
+	sctxp stream_sb = init_stream(sctx_ "<builtin>", -1, sctxp includepath);
 	stream = sctxp stream_sb->id;
 
 #undef  __IDENT

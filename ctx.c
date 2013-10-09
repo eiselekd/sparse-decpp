@@ -73,6 +73,19 @@ struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *ctx) {
 	{ "dead", &ctx->dbg_dead},
 	};
 	memcpy(ctx->debugs, debugs, sizeof(ctx->debugs));
+	
+	/* pre-process.c */
+	ctx->includepath[0] = "";
+	ctx->includepath[1] = "/usr/include";
+	ctx->includepath[2] = "/usr/local/include";
+	ctx->includepath[3] =  NULL;
+	
+	ctx->quote_includepath = ctx->includepath;
+	ctx->angle_includepath = ctx->includepath + 1;
+	ctx->isys_includepath   = ctx->includepath + 1;
+	ctx->sys_includepath   = ctx->includepath + 1;
+	ctx->dirafter_includepath = ctx->includepath + 3;
+
 	/* tokenize.c */
 	ctx->tabstop = 8;
 	memset(ctx->input_stream_hashes,-1,sizeof(ctx->input_stream_hashes));
@@ -111,6 +124,7 @@ struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *ctx) {
 	/* parse.c */
 	sparse_ctx_init_parse1(ctx);
 	sparse_ctx_init_parse2(ctx);
+	sparse_ctx_init_show_parse(ctx);
 	
 	/* scope.c */
 	sparse_ctx_init_scope(ctx);

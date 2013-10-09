@@ -36,7 +36,7 @@ static int rewrite_branch(SCTX_ struct basic_block *bb,
 		return 0;
 
 	/* We might find new if-conversions or non-dominating CSEs */
-	repeat_phase |= REPEAT_CSE;
+	sctxp repeat_phase |= REPEAT_CSE;
 	*ptr = new;
 	replace_bb_in_list(sctx_ &bb->children, old, new, 1);
 	remove_bb_from_list(sctx_ &old->parents, bb, 1);
@@ -980,7 +980,7 @@ out:
 		/*
 		 * Merge the two.
 		 */
-		repeat_phase |= REPEAT_CSE;
+		sctxp repeat_phase |= REPEAT_CSE;
 
 		parent->children = bb->children;
 		bb->children = NULL;

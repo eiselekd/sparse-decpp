@@ -31,9 +31,8 @@ extern int die_if_error;
 extern int gcc_major, gcc_minor, gcc_patchlevel;
 extern struct token *pp_tokenlist;
 extern int ppnoopt, ppisinit;
-#endif
-
 extern int repeat_phase, merge_phi_sources;
+#endif
 
 extern unsigned int hexval(SCTX_ unsigned int c);
 

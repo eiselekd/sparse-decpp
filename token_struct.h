@@ -30,7 +30,9 @@ enum constantfile {
   CONSTANT_FILE_YES       // Yes
 };
 
+#ifndef DO_CTX
 extern const char *includepath[];
+#endif
 
 struct stream {
 	int fd, id;

@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 						printf(" +%s\n",n);
 					} else {
 						const char *n = show_typename_fn(sctx_ sym->ctype.base_type);
-						printf(" -%s\n",n);
+						//printf(" -%s\n",n);
 						free((char *)n);
 					}
 				}
