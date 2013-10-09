@@ -116,7 +116,7 @@ struct sparse_ctx {
 	struct symbol_list *function_computed_target_list;
 	struct statement_list *function_computed_goto_list;
 	/* lib.c */
-	int ppnoopt, ppisinit;
+	int ppnoopt, ppisinit, ppredef;
 	int verbose, optimize, optimize_size, preprocessing;
 	int die_if_error/* = 0*/;
 	int gcc_major /*= __GNUC__*/;

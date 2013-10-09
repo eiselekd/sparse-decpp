@@ -1383,7 +1383,7 @@ static int do_handle_define(SCTX_ struct stream *stream, struct token **line, st
 		return 1;
 
 	ret = 1;
-	sym = lookup_symbol(sctx_ name, NS_MACRO | NS_UNDEF);
+	sym = lookup_symbol(sctx_ name, NS_MACRO /*| NS_UNDEF*/);
 	if (sym) {
 		int clean;
 
@@ -1401,11 +1401,11 @@ static int do_handle_define(SCTX_ struct stream *stream, struct token **line, st
 						name->len, name->name);
 				info(sctx_ sym->pos->pos, "this was the original definition");
 			}
-		} else if (clean)
+		} else if (0 && clean)
 			goto out;
 	}
 
-	if (!sym || sym->scope != sctxp file_scope) {
+	if (1 || !sym || sym->scope != sctxp file_scope) {
 		sym = alloc_symbol(sctx_ left, SYM_NODE);
 		bind_symbol(sctx_ sym, name, NS_MACRO);
 		ret = 0;
