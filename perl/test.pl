@@ -30,9 +30,9 @@ $s2 = C::sparse::sparse("t/test.c");
 
 print("Files0:\n");
 map { print " ".$_->name."\n" } @files0 = $s0->streams;
-print("Files1:\n");
+print("\nFiles1:\n");
 map { print " ".$_->name."\n" } @files1 = $s1->streams;
-print("Files2:\n");
+print("\nFiles2:\n");
 map { print " ".$_->name."\n" } @files1 = $s2->streams;
 
 #while(1) {}

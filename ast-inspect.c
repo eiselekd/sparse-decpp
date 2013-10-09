@@ -128,7 +128,7 @@ static const char *symbol_type_name(enum type type)
 void inspect_symbol(AstNode *node)
 {
 	struct symbol *sym = node->ptr;
-	struct sparse_ctx *_sctx = node->ctx;
+	SPARSE_CTX_GEN(node->ctx);
 
 	node->text = g_strdup_printf("%s %s: %s", node->text, symbol_type_name(sym->type),
 				      builtin_typename(sctx_ sym) ?: show_ident(sctx_ sym->ident));

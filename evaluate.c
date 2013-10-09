@@ -3046,7 +3046,7 @@ static void check_duplicates(SCTX_ struct symbol *sym)
 			return;
 		if (!sctxp Wdecl)
 			return;
-		if (sym->ident == &sctxp main_ident)
+		if (sym->ident == (struct ident *)&sctxp main_ident)
 			return;
 		warning(sctx_ sym->pos->pos, "symbol '%s' was not declared. Should it be static?", show_ident(sctx_ sym->ident));
 	}

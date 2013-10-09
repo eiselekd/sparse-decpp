@@ -72,7 +72,7 @@ AstNode* ast_append_child(AstNode *parent, const char *text,
 			   void *ptr, void (*inspect)(AstNode*))
 {
 	if (ptr) {
-	  AstNode *child = ast_new(parent->ctx, parent, parent->childnodes->len,
+	  AstNode *child = ast_new(SPARSE_CTX_ADD_(parent->ctx) parent, parent->childnodes->len,
 						text, ptr, inspect);
 		g_array_append_val(parent->childnodes, child);
 		return child;
@@ -83,7 +83,7 @@ AstNode* ast_append_child(AstNode *parent, const char *text,
 static inline
 void ast_append_attribute(AstNode *parent, const char *text)
 {
-        AstNode *child = ast_new(parent->ctx, parent, parent->childnodes->len, text, NULL, NULL);
+  AstNode *child = ast_new(SPARSE_CTX_ADD_(parent->ctx) parent, parent->childnodes->len, text, NULL, NULL);
 	g_array_append_val(parent->childnodes, child);
 }
 

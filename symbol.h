@@ -3,12 +3,10 @@
 
 #include "ctx.h"
 
-/* Current parsing/evaluation function */
-#ifndef DO_CTX
-extern struct symbol *current_fn;
-#endif
 
 #ifndef DO_CTX
+/* Current parsing/evaluation function */
+extern struct symbol *current_fn;
 /* Abstract types */
 extern struct symbol	int_type,
 			fp_type;
@@ -40,6 +38,8 @@ extern struct symbol	zero_int;
 
 #ifndef DO_CTX
 extern struct symbol_list *translation_unit_used_list;
+extern struct stream *stream_sc;
+extern struct stream *stream_sb;
 #endif
 
 extern void access_symbol(SCTX_ struct symbol *);

@@ -115,6 +115,7 @@ struct sparse_ctx {
 	struct symbol_list *function_computed_target_list;
 	struct statement_list *function_computed_goto_list;
 	/* lib.c */
+	int ppnoopt, ppisinit;
 	int verbose, optimize, optimize_size, preprocessing;
 	int die_if_error/* = 0*/;
 	int gcc_major /*= __GNUC__*/;
@@ -211,6 +212,8 @@ struct sparse_ctx {
 	/*static*/ struct pseudo_list *dead_list;
 
 	/* symbol.c */
+	struct stream *stream_sc;
+	struct stream *stream_sb;
 	struct symbol	int_type,
 			fp_type;
 	struct symbol	bool_ctype, void_ctype, type_ctype,
@@ -230,7 +233,7 @@ struct sparse_ctx {
 	struct symbol *current_fn;
   
 #undef  __IDENT
-#define __IDENT(n,str,res) struct ident n;
+#define __IDENT(n,str,res) struct ident_ctx n;
 
 #include "ident-list.h"
 	

@@ -156,16 +156,16 @@ static int expand_one_symbol(SCTX_ struct token **list)
 		sym->used_in = sctxp file_scope;
 		return expand(sctx_ list, sym, token);
 	}
-	if (token->ident == &sctxp __LINE___ident) {
+	if (token->ident == (struct ident *)&sctxp __LINE___ident) {
 		replace_with_integer(sctx_ token, token->pos.line);
-	} else if (token->ident == &sctxp __FILE___ident) {
+	} else if (token->ident == (struct ident *)&sctxp __FILE___ident) {
 		replace_with_string(sctx_ token, stream_name(sctx_ token->pos.stream));
-	} else if (token->ident == &sctxp __DATE___ident) {
+	} else if (token->ident == (struct ident *)&sctxp __DATE___ident) {
 		if (!t)
 			time(&t);
 		strftime(buffer, 12, "%b %e %Y", localtime(&t));
 		replace_with_string(sctx_ token, buffer);
-	} else if (token->ident == &sctxp __TIME___ident) {
+	} else if (token->ident == (struct ident *)&sctxp __TIME___ident) {
 		if (!t)
 			time(&t);
 		strftime(buffer, 9, "%T", localtime(&t));
@@ -460,7 +460,7 @@ static enum token_type combine(SCTX_ struct token *left, struct token *right, ch
 	if (t1 != TOKEN_IDENT && t1 != TOKEN_NUMBER && t1 != TOKEN_SPECIAL)
 		return TOKEN_ERROR;
 
-	if (t1 == TOKEN_IDENT && left->ident == &sctxp L_ident) {
+	if (t1 == TOKEN_IDENT && left->ident == (struct ident *)&sctxp L_ident) {
 		if (t2 >= TOKEN_CHAR && t2 < TOKEN_WIDE_CHAR)
 			return t2 + TOKEN_WIDE_CHAR - TOKEN_CHAR;
 		if (t2 == TOKEN_STRING)
@@ -806,6 +806,9 @@ static int already_tokenized(SCTX_ const char *path)
 {
 	int stream, next;
 
+	if (sctxp ppnoopt)
+		return 0;
+
 	for (stream = *hash_stream(sctx_ path); stream >= 0 ; stream = next) {
 		struct stream *s = sctxp input_streams + stream;
 
@@ -1091,7 +1094,7 @@ static struct token *parse_arguments(SCTX_ struct token **arglist)
 	}
 
 	while (token_type(arg) == TOKEN_IDENT) {
-		if (arg->ident == &sctxp __VA_ARGS___ident)
+		if (arg->ident == (struct ident *)&sctxp __VA_ARGS___ident)
 			goto Eva_args;
 		if (!++count->normal)
 			goto Eargs;
@@ -1136,7 +1139,7 @@ static struct token *parse_arguments(SCTX_ struct token **arglist)
 	if (match_op(arg, SPECIAL_ELLIPSIS)) {
 		next = arg->next = dup_one(sctx_ arg->next);
 		token_type(arg) = TOKEN_IDENT;
-		arg->ident = &sctxp __VA_ARGS___ident;
+		arg->ident = (struct ident *)&sctxp __VA_ARGS___ident;
 		if (!match_op(next, ')'))
 			goto Enotclosed;
 		if (!++count->normal)
@@ -1530,8 +1533,8 @@ static int expression_value(SCTX_ struct token **where)
 		case 0:
 			if (token_type(p) != TOKEN_IDENT)
 				break;
-			if (p->ident == &sctxp defined_ident) {
-				state = 1;
+			if (p->ident == (struct ident *)&sctxp defined_ident) {
+			  	state = 1;
 				beginning = list;
 				break;
 			}
@@ -1856,11 +1859,11 @@ static int handle_pragma(SCTX_ struct stream *stream, struct token **line, struc
 {
 	struct token *next = *line;
 
-	if (match_ident(token->next, &sctxp once_ident) && eof_token(token->next->next)) {
+	if (match_ident(token->next, (struct ident *)&sctxp once_ident) && eof_token(token->next->next)) {
 		stream->once = 1;
 		return 1;
 	}
-	token->ident = &sctxp pragma_ident;
+	token->ident = (struct ident *)&sctxp pragma_ident;
 	token->pos.newline = 1;
 	token->pos.whitespace = 1;
 	token->pos.pos = 1;
@@ -1883,11 +1886,11 @@ static int handle_nondirective(SCTX_ struct stream *stream, struct token **line,
 	return 1;
 }
 
-
-static void init_preprocessor(SCTX)
+void init_preprocessor(SCTX)
 {
 	int i;
-	int stream = init_stream(sctx_ "preprocessor", -1, includepath);
+	struct stream *s;
+	int stream;
 	static struct {
 		const char *name;
 		int (*handler)(SCTX_ struct stream *, struct token **, struct token *);
@@ -1920,6 +1923,13 @@ static void init_preprocessor(SCTX)
 		{ "if",		handle_if },
 		{ "elif",	handle_elif },
 	};
+
+	/*if (sctxp ppisinit)
+		return;
+	sctxp ppisinit = 1;
+	*/
+	s = init_stream(sctx_ "<preprocessor>", -1, includepath);
+	stream = s->id;
 
 	for (i = 0; i < ARRAY_SIZE(normal); i++) {
 		struct symbol *sym;

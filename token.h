@@ -34,7 +34,7 @@ static inline struct token *list_e(SCTX_ struct token *l, struct expansion *e)
 	return r;
 }
 
-extern int init_stream(SCTX_ const char *, int fd, const char **next_path);
+extern struct stream *init_stream(SCTX_ const char *, int fd, const char **next_path);
 extern const char *stream_name(SCTX_ int stream);
 extern struct stream *stream_get(SCTX_ int stream);
 extern struct ident *hash_ident(SCTX_ struct ident *);
@@ -46,7 +46,11 @@ extern const char *show_string(SCTX_ const struct string *string);
 extern const char *show_token(SCTX_ const struct token *);
 extern const char *quote_token(SCTX_ const struct token *);
 extern struct expansion *tokenize(SCTX_ const char *, int, struct token *, const char **next_path);
-extern struct expansion * tokenize_buffer(SCTX_ void *, unsigned long, struct token **);
+extern struct expansion * tokenize_buffer(SCTX_ void *, unsigned , unsigned long, struct token **);
+extern void init_preprocessor(SCTX);
+extern unsigned long hash_name(SCTX_ const char *name, int len);
+extern struct ident *create_hashed_ident(SCTX_ const char *name, int len, unsigned long hash);
+
 
 extern void show_identifier_stats(SCTX);
 extern struct token *preprocess(SCTX_ struct expansion *);

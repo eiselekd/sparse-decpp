@@ -42,6 +42,7 @@ int gcc_patchlevel = __GNUC_PATCHLEVEL__;
 struct token *pp_tokenlist = NULL;
 
 static const char *gcc_base_dir = GCC_BASE;
+int ppnoopt = 0, ppisinit = 0;
 #endif
 
 struct token *skip_to(SCTX_ struct token *token, int op)
@@ -249,7 +250,7 @@ static char *cmdline_include[CMDLINE_INCLUDE];
 #endif 
 
 
-void add_pre_buffer(SCTX_ const char *fmt, ...)
+void add_pre_buffer(SCTX_ int idx, const char *fmt, ...)
 {
 	va_list args;
 	unsigned int size;
@@ -260,7 +261,7 @@ void add_pre_buffer(SCTX_ const char *fmt, ...)
 	va_start(args, fmt);
 	size = vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
-	e = tokenize_buffer(sctx_ buffer, size, &end);
+	e = tokenize_buffer(sctx_ buffer, idx, size, &end);
 	begin = e->s;
 	if (!sctxp pre_buffer_begin)
 		sctxp pre_buffer_begin = begin;
@@ -288,7 +289,7 @@ static char **handle_switch_D(SCTX_ char *arg, char **next)
 			break;
 		}
 	}
-	add_pre_buffer(sctx_ "#define %s %s\n", name, value);
+	add_pre_buffer(sctx_ sctxp stream_sc->id, "#define %s %s\n", name, value);
 	return next;
 }
 
@@ -305,7 +306,7 @@ static char **handle_switch_I(SCTX_ char *arg, char **next)
 
 	switch (arg[1]) {
 	case '-':
-		add_pre_buffer(sctx_ "#split_include\n");
+		add_pre_buffer(sctx_ sctxp stream_sc->id, "#split_include\n");
 		break;
 
 	case '\0':	/* Plain "-I" */
@@ -314,7 +315,7 @@ static char **handle_switch_I(SCTX_ char *arg, char **next)
 			sparse_die(sctx_ "missing argument for -I option");
 		/* Fall through */
 	default:
-		add_pre_buffer(sctx_ "#add_include \"%s/\"\n", path);
+		add_pre_buffer(sctx_ sctxp stream_sc->id, "#add_include \"%s/\"\n", path);
 	}
 	return next;
 }
@@ -336,12 +337,12 @@ static char **handle_switch_i(SCTX_ char *arg, char **next)
 		char *path = *++next;
 		if (!path)
 			sparse_die(sctx_ "missing argument for -isystem option");
-		add_pre_buffer(sctx_ "#add_isystem \"%s/\"\n", path);
+		add_pre_buffer(sctx_ sctxp stream_sc->id, "#add_isystem \"%s/\"\n", path);
 	} else if (*next && !strcmp(arg, "idirafter")) {
 		char *path = *++next;
 		if (!path)
 			sparse_die(sctx_ "missing argument for -idirafter option");
-		add_pre_buffer(sctx_ "#add_dirafter \"%s/\"\n", path);
+		add_pre_buffer(sctx_ sctxp stream_sc->id, "#add_dirafter \"%s/\"\n", path);
 	}
 	return next;
 }
@@ -378,7 +379,7 @@ static void handle_arch_m64_finalize(SCTX)
 		sctxp size_t_ctype = &sctxp ulong_ctype;
 		sctxp ssize_t_ctype = &sctxp long_ctype;
 #ifdef __x86_64__
-		add_pre_buffer(sctx_ "#weak_define __x86_64__ 1\n");
+		add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __x86_64__ 1\n");
 #endif
 	}
 }
@@ -553,7 +554,7 @@ static void handle_switch_v_finalize(SCTX)
 static char **handle_switch_U(SCTX_ char *arg, char **next)
 {
 	const char *name = arg + 1;
-	add_pre_buffer (sctx_ "#undef %s\n", name);
+	add_pre_buffer (sctx_ sctxp stream_sc->id, "#undef %s\n", name);
 	return next;
 }
 
@@ -649,7 +650,7 @@ static char **handle_switch_s(SCTX_ char *arg, char **next)
 
 static char **handle_nostdinc_lib(SCTX_ char *arg, char **next)
 {
-	add_pre_buffer(sctx_ "#nostdinc\n");
+	add_pre_buffer(sctx_ sctxp stream_sc->id, "#nostdinc\n");
 	return next;
 }
 
@@ -736,62 +737,62 @@ static char **handle_switch(SCTX_ char *arg, char **next)
 void declare_builtin_functions(SCTX)
 {
 	/* Gaah. gcc knows tons of builtin <string.h> functions */
-	add_pre_buffer(sctx_ "extern void *__builtin_memcpy(void *, const void *, __SIZE_TYPE__);\n");
-	add_pre_buffer(sctx_ "extern void *__builtin_mempcpy(void *, const void *, __SIZE_TYPE__);\n");
-	add_pre_buffer(sctx_ "extern void *__builtin_memset(void *, int, __SIZE_TYPE__);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_memcmp(const void *, const void *, __SIZE_TYPE__);\n");
-	add_pre_buffer(sctx_ "extern char *__builtin_strcat(char *, const char *);\n");
-	add_pre_buffer(sctx_ "extern char *__builtin_strncat(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_strcmp(const char *, const char *);\n");
-	add_pre_buffer(sctx_ "extern char *__builtin_strchr(const char *, int);\n");
-	add_pre_buffer(sctx_ "extern char *__builtin_strcpy(char *, const char *);\n");
-	add_pre_buffer(sctx_ "extern char *__builtin_strncpy(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer(sctx_ "extern __SIZE_TYPE__ __builtin_strspn(const char *, const char *);\n");
-	add_pre_buffer(sctx_ "extern __SIZE_TYPE__ __builtin_strcspn(const char *, const char *);\n");
-	add_pre_buffer(sctx_ "extern char * __builtin_strpbrk(const char *, const char *);\n");
-	add_pre_buffer(sctx_ "extern char* __builtin_stpcpy(const char *, const char*);\n");
-	add_pre_buffer(sctx_ "extern __SIZE_TYPE__ __builtin_strlen(const char *);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void *__builtin_memcpy(void *, const void *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void *__builtin_mempcpy(void *, const void *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void *__builtin_memset(void *, int, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_memcmp(const void *, const void *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern char *__builtin_strcat(char *, const char *);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern char *__builtin_strncat(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_strcmp(const char *, const char *);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern char *__builtin_strchr(const char *, int);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern char *__builtin_strcpy(char *, const char *);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern char *__builtin_strncpy(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern __SIZE_TYPE__ __builtin_strspn(const char *, const char *);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern __SIZE_TYPE__ __builtin_strcspn(const char *, const char *);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern char * __builtin_strpbrk(const char *, const char *);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern char* __builtin_stpcpy(const char *, const char*);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern __SIZE_TYPE__ __builtin_strlen(const char *);\n");
 
 	/* And bitwise operations.. */
-	add_pre_buffer(sctx_ "extern int __builtin_clz(int);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_clzl(long);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_clzll(long long);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_ctz(int);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_ctzl(long);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_ctzll(long long);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_ffs(int);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_ffsl(long);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_ffsll(long long);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_popcount(unsigned int);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_popcountl(unsigned long);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_popcountll(unsigned long long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_clz(int);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_clzl(long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_clzll(long long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_ctz(int);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_ctzl(long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_ctzll(long long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_ffs(int);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_ffsl(long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_ffsll(long long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_popcount(unsigned int);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_popcountl(unsigned long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_popcountll(unsigned long long);\n");
 
 	/* And byte swaps.. */
-	add_pre_buffer(sctx_ "extern unsigned short __builtin_bswap16(unsigned short);\n");
-	add_pre_buffer(sctx_ "extern unsigned int __builtin_bswap32(unsigned int);\n");
-	add_pre_buffer(sctx_ "extern unsigned long long __builtin_bswap64(unsigned long long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern unsigned short __builtin_bswap16(unsigned short);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern unsigned int __builtin_bswap32(unsigned int);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern unsigned long long __builtin_bswap64(unsigned long long);\n");
 
 	/* And some random ones.. */
-	add_pre_buffer(sctx_ "extern void *__builtin_return_address(unsigned int);\n");
-	add_pre_buffer(sctx_ "extern void *__builtin_extract_return_addr(void *);\n");
-	add_pre_buffer(sctx_ "extern void *__builtin_frame_address(unsigned int);\n");
-	add_pre_buffer(sctx_ "extern void __builtin_trap(void);\n");
-	add_pre_buffer(sctx_ "extern void *__builtin_alloca(__SIZE_TYPE__);\n");
-	add_pre_buffer(sctx_ "extern void __builtin_prefetch (const void *, ...);\n");
-	add_pre_buffer(sctx_ "extern long __builtin_alpha_extbl(long, long);\n");
-	add_pre_buffer(sctx_ "extern long __builtin_alpha_extwl(long, long);\n");
-	add_pre_buffer(sctx_ "extern long __builtin_alpha_insbl(long, long);\n");
-	add_pre_buffer(sctx_ "extern long __builtin_alpha_inswl(long, long);\n");
-	add_pre_buffer(sctx_ "extern long __builtin_alpha_insql(long, long);\n");
-	add_pre_buffer(sctx_ "extern long __builtin_alpha_inslh(long, long);\n");
-	add_pre_buffer(sctx_ "extern long __builtin_alpha_cmpbge(long, long);\n");
-	add_pre_buffer(sctx_ "extern long __builtin_labs(long);\n");
-	add_pre_buffer(sctx_ "extern double __builtin_fabs(double);\n");
-	add_pre_buffer(sctx_ "extern void __sync_synchronize();\n");
-	add_pre_buffer(sctx_ "extern int __sync_bool_compare_and_swap(void *, ...);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void *__builtin_return_address(unsigned int);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void *__builtin_extract_return_addr(void *);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void *__builtin_frame_address(unsigned int);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void __builtin_trap(void);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void *__builtin_alloca(__SIZE_TYPE__);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void __builtin_prefetch (const void *, ...);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern long __builtin_alpha_extbl(long, long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern long __builtin_alpha_extwl(long, long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern long __builtin_alpha_insbl(long, long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern long __builtin_alpha_inswl(long, long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern long __builtin_alpha_insql(long, long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern long __builtin_alpha_inslh(long, long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern long __builtin_alpha_cmpbge(long, long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern long __builtin_labs(long);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern double __builtin_fabs(double);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern void __sync_synchronize();\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __sync_bool_compare_and_swap(void *, ...);\n");
 
 	/* Add Blackfin-specific stuff */
-	add_pre_buffer(sctx_ 
+	add_pre_buffer(sctx_ sctxp stream_sb->id, 
 		"#ifdef __bfin__\n"
 		"extern void __builtin_bfin_csync(void);\n"
 		"extern void __builtin_bfin_ssync(void);\n"
@@ -800,44 +801,44 @@ void declare_builtin_functions(SCTX)
 	);
 
 	/* And some floating point stuff.. */
-	add_pre_buffer(sctx_ "extern int __builtin_isgreater(float, float);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_isgreaterequal(float, float);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_isless(float, float);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_islessequal(float, float);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_islessgreater(float, float);\n");
-	add_pre_buffer(sctx_ "extern int __builtin_isunordered(float, float);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_isgreater(float, float);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_isgreaterequal(float, float);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_isless(float, float);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_islessequal(float, float);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_islessgreater(float, float);\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "extern int __builtin_isunordered(float, float);\n");
 
 	/* And some __FORTIFY_SOURCE ones.. */
-	add_pre_buffer (sctx_ "extern __SIZE_TYPE__ __builtin_object_size(void *, int);\n");
-	add_pre_buffer (sctx_ "extern void * __builtin___memcpy_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer (sctx_ "extern void * __builtin___memmove_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer (sctx_ "extern void * __builtin___mempcpy_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer (sctx_ "extern void * __builtin___memset_chk(void *, int, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer (sctx_ "extern int __builtin___sprintf_chk(char *, int, __SIZE_TYPE__, const char *, ...);\n");
-	add_pre_buffer (sctx_ "extern int __builtin___snprintf_chk(char *, __SIZE_TYPE__, int , __SIZE_TYPE__, const char *, ...);\n");
-	add_pre_buffer (sctx_ "extern char * __builtin___stpcpy_chk(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer (sctx_ "extern char * __builtin___strcat_chk(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer (sctx_ "extern char * __builtin___strcpy_chk(char *, const char *, __SIZE_TYPE__);\n");
-	add_pre_buffer (sctx_ "extern char * __builtin___strncat_chk(char *, const char *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer (sctx_ "extern char * __builtin___strncpy_chk(char *, const char *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
-	add_pre_buffer (sctx_ "extern int __builtin___vsprintf_chk(char *, int, __SIZE_TYPE__, const char *, __builtin_va_list);\n");
-	add_pre_buffer (sctx_ "extern int __builtin___vsnprintf_chk(char *, __SIZE_TYPE__, int, __SIZE_TYPE__, const char *, __builtin_va_list ap);\n");
-	add_pre_buffer (sctx_ "extern void __builtin_unreachable(void);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern __SIZE_TYPE__ __builtin_object_size(void *, int);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern void * __builtin___memcpy_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern void * __builtin___memmove_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern void * __builtin___mempcpy_chk(void *, const void *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern void * __builtin___memset_chk(void *, int, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern int __builtin___sprintf_chk(char *, int, __SIZE_TYPE__, const char *, ...);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern int __builtin___snprintf_chk(char *, __SIZE_TYPE__, int , __SIZE_TYPE__, const char *, ...);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern char * __builtin___stpcpy_chk(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern char * __builtin___strcat_chk(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern char * __builtin___strcpy_chk(char *, const char *, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern char * __builtin___strncat_chk(char *, const char *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern char * __builtin___strncpy_chk(char *, const char *, __SIZE_TYPE__, __SIZE_TYPE__);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern int __builtin___vsprintf_chk(char *, int, __SIZE_TYPE__, const char *, __builtin_va_list);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern int __builtin___vsnprintf_chk(char *, __SIZE_TYPE__, int, __SIZE_TYPE__, const char *, __builtin_va_list ap);\n");
+	add_pre_buffer (sctx_ sctxp stream_sb->id, "extern void __builtin_unreachable(void);\n");
 }
 
 void create_builtin_stream(SCTX)
 {
-	add_pre_buffer(sctx_ "#weak_define __GNUC__ %d\n", sctxp gcc_major);
-	add_pre_buffer(sctx_ "#weak_define __GNUC_MINOR__ %d\n", sctxp gcc_minor);
-	add_pre_buffer(sctx_ "#weak_define __GNUC_PATCHLEVEL__ %d\n", sctxp gcc_patchlevel);
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __GNUC__ %d\n", sctxp gcc_major);
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __GNUC_MINOR__ %d\n", sctxp gcc_minor);
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __GNUC_PATCHLEVEL__ %d\n", sctxp gcc_patchlevel);
 
 	/* We add compiler headers path here because we have to parse
 	 * the arguments to get it, falling back to default. */
-	add_pre_buffer(sctx_ "#add_system \"%s/include\"\n", sctxp gcc_base_dir);
-	add_pre_buffer(sctx_ "#add_system \"%s/include-fixed\"\n", sctxp gcc_base_dir);
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#add_system \"%s/include\"\n", sctxp gcc_base_dir);
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#add_system \"%s/include-fixed\"\n", sctxp gcc_base_dir);
 
-	add_pre_buffer(sctx_ "#define __extension__\n");
-	add_pre_buffer(sctx_ "#define __pragma__\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __extension__\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __pragma__\n");
 
 	// gcc defines __SIZE_TYPE__ to be size_t.  For linux/i86 and
 	// solaris/sparc that is really "unsigned int" and for linux/x86_64
@@ -845,64 +846,64 @@ void create_builtin_stream(SCTX)
 	// get away with this.  We need the #weak_define as cgcc will define
 	// the right __SIZE_TYPE__.
 	if (sctxp size_t_ctype == &sctxp ulong_ctype)
-		add_pre_buffer(sctx_ "#weak_define __SIZE_TYPE__ long unsigned int\n");
+		add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __SIZE_TYPE__ long unsigned int\n");
 	else
-		add_pre_buffer(sctx_ "#weak_define __SIZE_TYPE__ unsigned int\n");
-	add_pre_buffer(sctx_ "#weak_define __STDC__ 1\n");
+		add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __SIZE_TYPE__ unsigned int\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __STDC__ 1\n");
 
 	switch (standard)
 	{
 		case STANDARD_C89:
-			add_pre_buffer(sctx_ "#weak_define __STRICT_ANSI__\n");
+			add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __STRICT_ANSI__\n");
 			break;
 
 		case STANDARD_C94:
-			add_pre_buffer(sctx_ "#weak_define __STDC_VERSION__ 199409L\n");
-			add_pre_buffer(sctx_ "#weak_define __STRICT_ANSI__\n");
+			add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __STDC_VERSION__ 199409L\n");
+			add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __STRICT_ANSI__\n");
 			break;
 
 		case STANDARD_C99:
-			add_pre_buffer(sctx_ "#weak_define __STDC_VERSION__ 199901L\n");
-			add_pre_buffer(sctx_ "#weak_define __STRICT_ANSI__\n");
+			add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __STDC_VERSION__ 199901L\n");
+			add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __STRICT_ANSI__\n");
 			break;
 
 		case STANDARD_GNU89:
 			break;
 
 		case STANDARD_GNU99:
-			add_pre_buffer(sctx_ "#weak_define __STDC_VERSION__ 199901L\n");
+			add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __STDC_VERSION__ 199901L\n");
 			break;
 
 		default:
 			assert (0);
 	}
 
-	add_pre_buffer(sctx_ "#define __builtin_stdarg_start(a,b) ((a) = (__builtin_va_list)(&(b)))\n");
-	add_pre_buffer(sctx_ "#define __builtin_va_start(a,b) ((a) = (__builtin_va_list)(&(b)))\n");
-	add_pre_buffer(sctx_ "#define __builtin_ms_va_start(a,b) ((a) = (__builtin_ms_va_list)(&(b)))\n");
-	add_pre_buffer(sctx_ "#define __builtin_va_arg(arg,type)  ({ type __va_arg_ret = *(type *)(arg); arg += sizeof(type); __va_arg_ret; })\n");
-	add_pre_buffer(sctx_ "#define __builtin_va_alist (*(void *)0)\n");
-	add_pre_buffer(sctx_ "#define __builtin_va_arg_incr(x) ((x) + 1)\n");
-	add_pre_buffer(sctx_ "#define __builtin_va_copy(dest, src) ({ dest = src; (void)0; })\n");
-	add_pre_buffer(sctx_ "#define __builtin_va_end(arg)\n");
-	add_pre_buffer(sctx_ "#define __builtin_ms_va_end(arg)\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __builtin_stdarg_start(a,b) ((a) = (__builtin_va_list)(&(b)))\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __builtin_va_start(a,b) ((a) = (__builtin_va_list)(&(b)))\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __builtin_ms_va_start(a,b) ((a) = (__builtin_ms_va_list)(&(b)))\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __builtin_va_arg(arg,type)  ({ type __va_arg_ret = *(type *)(arg); arg += sizeof(type); __va_arg_ret; })\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __builtin_va_alist (*(void *)0)\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __builtin_va_arg_incr(x) ((x) + 1)\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __builtin_va_copy(dest, src) ({ dest = src; (void)0; })\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __builtin_va_end(arg)\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __builtin_ms_va_end(arg)\n");
 
 	/* FIXME! We need to do these as special magic macros at expansion time! */
-	add_pre_buffer(sctx_ "#define __BASE_FILE__ \"base_file.c\"\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __BASE_FILE__ \"base_file.c\"\n");
 
 	if (sctxp optimize)
-		add_pre_buffer(sctx_ "#define __OPTIMIZE__ 1\n");
+		add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __OPTIMIZE__ 1\n");
 	if (sctxp optimize_size)
-		add_pre_buffer(sctx_ "#define __OPTIMIZE_SIZE__ 1\n");
+		add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __OPTIMIZE_SIZE__ 1\n");
 
 	/* GCC defines these for limits.h */
-	add_pre_buffer(sctx_ "#weak_define __SHRT_MAX__ " SPARSE_STRINGIFY(__SHRT_MAX__) "\n");
-	add_pre_buffer(sctx_ "#weak_define __SCHAR_MAX__ " SPARSE_STRINGIFY(__SCHAR_MAX__) "\n");
-	add_pre_buffer(sctx_ "#weak_define __INT_MAX__ " SPARSE_STRINGIFY(__INT_MAX__) "\n");
-	add_pre_buffer(sctx_ "#weak_define __LONG_MAX__ " SPARSE_STRINGIFY(__LONG_MAX__) "\n");
-	add_pre_buffer(sctx_ "#weak_define __LONG_LONG_MAX__ " SPARSE_STRINGIFY(__LONG_LONG_MAX__) "\n");
-	add_pre_buffer(sctx_ "#weak_define __WCHAR_MAX__ " SPARSE_STRINGIFY(__WCHAR_MAX__) "\n");
-	add_pre_buffer(sctx_ "#weak_define __SIZEOF_POINTER__ " SPARSE_STRINGIFY(__SIZEOF_POINTER__) "\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __SHRT_MAX__ " SPARSE_STRINGIFY(__SHRT_MAX__) "\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __SCHAR_MAX__ " SPARSE_STRINGIFY(__SCHAR_MAX__) "\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __INT_MAX__ " SPARSE_STRINGIFY(__INT_MAX__) "\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __LONG_MAX__ " SPARSE_STRINGIFY(__LONG_MAX__) "\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __LONG_LONG_MAX__ " SPARSE_STRINGIFY(__LONG_LONG_MAX__) "\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __WCHAR_MAX__ " SPARSE_STRINGIFY(__WCHAR_MAX__) "\n");
+	add_pre_buffer(sctx_ sctxp stream_sb->id, "#weak_define __SIZEOF_POINTER__ " SPARSE_STRINGIFY(__SIZEOF_POINTER__) "\n");
 }
 
 static struct symbol_list *sparse_tokenstream(SCTX_ struct expansion *e)
@@ -975,7 +976,7 @@ static struct symbol_list *sparse_initial(SCTX)
 	// Prepend any "include" file to the stream.
 	// We're in global scope, it will affect all files!
 	for (i = 0; i < sctxp cmdline_include_nr; i++)
-		add_pre_buffer(sctx_ "#argv_include \"%s\"\n", sctxp cmdline_include[i]);
+		add_pre_buffer(sctx_ sctxp stream_sc->id, "#argv_include \"%s\"\n", sctxp cmdline_include[i]);
 	
 	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
@@ -1017,7 +1018,7 @@ struct symbol_list *sparse_initialize(SCTX_ int argc, char **argv, struct string
 		init_ctype(sctx);
 
 		create_builtin_stream(sctx);
-		add_pre_buffer(sctx_ "#define __CHECKER__ 1\n");
+		add_pre_buffer(sctx_ sctxp stream_sb->id, "#define __CHECKER__ 1\n");
 		if (!sctxp preprocess_only)
 			declare_builtin_functions(sctx);
 

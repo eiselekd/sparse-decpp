@@ -1870,7 +1870,7 @@ static pseudo_t linearize_return(SCTX_ struct entrypoint *ep, struct statement *
 			add_instruction(sctx_ &bb_return->insns, phi_node);
 		}
 		phi = alloc_phi(sctx_ active, src, type_size(sctx_ expr->ctype));
-		phi->ident = &sctxp return_ident;
+		phi->ident = (struct ident *)&sctxp return_ident;
 		use_pseudo(sctx_ phi_node, phi, add_pseudo(sctx_ &phi_node->phi_list, phi));
 	}
 	add_goto(sctx_ ep, bb_return);

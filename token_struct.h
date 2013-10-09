@@ -33,7 +33,7 @@ enum constantfile {
 extern const char *includepath[];
 
 struct stream {
-	int fd;
+	int fd, id;
 	const char *name;
 	const char *path;    // input-file path - see set_stream_include_path()
 	const char **next_path;
@@ -44,6 +44,7 @@ struct stream {
 	struct ident *protect;
 	struct token *ifndef;
 	struct token *top_if;
+	struct expansion *e;
 };
 
 #ifndef DO_CTX
@@ -61,6 +62,11 @@ struct ident {
 	              reserved:1,
 		      keyword:1;
 	char name[];		/* Actual identifier */
+};
+
+struct ident_ctx {
+	struct ident b;
+	char name[128];		/* Actual identifier */
 };
 
 enum token_type {
@@ -196,7 +202,7 @@ enum expansion_typ {
 
 struct expansion {
 	int typ;
-	struct token *s, *d;
+	struct token *s, *d, **e;
 	union {
 		struct { /* marg */
 			struct expansion *mac;

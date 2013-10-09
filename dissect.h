@@ -51,7 +51,7 @@ struct reporter
 	int indent;
 };
 
-#ifdef DO_CTX
+#ifndef DO_CTX
 extern struct reporter *reporter;
 #endif
 

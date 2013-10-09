@@ -448,6 +448,7 @@ sparse(...)
 	TRACE(printf(")\n"));
 	New (SPARSE_MALLOC_ID,  _sctx, 1, struct sparse_ctx);
 	_sctx = sparse_ctx_init( _sctx);
+        _sctx ->ppnoopt = 1;
 	_sctx ->symlist = sparse_initialize(sctx_ items+1, a, &_sctx->filelist);
 	FOR_EACH_PTR_NOTAG(_sctx->filelist, file) {
             concat_symbol_list(sctx_ sparse(sctx_ file), &_sctx ->symlist);

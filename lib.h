@@ -30,6 +30,7 @@ extern int verbose, optimize, optimize_size, preprocessing;
 extern int die_if_error;
 extern int gcc_major, gcc_minor, gcc_patchlevel;
 extern struct token *pp_tokenlist;
+extern int ppnoopt, ppisinit;
 #endif
 
 extern int repeat_phase, merge_phi_sources;
@@ -86,7 +87,7 @@ extern void sparse_error(SCTX_ struct position, const char *, ...) FORMAT_ATTR(2
 extern void error_die(SCTX_ struct position, const char *, ...);
 extern void expression_error(SCTX_ struct expression *, const char *, ...) FORMAT_ATTR(2+SCTXCNT);
 
-extern void add_pre_buffer(SCTX_ const char *fmt, ...) FORMAT_ATTR(1+SCTXCNT);
+extern void add_pre_buffer(SCTX_ int idx, const char *fmt, ...) FORMAT_ATTR(2+SCTXCNT);
 
 #ifndef DO_CTX
 extern int preprocess_only;

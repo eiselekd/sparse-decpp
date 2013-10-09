@@ -19,9 +19,9 @@ struct sparse_ctx;
 #define DO_CTX
 
 #define SPARSE_CTX_INIT struct sparse_ctx __sctx; struct sparse_ctx *_sctx = sparse_ctx_init(&__sctx);
-
 #define SPARSE_CTX_GEN(a) struct sparse_ctx *_sctx = a;
 #define SPARSE_CTX_SET(a) _sctx = a;
+#define SPARSE_CTX_ADD_(a) a,
 
 extern struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *);
 
@@ -40,6 +40,7 @@ extern struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *);
 #define SPARSE_CTX_INIT ;
 #define SPARSE_CTX_GEN(a) 
 #define SPARSE_CTX_SET(a)
+#define SPARSE_CTX_ADD_(a)
 #endif
 
 #endif

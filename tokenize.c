@@ -295,7 +295,8 @@ int *hash_stream(SCTX_ const char *name)
 	return sctxp input_stream_hashes + hash;
 }
 
-int init_stream(SCTX_ const char *name, int fd, const char **next_path)
+/* called from symbol.c:"builtin" and pro-processor.c:"pre-processsor" */
+struct stream *init_stream(SCTX_ const char *name, int fd, const char **next_path)
 {
 	int stream = sctxp input_stream_nr, *hash;
 	struct stream *current;
@@ -317,8 +318,9 @@ int init_stream(SCTX_ const char *name, int fd, const char **next_path)
 	sctxp input_stream_nr = stream+1;
 	hash = hash_stream(sctx_ name);
 	current->next_stream = *hash;
+	current->id = stream;
 	*hash = stream;
-	return stream;
+	return current;
 }
 
 static struct token * alloc_token_stream(SCTX_ stream_t *stream)
@@ -454,6 +456,7 @@ static struct token *mark_eof(SCTX_ stream_t *stream)
 	end->next =  &sctxp eof_token_entry;
 	*stream->tokenlist = end;
 	stream->tokenlist = NULL;
+	
 	return end;
 }
 
@@ -865,7 +868,7 @@ static struct ident * insert_hash(SCTX_ struct ident *ident, unsigned long hash)
 	return ident;
 }
 
-static struct ident *create_hashed_ident(SCTX_ const char *name, int len, unsigned long hash)
+struct ident *create_hashed_ident(SCTX_ const char *name, int len, unsigned long hash)
 {
 	struct ident *ident;
 	struct ident **p;
@@ -891,7 +894,7 @@ next:
 	return ident;
 }
 
-static unsigned long hash_name(SCTX_ const char *name, int len)
+unsigned long hash_name(SCTX_ const char *name, int len)
 {
 	unsigned long hash;
 	const unsigned char *p = (const unsigned char *)name;
@@ -981,10 +984,11 @@ static int get_one_token(SCTX_ int c, stream_t *stream)
 	return get_one_special(sctx_ c, stream);
 }
 
+/* called from tokenize_buffer() and tokenize() */
 static struct expansion *setup_stream(SCTX_ stream_t *stream, int idx, int fd,
 	unsigned char *buf, unsigned int buf_size)
 {
-	struct token *begin; struct expansion *e;
+	struct token *begin; struct expansion *e = 0;
 
 	stream->nr = idx;
 	stream->line = 1;
@@ -1002,10 +1006,19 @@ static struct expansion *setup_stream(SCTX_ stream_t *stream, int idx, int fd,
 	token_type(begin) = TOKEN_STREAMBEGIN;
 	stream->tokenlist = &begin->next;
 	
-	e = __alloc_expansion(sctx_ 0);
-	memset(e, 0, sizeof(struct expansion));
-	e->typ = EXPANSION_STREAM;
-	e->s = begin;
+	if (idx >= 0 && idx < sctxp input_stream_nr) 
+		e = sctxp input_streams[idx].e;
+
+	/*if (!e)*/ {
+		e = __alloc_expansion(sctx_ 0);
+		memset(e, 0, sizeof(struct expansion));
+		e->typ = EXPANSION_STREAM;
+		e->s = begin;
+		e->e = &begin->next;
+	}
+
+	if (idx >= 0 && idx < sctxp input_stream_nr && !sctxp input_streams[idx].e)
+		sctxp input_streams[idx].e = e;
 	
 	return e;
 }
@@ -1028,13 +1041,15 @@ static struct token *tokenize_stream(SCTX_ stream_t *stream)
 	return mark_eof(sctx_ stream);
 }
 
-struct expansion * tokenize_buffer(SCTX_ void *buffer, unsigned long size, struct token **endtoken)
+/* called from lib.c:add_pre_buffer */
+struct expansion * tokenize_buffer(SCTX_ void *buffer, unsigned idx, unsigned long size, struct token **endtoken)
 {
 	stream_t stream;
 	struct expansion *e;
 
-	e = setup_stream(sctx_ &stream, 0, -1, buffer, size);
+	e = setup_stream(sctx_ &stream, idx, -1, buffer, size);
 	*endtoken = tokenize_stream(sctx_ &stream);
+	
 	list_e(sctx_ e->s, e);
 	return e;
 }
@@ -1044,9 +1059,10 @@ struct expansion * tokenize(SCTX_ const char *name, int fd, struct token *endtok
 	struct token *end;
 	stream_t stream; struct expansion *e;
 	unsigned char buffer[BUFSIZE];
-	int idx;
+	int idx; struct stream *s;
 
-	idx = init_stream(sctx_ name, fd, next_path);
+	s = init_stream(sctx_ name, fd, next_path);
+	idx = s->id;
 	if (idx < 0) {
 		e = __alloc_expansion(sctx_ 0);
 		memset(e, 0, sizeof(struct expansion));

@@ -72,9 +72,9 @@ static struct symbol *handle_func(SCTX_ struct token *token)
 	struct string *string;
 	int len;
 
-	if (ident != &sctxp __func___ident &&
-	    ident != &sctxp __FUNCTION___ident &&
-	    ident != &sctxp __PRETTY_FUNCTION___ident)
+	if (ident != (struct ident *)&sctxp __func___ident &&
+	    ident != (struct ident *)&sctxp __FUNCTION___ident &&
+	    ident != (struct ident *)&sctxp __PRETTY_FUNCTION___ident)
 		return NULL;
 
 	if (!sctxp current_fn || !sctxp current_fn->ident)
@@ -388,11 +388,11 @@ struct token *primary_expression(SCTX_ struct token *token, struct expression **
 
 		if (!sym) {
 			sym = handle_func(sctx_ token);
-			if (token->ident == &sctxp __builtin_types_compatible_p_ident) {
+			if (token->ident == (struct ident *)&sctxp __builtin_types_compatible_p_ident) {
 				token = builtin_types_compatible_p_expr(sctx_ token, &expr);
 				break;
 			}
-			if (token->ident == &sctxp __builtin_offsetof_ident) {
+			if (token->ident == (struct ident *)&sctxp __builtin_offsetof_ident) {
 				token = builtin_offsetof_expr(sctx_ token, &expr);
 				break;
 			}
@@ -598,10 +598,10 @@ static struct token *unary_expression(SCTX_ struct token *token, struct expressi
 				struct ident *id;
 				int type;
 			} type_information[] = {
-				{ &sctxp sizeof_ident, EXPR_SIZEOF },
-				{ &sctxp __alignof___ident, EXPR_ALIGNOF },
-				{ &sctxp __alignof_ident, EXPR_ALIGNOF },
-				{ &sctxp __sizeof_ptr___ident, EXPR_PTRSIZEOF },
+				{ (struct ident *)&sctxp sizeof_ident, EXPR_SIZEOF },
+				{ (struct ident *)&sctxp __alignof___ident, EXPR_ALIGNOF },
+				{ (struct ident *)&sctxp __alignof_ident, EXPR_ALIGNOF },
+				{ (struct ident *)&sctxp __sizeof_ptr___ident, EXPR_PTRSIZEOF },
 			};
 			int i;
 			for (i = 0; i < ARRAY_SIZE(type_information); i++) {

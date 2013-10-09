@@ -9,6 +9,7 @@ C::sparse::stream(sparsestream):
     sparseident    : protect    { new=>1 }
     sparsetok      : ifndef     { new=>1 }
     sparsetok      : top_if     { new=>1 }
+    sparseexpand   : e          { new=>1 }
 
 C::sparse::pos(sparsepos):
     int            : type       {}
