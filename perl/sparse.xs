@@ -123,50 +123,67 @@ typedef struct sparse_ctx *sparsectx_ptr;
 #define SPARSE_TOK_ASSUME(x,sv)    SPARSE_ASSUME(x,sv,sparse_tok)
 
 #define SPARSE_MALLOC_ID  42
+#define SPARSE_HASHSIZE 1024
 
-#define CREATE_SPARSE(type)				\
-                                                        \
-  struct type##_elem {                                  \
-    type##_t            m;                              \
-    struct type##_elem  *next;                          \
-  };                                                    \
-  typedef struct type##_elem  *type;                    \
-  typedef struct type##_elem  *type##_assume;           \
-  typedef type##_ptr          type##_coerce;            \
-                                                        \
-  static type type##_freelist = NULL;                   \
-                                                        \
-  static type                                           \
-  new_##type (type##_t e)				\
-  {                                                     \
-    type p;                                             \
-    /*TRACE (printf ("new %s(%p)\n", type##_class, e));*/          \
-    if (type##_freelist != NULL)                        \
-      {                                                 \
-        p = type##_freelist;                            \
-        type##_freelist = type##_freelist->next;        \
-      }                                                 \
-    else                                                \
-      {                                                 \
-        New (SPARSE_MALLOC_ID, p, 1, struct type##_elem);  \
-        p->m = e;					\
-      }                                                 \
-    /*TRACE (printf ("  p=%p\n", p));*/                     \
-    assert_support (type##_count++);                    \
-    TRACE_ACTIVE ();                                    \
-    return p;                                           \
-  }                                                     \
-  static SV *                                           \
-  newbless_##type (type##_t e)				\
-  {							\
-    if (!e) return &PL_sv_undef;		        \
+#define CREATE_SPARSE(type)						\
+									\
+  struct type##_elem {							\
+    type##_t            m;						\
+    struct type##_elem  *next;						\
+  };									\
+  typedef struct type##_elem  *type;					\
+  typedef struct type##_elem  *type##_assume;				\
+  typedef type##_ptr          type##_coerce;				\
+									\
+  static type type##_freelist = NULL;					\
+  static type type##_hash[SPARSE_HASHSIZE];				\
+									\
+  static type								\
+  hash_##type (type##_t e)						\
+  {									\
+    type p = 0; unsigned int h = (int) (long)e;				\
+    h = ((h >> 4) ^ (h >> 8) ^ (h >> 12) ^ 0x57a45) & (SPARSE_HASHSIZE-1); \
+    p  =type##_hash[h];							\
+    while (p) {								\
+      if (p->m == e)							\
+	return p;							\
+      p = p->next;							\
+    }									\
+    return p;								\
+  }									\
+									\
+  static type								\
+  new_##type (type##_t e)						\
+  {									\
+    type p = hash_##type(e);						\
+    /*TRACE (printf ("new %s(%p)\n", type##_class, e));*/		\
+    if (!p) {								\
+      if (type##_freelist != NULL)					\
+	{								\
+	  p = type##_freelist;						\
+	  type##_freelist = type##_freelist->next;			\
+	}								\
+      else								\
+	{								\
+	  New (SPARSE_MALLOC_ID, p, 1, struct type##_elem);		\
+        }								\
+      p->m = e;/*TRACE (printf ("  p=%p\n", p));*/			\
+      assert_support (type##_count++);					\
+    }									\
+    TRACE_ACTIVE ();							\
+    return p;								\
+  }									\
+  static SV *								\
+  newbless_##type (type##_t e)						\
+  {									\
+    if (!e) return &PL_sv_undef;					\
     return sv_bless (sv_setref_pv (sv_newmortal(), NULL, new_##type (e)), type##_class_hv); \
-  } \
-  static SV *newsv_##type (type##_t e)				\
-  {							\
-    if (!e) return &PL_sv_undef;		        \
-    return sv_setref_pv (sv_newmortal(), NULL, new_##type (e)); \
-  } \
+  }									\
+  static SV *newsv_##type (type##_t e)					\
+  {									\
+    if (!e) return &PL_sv_undef;					\
+    return sv_setref_pv (sv_newmortal(), NULL, new_##type (e));		\
+  }									\
 
 
 CREATE_SPARSE(sparsepos);
