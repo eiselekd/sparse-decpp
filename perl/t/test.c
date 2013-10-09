@@ -1,3 +1,6 @@
+#define VAL(A) int A = 1;
+VAL(X)
+
 #undef  DEFINE_A0
 #define DEFINE_A0  int a; /*1;*/
 #include "test.h"

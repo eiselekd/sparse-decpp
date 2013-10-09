@@ -188,7 +188,8 @@ struct token {
 	CString *space;
 	struct position pos;
 	struct token *next;
-	struct expansion *e;
+	struct token *copy;
+	struct expansion *e; /* source or dest expansion */
 	union {
 		const char *number;
 		struct ident *ident;

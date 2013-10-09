@@ -333,6 +333,7 @@ static struct token *dup_one(SCTX_ struct token *tok)
 {
 	struct token *newtok = __alloc_token(sctx_ 0);
 	*newtok = *tok;
+	newtok->copy = tok;
 #ifdef DO_CTX
 	newtok->ctx = sctx;
 #endif
@@ -347,6 +348,7 @@ static struct token *dup_list(SCTX_ struct token *list)
 	while (!eof_token(list)) {
 		struct token *newtok = __alloc_token(sctx_ 0);
 		*newtok = *list;
+		newtok->copy = list;
 #ifdef DO_CTX
 		newtok->ctx = sctx;
 #endif
@@ -761,7 +763,9 @@ static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *m
 	e->d = dup_list_e(sctx_ sym->expansion, e);
 	e->tok = mtok;
 	e->msym = sym;
-
+	if (mtok->copy)
+		mtok->copy->e = e;
+	
 	if (sym->arglist) {
 		if (!match_op(scan_next(&token->next), '('))
 			goto ret1;

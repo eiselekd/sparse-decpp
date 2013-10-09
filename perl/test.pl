@@ -36,8 +36,14 @@ $e = $f[0]->e;
 @d = $e->d;
 print ("Source: ".scalar(@s)."\n");
 print ("Dest  : ".scalar(@d)."\n");
-print ("Source: ".join("",(map { "$_" } (@s)))."\n");
-print ("Dest  : ".join("",(map { "$_" } (@d)))."\n");
+print ("Source: ".join("",(map { 
+  my $pre = "";
+  if ((my $e = $_->e)) {
+    $pre = ":" if ($e->typ == C::sparse::EXPANSION_MACRO) ;
+  }
+  $pre."[$_]" 
+} (@s)))."\n");
+print ("Dest  : ".join("",(map { "[$_]" } (@d)))."\n");
 
 #while(1) {}
 #foreach my $a (@a) {

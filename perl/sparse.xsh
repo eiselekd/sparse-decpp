@@ -25,6 +25,7 @@ C::sparse::stmt::STMT_NONE(sparsestmt):
 C::sparse::tok(sparsetok):
     sparsepos    : pos              { new=>1, deref=>1 }
     sparsetok    : next             { new=>1 }
+    sparsetok    : copy             { new=>1 }
     sparseexpand : e                { new=>1 }
 
 C::sparse::expand(sparseexpand):
