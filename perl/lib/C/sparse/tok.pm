@@ -88,4 +88,15 @@ our @ISA = qw (C::sparse::tok);
 package C::sparse::tok::TOKEN_ELSE;
 our @ISA = qw (C::sparse::tok);
 
+package C::sparse::tok;
+our @ISA = qw (C::sparse);
+
+use overload
+    '""'   => \&overload_string;
+
+sub overload_string {
+  my ($s) = @_;
+  return tok2str($s);
+}
+
 1;

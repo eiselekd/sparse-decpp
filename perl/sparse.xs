@@ -477,8 +477,8 @@ list(p,...)
     PREINIT:
     struct token *t; int cnt = 0; SPARSE_CTX_GEN(0);
     PPCODE:
-        SPARSE_CTX_SET(t->ctx);
 	t = p->m;
+        SPARSE_CTX_SET(t->ctx);
         while(!eof_token(t)) {
 	        cnt++;
  	    	if (GIMME_V == G_ARRAY) {
@@ -491,6 +491,22 @@ list(p,...)
  	    EXTEND(SP, 1);
             PUSHs(sv_2mortal(newSViv(cnt)));
 	}
+
+void
+tok2str(p,...)
+	sparsetok p
+    PREINIT:
+        struct token *t; int cnt = 0; SPARSE_CTX_GEN(0); int prec = 1; char *separator = "";
+        const char *n; SV *r;
+    PPCODE:
+        t = p->m;
+        SPARSE_CTX_SET(t->ctx);
+	EXTEND(SP, 1);
+        n = show_token(sctx_ t);
+        ST(0) = r = newSVpv(n, strlen(n));
+        sv_2mortal(ST(0));
+
+
 
 MODULE = C::sparse   PACKAGE = C::sparse::ident
 PROTOTYPES: ENABLE
