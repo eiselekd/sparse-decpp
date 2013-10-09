@@ -29,8 +29,8 @@ C::sparse::tok(sparsetok):
 
 C::sparse::exp(sparseexpand):
     int   : typ 
-    sparsetok :  s                  { new=>1 }
-    sparsetok :  d                  { new=>1 }
+    sparsetok :  s                  { new=>1, array=>'next' }
+    sparsetok :  d                  { new=>1, array=>'next' }
 
 C::sparse::exp::EXPANSION_MACROARG(sparseexpand):
     sparseexpand :  mac             { new=>1 }
@@ -49,17 +49,17 @@ C::sparse::ident(sparseident):
 
 
 C::sparse::stmt::STMT_DECLARATION(sparsestmt):
-    sparsesym    : declaration      { new=>1, arr=>1 }
+    sparsesym    : declaration      { new=>1, arrlist=>1 }
 
 C::sparse::stmt::STMT_CONTEXT(sparsestmt):
-    sparseexpr : expression         { new=>1, arr=>1 }
+    sparseexpr : expression         { new=>1, arrlist=>1 }
 
 C::sparse::stmt::STMT_EXPRESSION(sparsestmt):
     sparseexpr : expression         { new=>1 }
     sparseexpr : context            { new=>1 }
 
 C::sparse::stmt::STMT_COMPOUND(sparsestmt):
-    sparsestmt : stmts              { new=>1, arr=>1 }
+    sparsestmt : stmts              { new=>1, arrlist=>1 }
     sparsesym  : ret                { new=>1 }
     sparsesym  : inline_fn          { new=>1 }
     sparsestmt : args               { new=>1 }
@@ -88,7 +88,7 @@ C::sparse::stmt::STMT_SWITCH(sparsestmt):
 C::sparse::stmt::STMT_ITERATOR(sparsestmt):
     sparsesym    : iterator_break          { new=>1 }
     sparsesym    : iterator_continue       { new=>1 }
-    sparsesym    : iterator_syms           { new=>1, arr=>1 }
+    sparsesym    : iterator_syms           { new=>1, arrlist=>1 }
     sparsestmt   : iterator_pre_statement  { new=>1 }
     sparseexpr   : iterator_pre_condition  { new=>1 }
     sparsestmt   : iterator_statement      { new=>1 }
@@ -102,14 +102,14 @@ C::sparse::stmt::STMT_LABEL(sparsestmt):
 C::sparse::stmt::STMT_GOTO(sparsestmt):
     sparsesym    : goto_label       { new=>1 }
     sparseexpr   : goto_expression  { new=>1 }
-    sparsesym    : target_list      { new=>1, arr=>1 }
+    sparsesym    : target_list      { new=>1, arrlist=>1 }
 
 C::sparse::stmt::STMT_ASM(sparsestmt):
     sparseexpr   : asm_string       { new=>1 }
-    sparseexpr   : asm_outputs      { new=>1, arr=>1 }
-    sparseexpr   : asm_inputs       { new=>1, arr=>1 }
-    sparseexpr   : asm_clobbers     { new=>1, arr=>1 }
-    sparsesym    : asm_labels       { new=>1, arr=>1 }
+    sparseexpr   : asm_outputs      { new=>1, arrlist=>1 }
+    sparseexpr   : asm_inputs       { new=>1, arrlist=>1 }
+    sparseexpr   : asm_clobbers     { new=>1, arrlist=>1 }
+    sparsesym    : asm_labels       { new=>1, arrlist=>1 }
 
 C::sparse::stmt::STMT_RANGE(sparsestmt):
     sparseexpr : range_expression   { new=>1 }
@@ -195,13 +195,13 @@ C::sparse::expr::EXPR_SELECT(sparseexpr):
 
 C::sparse::expr::EXPR_CALL(sparseexpr):
     sparseexpr : fn;                  { new=>1 }
-    sparseexpr : args                 { new=>1, arr=>1 }
+    sparseexpr : args                 { new=>1, arrlist=>1 }
 
 C::sparse::expr::EXPR_LABEL(sparseexpr):
     sparsesym  : label_symbol         { new=>1 }
 
 C::sparse::expr::EXPR_INITIALIZER(sparseexpr):
-    sparseexpr : expr_list            { new=>1, arr=>1 }
+    sparseexpr : expr_list            { new=>1, arrlist=>1 }
 
 C::sparse::expr::EXPR_IDENTIFIER(sparseexpr):
     sparseident : expr_ident          { new=>1 }
@@ -226,7 +226,7 @@ C::sparse::expr::EXPR_OFFSETOF(sparseexpr):
 
 C::sparse::scope(sparsescope):
     sparsetok   : token               { new=>1 }
-    sparsesym   : symbols             { new=>1, arr=>1 }
+    sparsesym   : symbols             { new=>1, arrlist=>1 }
     sparsescope : next                { new=>1 }
 
 C::sparse::sym(sparsesym):
@@ -262,11 +262,11 @@ C::sparse::sym::NS_SYMBOL(sparsesym):
     unsigned int  : forced_arg
     sparseexpr    : array_size         { new=>1 }
     sparsectype   : ctype              { new=>1, deref=>1 }
-    sparsesym     : arguments          { new=>1, arr=>1 }
+    sparsesym     : arguments          { new=>1, arrlist=>1 }
     sparsestmt    : stmt               { new=>1 }
-    sparsesym     : symbol_list        { new=>1, arr=>1 }
+    sparsesym     : symbol_list        { new=>1, arrlist=>1 }
     sparsestmt    : inline_stmt        { new=>1 }
-    sparsesym     : inline_symbol_list { new=>1, arr=>1 }
+    sparsesym     : inline_symbol_list { new=>1, arrlist=>1 }
     sparseexpr    : initializer        { new=>1 }
     struct entrypoint *ep
     long long     : value		
@@ -275,7 +275,7 @@ C::sparse::sym::NS_SYMBOL(sparsesym):
 C::sparse::ctype(sparsectype):
     unsigned long : modifiers
     unsigned long : alignment
-    sparsesymctx  : contexts           { new=>1, arr=>1 }
+    sparsesymctx  : contexts           { new=>1, arrlist=>1 }
     unsigned int  : as
     sparsesym     : base_type          { new=>1 }
 

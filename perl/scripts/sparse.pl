@@ -72,7 +72,40 @@ while ($m =~ /($idre)$RE_balanced_smothbrackets:\s*\n/m) {
       }
       my $vpost = $$a{'vpost'};
       my $name = $$a{'n'} ? $$a{'n'} : $p;
-      if ($$a{'arr'}) {
+
+      my $ne;
+      if (($ne = $$a{'array'})) {
+
+	  
+
+my $g = "
+MODULE = C::sparse   PACKAGE = ${id}
+PROTOTYPES: ENABLE
+
+void
+${name}(p,...)
+        $typ p
+    PREINIT:
+        void *ptr; int i = 0;
+        ${t}_t l;
+    PPCODE:
+        l = (${t}_t)(p->m->$n);
+ 	if (GIMME_V == G_ARRAY) {
+	    while(l) {
+	        EXTEND(SP, 1);
+	        PUSHs(bless_${t}((${t}_t)l));
+                l = l->$ne;
+            }
+        } else {
+            EXTEND(SP, 1);
+	    while(l) { i++; l = l->$ne; };
+            PUSHs(sv_2mortal(newSViv(i)));
+        }
+
+";
+      print $g;
+
+      } elsif ($$a{'arrlist'}) {
 
 my $g = "
 MODULE = C::sparse   PACKAGE = ${id}

@@ -219,6 +219,7 @@ static SV *bless_tok(sparsetok_t e) {
     if (!e) return &PL_sv_undef;
     return sv_bless (newsv_sparsetok (e), gv_stashpv (token_types_class[token_type(e)],1));
 }
+static SV *bless_sparsetok(sparsetok_t e) { return bless_tok(e); }
 static char *stmt_types_class[] =  {
 	"C::sparse::stmt::STMT_NONE",
 	"C::sparse::stmt::STMT_DECLARATION",

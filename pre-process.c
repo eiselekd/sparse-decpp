@@ -1924,10 +1924,10 @@ void init_preprocessor(SCTX)
 		{ "elif",	handle_elif },
 	};
 
-	/*if (sctxp ppisinit)
+	if (sctxp ppisinit)
 		return;
 	sctxp ppisinit = 1;
-	*/
+	
 	s = init_stream(sctx_ "<preprocessor>", -1, includepath);
 	stream = s->id;
 
