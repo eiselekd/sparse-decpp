@@ -452,7 +452,7 @@ sparse(...)
 	FOR_EACH_PTR_NOTAG(_sctx->filelist, file) {
             concat_symbol_list(sctx_ sparse(sctx_ file), &_sctx ->symlist);
         } END_FOR_EACH_PTR_NOTAG(file);
-	RETVAL = new_sparsectx((sparsectx_t)sctx);
+	RETVAL = new_sparsectx((struct starse_ctx*)_sctx);
     OUTPUT:
 	RETVAL	
 
@@ -463,9 +463,10 @@ void
 DESTROY (r)
         sparsectx r
     PREINIT:
-        struct starse_ctx *c = r->m;
+        struct starse_ctx *c;
     CODE:
-        TRACE (printf ("%s DESTROY\n", sparsectx_class));
+        c = r->m;
+        /*TRACE (printf ("%s DESTROY %p\n", sparsectx_class, r);fflush(stdout););*/
         assert_support (sparsectx_count--);
         TRACE_ACTIVE ();
 
