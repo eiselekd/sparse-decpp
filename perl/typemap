@@ -84,29 +84,29 @@ SPARSE_STRING
 
 OUTPUT
 SPARSE_CTX
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsectx_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsectx_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_POS
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsepos_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsepos_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_TOK
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsetok_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsetok_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_STMT
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsestmt_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsestmt_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_EXPR
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparseexpr_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparseexpr_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_SYM
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsesym_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsesym_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_IDENT
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparseident_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparseident_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_CTYPE
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsectype_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsectype_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_SYMCTX
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsesymctx_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsesymctx_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_SCOPE
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsescope_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsescope_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_EXPAND
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparseexpand_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparseexpand_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_STREAM
-    sv_bless (sv_setref_pv ($arg, NULL, $var), sparsestream_class_hv);
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsestream_class_hv); } else { $arg = &PL_sv_undef; }
 RANDSTATE
     sv_setref_pv ($arg, rand_class, $var);
 MALLOCED_STRING

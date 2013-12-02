@@ -18,8 +18,12 @@
 #include "../scope.h"
 
 /* include the complete sparse tree */
+#ifdef D_USE_LIB
+#include "../parse.h"
+#else
 #define D_USE_ONE
 #include "../parse.c"
+#endif
 
 #include "const-c.inc"
 
@@ -453,6 +457,30 @@ streams(p,...)
  	    EXTEND(SP, 1);
             PUSHs(sv_2mortal(newSViv(cnt)));
 	}
+
+void
+symbols(p,...)
+	sparsectx p
+    PREINIT:
+    struct token *t; int cnt = 0; SPARSE_CTX_GEN(0); int id = 0; struct ptr_list *ptrlist; void *ptr; struct symbol *sym;
+    PPCODE:
+        SPARSE_CTX_SET((struct sparse_ctx *)p->m);
+	ptrlist = (struct ptr_list *)_sctx ->symlist;
+        if (ptrlist) {
+    	    FOR_EACH_PTR(ptrlist, ptr) {
+	        sym = (struct symbol *) ptr;
+	        if (GIMME_V == G_ARRAY) {
+	            EXTEND(SP, 1);
+		    PUSHs(bless_sym (sym));
+                }
+                cnt++;
+	    } END_FOR_EACH_PTR(ptr);
+        }
+ 	if (GIMME_V == G_SCALAR) {
+ 	    EXTEND(SP, 1);
+            PUSHs(sv_2mortal(newSViv(cnt)));
+	}
+
 
 MODULE = C::sparse   PACKAGE = C::sparse::tok
 PROTOTYPES: ENABLE

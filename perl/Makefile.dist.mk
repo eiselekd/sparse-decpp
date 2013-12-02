@@ -29,6 +29,7 @@ dist:
 	perl -pi -e "s/\.\.\/libsparse.a/src\/sparse-$(VERSION)\/libsparse.a/g" ../perl_dist/Makefile.PL
 	perl -pi -e "s/-I\.\./-Isrc\/sparse-$(VERSION)/g"                       ../perl_dist/Makefile.PL
 	perl -pi -e "s/-L\.\/\.\./-L\.\/src\/sparse-$(VERSION)/g"               ../perl_dist/Makefile.PL
+	perl -pi -e "s/-DD_USE_LIB//g"                                          ../perl_dist/Makefile.PL
 	cd ../perl_dist; make dist
 	cp ../perl_dist/C-sparse-$(PERL_VERSION).tar.gz .
 
