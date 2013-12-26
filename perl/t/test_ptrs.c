@@ -1,3 +1,4 @@
+extern int g1;
 struct s1 {
     int d1;
 };
@@ -13,7 +14,7 @@ int g1 = 0;
 void
 func1(struct s0 *p) {
     int d;
-    d = p->p1->d1;
+    d = p->p1->d1 + g1;
 }
 
 

@@ -1,3 +1,26 @@
+package C::sparse::sym;
+
+our %typ_n = (
+ 	C::sparse::SYM_PREPROCESSOR =>"SYM_PREPROCESSOR",     
+ 	C::sparse::SYM_BASETYPE	    =>"SYM_BASETYPE",	     
+ 	C::sparse::SYM_NODE	    =>"SYM_NODE",	     
+ 	C::sparse::SYM_PTR	    =>"SYM_PTR",		     
+ 	C::sparse::SYM_FN	    =>"SYM_FN",		     
+ 	C::sparse::SYM_ARRAY	    =>"SYM_ARRAY",	     
+ 	C::sparse::SYM_STRUCT	    =>"SYM_STRUCT",	     
+ 	C::sparse::SYM_UNION	    =>"SYM_UNION",	     
+ 	C::sparse::SYM_ENUM	    =>"SYM_ENUM",	     
+ 	C::sparse::SYM_TYPEDEF	    =>"SYM_TYPEDEF",	     
+ 	C::sparse::SYM_TYPEOF	    =>"SYM_TYPEOF",	     
+ 	C::sparse::SYM_MEMBER	    =>"SYM_MEMBER",	     
+ 	C::sparse::SYM_BITFIELD	    =>"SYM_BITFIELD",	     
+ 	C::sparse::SYM_LABEL	    =>"SYM_LABEL",	     
+ 	C::sparse::SYM_RESTRICT	    =>"SYM_RESTRICT",	     
+ 	C::sparse::SYM_FOULED	    =>"SYM_FOULED",	     
+ 	C::sparse::SYM_KEYWORD	    =>"SYM_KEYWORD",	     
+ 	C::sparse::SYM_BAD             =>"SYM_BAD"
+);           
+
 package C::sparse::sym::SYM_UNINITIALIZED;
 our @ISA = qw (C::sparse::sym);
 package C::sparse::sym::SYM_PREPROCESSOR;

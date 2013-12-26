@@ -1,3 +1,22 @@
+package C::sparse::stmt;
+
+our %typ_n = (
+	C::sparse::STMT_NONE        => "STMT_NONE",	      
+	C::sparse::STMT_DECLARATION => "STMT_DECLARATION",  
+	C::sparse::STMT_EXPRESSION  => "STMT_EXPRESSION",   
+	C::sparse::STMT_COMPOUND    => "STMT_COMPOUND",     
+	C::sparse::STMT_IF	    => "STMT_IF",	      
+	C::sparse::STMT_RETURN	    => "STMT_RETURN",	      
+	C::sparse::STMT_CASE	    => "STMT_CASE",	      
+	C::sparse::STMT_SWITCH	    => "STMT_SWITCH",	      
+	C::sparse::STMT_ITERATOR    => "STMT_ITERATOR",     
+	C::sparse::STMT_LABEL	    => "STMT_LABEL",	      
+	C::sparse::STMT_GOTO	    => "STMT_GOTO",	      
+	C::sparse::STMT_ASM	    => "STMT_ASM",	      
+	C::sparse::STMT_CONTEXT     => "STMT_CONTEXT",      
+	C::sparse::STMT_RANGE       => "STMT_RANGE"          
+);
+
 package C::sparse::stmt::STMT_NONE;
 our @ISA = qw (C::sparse::stmt);
 package C::sparse::stmt::STMT_DECLARATION;
