@@ -1,7 +1,6 @@
 #!/usr/bin/perl -w
 use Data::Dump;
 use C::sparse qw(:all);
-use C::sparse;
 use Test::More tests => 2;
 
 #pp(\%INC);

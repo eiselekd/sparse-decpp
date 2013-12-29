@@ -48,7 +48,7 @@ sub c { my @s; return (@s = $_[0]->{'_o'}->stmts); }
 
 package C::sparse::stmt::STMT_IF;
 our @ISA = qw (C::sparse::stmt);
-sub l { my ($s,$p) = @_; my $_p = $s->C::sparse::stmt::l($p); return ($_p, (map { $_->l($_p) } ($s->if_true, $s->if_false))); }
+sub l { my ($s,$p) = @_; my $_p = $s->C::sparse::stmt::l($p); return ($_p, (map { $_->l($_p) } grep { defined($_) } ($s->if_true, $s->if_false))); }
 
 package C::sparse::stmt::STMT_RETURN;
 our @ISA = qw (C::sparse::stmt);
