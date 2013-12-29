@@ -22,7 +22,7 @@ our %m = (
     'C::sparse::stmt::STMT_DECLARATION' => 'C::sparse::stmt::decl',
     'C::sparse::stmt::STMT_EXPRESSION'  => 'C::sparse::stmt::expr',
     'C::sparse::stmt::STMT_COMPOUND'    => 'C::sparse::stmt::comp',
-    'C::sparse::stmt::STMT_IF'          => 'C::sparse::stmt::if',
+    'C::sparse::stmt::STMT_IF'          => 'C::sparse::stmt::ifstmt',
     'C::sparse::stmt::STMT_RETURN'      => 'C::sparse::stmt::ret',
     'C::sparse::stmt::STMT_CASE'        => 'C::sparse::stmt::case',
     'C::sparse::stmt::STMT_SWITCH'      => 'C::sparse::stmt::switch',
@@ -34,6 +34,8 @@ our %m = (
 );
 
 sub l { my ($s,$p) = @_; return bless ({'_o'=>$s, '_p'=>$p},$::C::sparse::stmt::m{ref($s)}); }
+sub p { return ($_[0],defined($_[0]->{'_p'}) ? $_[0]->{'_p'}->p : ()); } 
+
 package C::sparse::stmt::STMT_NONE;
 our @ISA = qw (C::sparse::stmt);
 package C::sparse::stmt::STMT_DECLARATION;
@@ -43,7 +45,7 @@ our @ISA = qw (C::sparse::stmt);
 
 package C::sparse::stmt::STMT_COMPOUND;
 our @ISA = qw (C::sparse::stmt);
-sub l { my ($s,$p) = @_; my $_p = $s->C::sparse::stmt::l($p); return ($_p, (map { $_->l($_p) } $s->stmts)); }
+sub l { my ($s,$p) = @_; my @a = $s->stmts; return () if (!scalar(@a)); my $_p = $s->C::sparse::stmt::l($p); return ((map { $_->l($_p) } @a)); }
 sub c { my @s; return (@s = $_[0]->{'_o'}->stmts); }
 
 package C::sparse::stmt::STMT_IF;
@@ -69,6 +71,34 @@ our @ISA = qw (C::sparse::stmt);
 package C::sparse::stmt::STMT_RANGE;
 our @ISA = qw (C::sparse::stmt);
 
+
+
+package C::sparse::stmt::none;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::decl;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::expr;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::comp;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::ifstmt;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::ret;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::case;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::switch;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::iter;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::label;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::asm;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::ctx;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::range;
+our @ISA = qw (C::sparse::stmt);
 
 
 

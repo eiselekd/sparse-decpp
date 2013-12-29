@@ -7,6 +7,15 @@ use Test::More tests => 2;
 
 $s0 = C::sparse::sparse("t/test_ptrs.c");
 
+my @typedefs = $s0->symbols($typ = (C::sparse::NS_STRUCT));
+my $idx = 0;
+print("typ: $typ\n");
+foreach my $t (@typedefs) {
+  my $struct = $t->totype;
+  print ($idx.":".$struct->n.":".$struct."\n");
+  $idx++;
+}
+
 my @s = $s0->symbols();
 print ("Number of symbols:".scalar(@s)."\n");
 foreach my $s (@s) {
@@ -25,6 +34,8 @@ foreach my $s (@s) {
       print (" c:".$c."\n");
     }
     foreach my $l ($fn->l) {
+      my @p = $l->p;
+      print (' ' x scalar(@p));
       print (" l:".$l."\n");
     }
   }

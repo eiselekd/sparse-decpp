@@ -14,21 +14,24 @@ my %m = (
     'C::sparse::sym::SYM_BASETYPE' => 'C::sparse::type::BASETYPE'
 );
 
-sub totype {
-  my ($b,$c) = ($_[0]->base_type,undef);
-  return bless ({_o=>$b,_n=>$_[1]}, $m{ref($b)}) if (defined($m{ref($b)}));
-  croak("\nCannot map ".ref($b));
-}
+sub totype { my $s = shift; return C::sparse::type::totype($s->base_type, @_); }
 
-sub n {
-  return "<undef>" if (!defined($_[0]->{'_n'}));
-  return $_[0]->{'_n'}->name;
-}
 sub l { return (); }
 sub c { return (); }
 
 package C::sparse::type; 
 our @ISA = qw (C::sparse::sym); use Carp;
+
+sub n {
+  return "<undef>" if (!defined($_[0]->{'_n'}));
+  return $_[0]->{'_n'}->name;
+}
+
+sub totype { 
+  my $b = $_[0];
+  return bless ({_o=>$b,_n=>$_[1]}, $m{ref($b)}) if (defined($m{ref($b)}));
+  confess("\nCannot map :".ref($b).":"); 
+} 
 
 package C::sparse::type::fn; 
 our @ISA = qw (C::sparse::ctype); use Carp;

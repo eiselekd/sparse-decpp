@@ -31,9 +31,7 @@ package C::sparse::sym::SYM_BASETYPE;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_NODE;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
-
 sub totype { return $_[0]->ctype->totype($_[0]->ident); }
-
 package C::sparse::sym::SYM_PTR;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_FN;
@@ -45,6 +43,9 @@ package C::sparse::sym::SYM_ARRAY;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_STRUCT;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
+sub totype { return C::sparse::type::totype($_[0],$_[0]->ident); }
+
+
 package C::sparse::sym::SYM_UNION;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_ENUM;

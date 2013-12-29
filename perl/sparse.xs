@@ -462,23 +462,39 @@ void
 symbols(p,...)
 	sparsectx p
     PREINIT:
-    struct token *t; int cnt = 0; SPARSE_CTX_GEN(0); int id = 0; struct ptr_list *ptrlist; void *ptr; struct symbol *sym;
+    struct token *t; int i, ns, cnt = 0; SPARSE_CTX_GEN(0); int id = 0; struct ptr_list *ptrlist; void *ptr; struct symbol *sym; struct ident *ident;
     PPCODE:
         SPARSE_CTX_SET((struct sparse_ctx *)p->m);
-	ptrlist = (struct ptr_list *)_sctx ->symlist;
-        if (ptrlist) {
-    	    FOR_EACH_PTR(ptrlist, ptr) {
-	        sym = (struct symbol *) ptr;
-	        if (GIMME_V == G_ARRAY) {
-	            EXTEND(SP, 1);
-		    PUSHs(bless_sym (sym));
-                }
-                cnt++;
-	    } END_FOR_EACH_PTR(ptr);
-        }
- 	if (GIMME_V == G_SCALAR) {
- 	    EXTEND(SP, 1);
-            PUSHs(sv_2mortal(newSViv(cnt)));
+        if( items > 1 ) {
+            ns = SvIV(ST(1));
+	    for (i = 0; i < IDENT_HASH_SIZE; i++) {
+            	ident = _sctx->hash_table[i];
+ 		while (ident) {
+	            for (sym = ident->symbols; sym; sym = sym->next_id) {
+		        if (sym->namespace & ns) {
+	                    EXTEND(SP, 1);
+		            PUSHs(bless_sym (sym));
+		        }
+    		    }
+		    ident = ident->next;
+		}
+	    }
+        } else {
+	    ptrlist = (struct ptr_list *)_sctx ->symlist;
+            if (ptrlist) {
+    	        FOR_EACH_PTR(ptrlist, ptr) {
+	            sym = (struct symbol *) ptr;
+	            if (GIMME_V == G_ARRAY) {
+	                EXTEND(SP, 1);
+		        PUSHs(bless_sym (sym));
+                    }
+                    cnt++;
+	        } END_FOR_EACH_PTR(ptr);
+            }
+ 	    if (GIMME_V == G_SCALAR) {
+ 	        EXTEND(SP, 1);
+                PUSHs(sv_2mortal(newSViv(cnt)));
+	    }
 	}
 
 
