@@ -1,4 +1,5 @@
 package C::sparse::sym;
+our @ISA = qw (C::sparse); 
 
 our %typ_n = (
  	C::sparse::SYM_PREPROCESSOR =>"SYM_PREPROCESSOR",     
@@ -31,7 +32,7 @@ package C::sparse::sym::SYM_BASETYPE;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_NODE;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
-sub totype { return $_[0]->ctype->totype($_[0]->ident); }
+sub totype { my $s = shift; return $s->ctype->totype($s->ident,@_); }
 package C::sparse::sym::SYM_PTR;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_FN;
@@ -43,7 +44,7 @@ package C::sparse::sym::SYM_ARRAY;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_STRUCT;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
-sub totype { return C::sparse::type::totype($_[0],$_[0]->ident); }
+sub totype { my $s = shift; return C::sparse::type::totype($s,$s->ident,@_); }
 
 
 package C::sparse::sym::SYM_UNION;

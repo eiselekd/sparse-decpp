@@ -13,6 +13,12 @@ print("typ: $typ\n");
 foreach my $t (@typedefs) {
   my $struct = $t->totype;
   print ($idx.":".$struct->n.":".$struct."\n");
+  foreach my $l ($struct->l) {
+      my @p = $l->p;
+      print (' ' x scalar(@p));
+      print (" l:".$l->n.":".$l."\n");
+  }
+  
   $idx++;
 }
 

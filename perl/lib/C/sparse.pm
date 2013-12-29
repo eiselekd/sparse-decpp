@@ -14,7 +14,7 @@ use warnings;
 
 our $AUTOLOAD;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 #bootstrap C::sparse $VERSION;
 
 require XSLoader;
@@ -266,6 +266,8 @@ use C::sparse::expand;
 use C::sparse::ctx;
 use C::sparse::stream;
 use C::sparse::type;
+
+sub p { return ($_[0],defined($_[0]->{'_p'}) ? $_[0]->{'_p'}->p : ()); } 
 
 1;
 

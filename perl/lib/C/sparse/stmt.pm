@@ -1,4 +1,5 @@
 package C::sparse::stmt;
+our @ISA = qw (C::sparse);
 
 our %typ_n = (
 	C::sparse::STMT_NONE        => "STMT_NONE",	      
@@ -34,7 +35,6 @@ our %m = (
 );
 
 sub l { my ($s,$p) = @_; return bless ({'_o'=>$s, '_p'=>$p},$::C::sparse::stmt::m{ref($s)}); }
-sub p { return ($_[0],defined($_[0]->{'_p'}) ? $_[0]->{'_p'}->p : ()); } 
 
 package C::sparse::stmt::STMT_NONE;
 our @ISA = qw (C::sparse::stmt);

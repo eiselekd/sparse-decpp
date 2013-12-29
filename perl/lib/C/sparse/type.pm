@@ -29,7 +29,7 @@ sub n {
 
 sub totype { 
   my $b = $_[0];
-  return bless ({_o=>$b,_n=>$_[1]}, $m{ref($b)}) if (defined($m{ref($b)}));
+  return bless ({_o=>$b,_n=>$_[1],_p=>$_[2]}, $m{ref($b)}) if (defined($m{ref($b)}));
   confess("\nCannot map :".ref($b).":"); 
 } 
 
@@ -40,8 +40,9 @@ sub args { return map { $_->totype } $_[0]->{'_o'}->arguments; }
 sub l { return $_[0]->{'_o'}->stmt->l; }
 sub c { return $_[0]->{'_o'}->stmt; }
 
-package C::sparse::type::rec; 
+package C::sparse::type::rec;
 our @ISA = qw (C::sparse::ctype); use Carp;
+sub l { return map { $_->totype } $_[0]->{'_o'}->symbol_list; } 
 
 package C::sparse::type::typedef; 
 our @ISA = qw (C::sparse::ctype); use Carp;
