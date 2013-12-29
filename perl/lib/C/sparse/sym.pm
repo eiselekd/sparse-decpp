@@ -21,6 +21,8 @@ our %typ_n = (
  	C::sparse::SYM_BAD             =>"SYM_BAD"
 );           
 
+sub totype { return $_[0]->ctype->totype(); }
+
 package C::sparse::sym::SYM_UNINITIALIZED;
 our @ISA = qw (C::sparse::sym);
 package C::sparse::sym::SYM_PREPROCESSOR;
@@ -29,10 +31,16 @@ package C::sparse::sym::SYM_BASETYPE;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_NODE;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
+
+sub totype { return $_[0]->ctype->totype($_[0]->ident); }
+
 package C::sparse::sym::SYM_PTR;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_FN;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
+
+
+
 package C::sparse::sym::SYM_ARRAY;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_STRUCT;

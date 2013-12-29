@@ -88,13 +88,13 @@ SPARSE_CTX
 SPARSE_POS
     if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsepos_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_TOK
-    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsetok_class_hv); } else { $arg = &PL_sv_undef; }
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), gv_stashpv (token_types_class[token_type($var->m)],1)); } else { $arg = &PL_sv_undef; }
 SPARSE_STMT
-    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsestmt_class_hv); } else { $arg = &PL_sv_undef; }
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), gv_stashpv (stmt_types_class[$var->m->type],1)); } else { $arg = &PL_sv_undef; }
 SPARSE_EXPR
-    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparseexpr_class_hv); } else { $arg = &PL_sv_undef; }
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), gv_stashpv (expr_types_class[$var->m->type],1)); } else { $arg = &PL_sv_undef; }
 SPARSE_SYM
-    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsesym_class_hv); } else { $arg = &PL_sv_undef; }
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), gv_stashpv (sym_types_class[$var->m->type],1)); } else { $arg = &PL_sv_undef; }
 SPARSE_IDENT
     if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparseident_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_CTYPE
@@ -104,7 +104,7 @@ SPARSE_SYMCTX
 SPARSE_SCOPE
     if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsescope_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_EXPAND
-    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparseexpand_class_hv); } else { $arg = &PL_sv_undef; }
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), gv_stashpv (expand_types_class[$var->m->typ],1)); } else { $arg = &PL_sv_undef; }
 SPARSE_STREAM
     if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsestream_class_hv); } else { $arg = &PL_sv_undef; }
 RANDSTATE

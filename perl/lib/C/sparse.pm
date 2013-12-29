@@ -1,25 +1,25 @@
 use ExtUtils::testlib;  
 package C::sparse;
 
-require Symbol;
-require Exporter;
-require DynaLoader;
-@ISA = qw(Exporter DynaLoader);
+#require Symbol;
+#require Exporter;
+#require DynaLoader;
+#@ISA = qw(Exporter DynaLoader);
 
-#use 5.012003;
-#use strict;
-#use warnings;
+use 5.012003;
+use strict;
+use warnings;
 
 #our @ISA = qw(Exporter);
 
 our $AUTOLOAD;
 
 our $VERSION = '0.05';
-bootstrap C::sparse $VERSION;
+#bootstrap C::sparse $VERSION;
 
-#require XSLoader;
+require XSLoader;
 
-#my $loaded;
+my $loaded;
 
 sub import {
     my $pkg = shift;
@@ -34,7 +34,7 @@ sub import {
     
 }
 
-#XSLoader::load('C::sparse', $VERSION);
+XSLoader::load('C::sparse', $VERSION);
 
 sub load_imports {
     
@@ -258,15 +258,17 @@ EXPR_VALUE
     require Exporter;
 }
 
-require C::sparse::tok;
-require C::sparse::sym;
-require C::sparse::stmt;
-require C::sparse::expr;
-require C::sparse::expand;
-require C::sparse::ctx;
-require C::sparse::stream;
+use C::sparse::tok;
+use C::sparse::sym;
+use C::sparse::stmt;
+use C::sparse::expr;
+use C::sparse::expand;
+use C::sparse::ctx;
+use C::sparse::stream;
+use C::sparse::type;
 
 1;
+
 __END__
 
 =head1 C::sparse

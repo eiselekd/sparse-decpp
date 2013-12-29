@@ -286,6 +286,15 @@ struct ctype_name typenames[] = {
 #endif
 
 
+int builtin_type(SCTX_ struct symbol *sym)
+{
+	int i;
+
+	for (i = 0; i < sctxp typenames_cnt; i++)
+		if (sctxp typenames[i].sym == sym)
+			return 1;
+	return 0;
+}
 
 const char *builtin_typename(SCTX_ struct symbol *sym)
 {

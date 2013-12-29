@@ -12,9 +12,12 @@ void func1(struct s0 *p);
 int g1 = 0;
 
 void
-func1(struct s0 *p) {
+func1(struct s0 *p, int x) {
     int d;
     d = p->p1->d1 + g1;
+    if (d) {
+        d = 1;
+    }
 }
 
 

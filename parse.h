@@ -134,4 +134,6 @@ extern int inline_function(SCTX_ struct expression *expr, struct symbol *sym);
 extern void uninline(SCTX_ struct symbol *sym);
 extern void init_parser(SCTX_ int);
 
+extern int builtin_type(SCTX_ struct symbol *sym);
+
 #endif /* PARSE_H */
