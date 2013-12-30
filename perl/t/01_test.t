@@ -5,7 +5,10 @@ use Test::More tests => 2;
 
 #pp(\%INC);
 
-$s0 = C::sparse::sparse("t/test_ptrs.c");
+#$s0 = C::sparse::sparse("t/test_ptrs.c");
+$s0 = C::sparse::sparse("-Itcg", "-Itcg/tci", "-I.", "-I.", "-Iinclude", "-Itarget-arm", "-Itarget-arm", "-DOS_OBJECT_USE_OBJC=0",  "-D_GNU_SOURCE", "-D_FILE_OFFSET_BITS=64", "-D_LARGEFILE_SOURCE",  "-fno-strict-aliasing",   "-I/Users/eiselekd/src/qemu-1.7.0/pixman/pixman", "-I/Users/eiselekd/src/qemu-1.7.0/pixman/pixman", "-I/Users/eiselekd/src/qemu-1.7.0/dtc/libfdt",  "-Itarget-arm", "-DNEED_CPU_H", "-Iinclude", "-D_REENTRANT", "-I/usr/local/Cellar/glib/2.38.0/include/glib-2.0", "-I/usr/local/Cellar/glib/2.38.0/lib/glib-2.0/include", "-I/usr/local/opt/gettext/include",  "-g",  "-c", "-o", "target-arm/translate.o",  "target-arm/translate.c");
+
+
 
 my @typedefs = $s0->symbols($typ = (C::sparse::NS_STRUCT));
 my $idx = 0;
