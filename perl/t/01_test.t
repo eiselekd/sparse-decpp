@@ -55,7 +55,11 @@ foreach my $s (@s) {
 #	print("$fn:$l\n");
       my @p = $l->p;
       print (' ' x scalar(@p));
-      print (" l:".$l."\n");
+      print (" l:".$l);
+      if ($l->isa('C::sparse::stmt::expr')) {
+	print(" => expr");
+      }
+      print ("\n");
     }
   }
   print("\n");
