@@ -52,7 +52,7 @@ foreach my $s (@s) {
       print (" c:".$c."\n");
     }
     foreach my $l ($fn->l) {
-	print("$fn:$l\n");
+#	print("$fn:$l\n");
       my @p = $l->p;
       print (' ' x scalar(@p));
       print (" l:".$l."\n");
