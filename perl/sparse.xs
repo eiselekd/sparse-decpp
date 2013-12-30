@@ -549,7 +549,7 @@ name(i)
     PREINIT:
         int len = 0;
     CODE:
-        RETVAL = newSVpv(i->m->name,i->m->len);
+        RETVAL = newSVpv(i->m ? i->m->name : "<undef>",i->m ? i->m->len : 7);
     OUTPUT:
 	RETVAL
 

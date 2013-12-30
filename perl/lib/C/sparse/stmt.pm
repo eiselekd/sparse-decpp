@@ -31,7 +31,8 @@ our %m = (
     'C::sparse::stmt::STMT_LABEL'       => 'C::sparse::stmt::label',
     'C::sparse::stmt::STMT_ASM'         => 'C::sparse::stmt::asm',
     'C::sparse::stmt::STMT_CONTEXT'     => 'C::sparse::stmt::ctx',
-    'C::sparse::stmt::STMT_RANGE'       => 'C::sparse::stmt::range'
+    'C::sparse::stmt::STMT_RANGE'       => 'C::sparse::stmt::range',
+    'C::sparse::stmt::STMT_GOTO'        => 'C::sparse::stmt::gotostmt'
 );
 
 sub l { my ($s,$p) = @_; return bless ({'_o'=>$s, '_p'=>$p},$::C::sparse::stmt::m{ref($s)}); }
@@ -98,6 +99,8 @@ our @ISA = qw (C::sparse::stmt);
 package C::sparse::stmt::ctx;
 our @ISA = qw (C::sparse::stmt);
 package C::sparse::stmt::range;
+our @ISA = qw (C::sparse::stmt);
+package C::sparse::stmt::gotostmt;
 our @ISA = qw (C::sparse::stmt);
 
 

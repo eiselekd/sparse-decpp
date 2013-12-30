@@ -49,6 +49,9 @@ sub totype { my $s = shift; return C::sparse::type::totype($s,$s->ident,@_); }
 
 package C::sparse::sym::SYM_UNION;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
+sub totype { my $s = shift; return C::sparse::type::totype($s,$s->ident,@_); }
+
+
 package C::sparse::sym::SYM_ENUM;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_TYPEDEF;

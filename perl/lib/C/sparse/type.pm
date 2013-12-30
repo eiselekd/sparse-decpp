@@ -10,7 +10,9 @@ my %m = (
     'C::sparse::sym::SYM_UNION'    => 'C::sparse::type::rec',
     'C::sparse::sym::SYM_ENUM'     => 'C::sparse::type::rec',
     'C::sparse::sym::SYM_PTR'      => 'C::sparse::type::ptr',
+    'C::sparse::sym::SYM_ARRAY'    => 'C::sparse::type::ar',
     'C::sparse::sym::SYM_TYPEDEF'  => 'C::sparse::type::typedef',
+    'C::sparse::sym::SYM_BITFIELD' => 'C::sparse::type::bit',
     'C::sparse::sym::SYM_BASETYPE' => 'C::sparse::type::BASETYPE'
 );
 
@@ -48,6 +50,12 @@ package C::sparse::type::typedef;
 our @ISA = qw (C::sparse::ctype); use Carp;
 
 package C::sparse::type::ptr; 
+our @ISA = qw (C::sparse::ctype); use Carp;
+
+package C::sparse::type::ar; 
+our @ISA = qw (C::sparse::ctype); use Carp;
+
+package C::sparse::type::bit; 
 our @ISA = qw (C::sparse::ctype); use Carp;
 
 package C::sparse::type::BASETYPE; 

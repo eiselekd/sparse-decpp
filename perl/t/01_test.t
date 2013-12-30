@@ -6,7 +6,14 @@ use Test::More tests => 2;
 #pp(\%INC);
 
 #$s0 = C::sparse::sparse("t/test_ptrs.c");
-$s0 = C::sparse::sparse("-Itcg", "-Itcg/tci", "-I.", "-I.", "-Iinclude", "-Itarget-arm", "-Itarget-arm", "-DOS_OBJECT_USE_OBJC=0",  "-D_GNU_SOURCE", "-D_FILE_OFFSET_BITS=64", "-D_LARGEFILE_SOURCE",  "-fno-strict-aliasing",   "-I/Users/eiselekd/src/qemu-1.7.0/pixman/pixman", "-I/Users/eiselekd/src/qemu-1.7.0/pixman/pixman", "-I/Users/eiselekd/src/qemu-1.7.0/dtc/libfdt",  "-Itarget-arm", "-DNEED_CPU_H", "-Iinclude", "-D_REENTRANT", "-I/usr/local/Cellar/glib/2.38.0/include/glib-2.0", "-I/usr/local/Cellar/glib/2.38.0/lib/glib-2.0/include", "-I/usr/local/opt/gettext/include",  "-g",  "-c", "-o", "target-arm/translate.o",  "target-arm/translate.c");
+#$s0 = C::sparse::sparse("-Itcg", "-Itcg/tci", "-I.", "-I.", "-Iinclude", "-Itarget-arm", "-Itarget-arm", "-DOS_OBJECT_USE_OBJC=0",  "-D_GNU_SOURCE", "-D_FILE_OFFSET_BITS=64", "-D_LARGEFILE_SOURCE",  "-fno-strict-aliasing",   "-I/Users/eiselekd/src/qemu-1.7.0/pixman/pixman", "-I/Users/eiselekd/src/qemu-1.7.0/pixman/pixman", "-I/Users/eiselekd/src/qemu-1.7.0/dtc/libfdt",  "-Itarget-arm", "-DNEED_CPU_H", "-Iinclude", "-D_REENTRANT", "-I/usr/local/Cellar/glib/2.38.0/include/glib-2.0", "-I/usr/local/Cellar/glib/2.38.0/lib/glib-2.0/include", "-I/usr/local/opt/gettext/include",  "-g",  "-c", "-o", "target-arm/translate.o",  "target-arm/translate.c");
+
+$s0 = C::sparse::sparse("-It/tcg", "-It/tcg/tci", "-It/.", "-I/usr/include/i386-linux-gnu/", "-It/include", "-It/target-arm", "-DOS_OBJECT_USE_OBJC=0",  "-D_GNU_SOURCE", "-D_FILE_OFFSET_BITS=64", "-D_LARGEFILE_SOURCE",  "-fno-strict-aliasing",   "-I/Users/eiselekd/src/qemu-1.7.0/pixman/pixman", "-I/usr/include/pixman-1", "-I/home/eiselekd/Downloads/qemu-1.7.0/dtc/libfdt",  "-Itarget-arm", "-DNEED_CPU_H", "-Iinclude", "-D_REENTRANT", "-I/usr/include/glib-2.0", "-I/usr/lib/i386-linux-gnu/glib-2.0/include", "-I/usr/local/opt/gettext/include",  "-g",  "-c", "-o", "t/target-arm/translate.o",  "t/target-arm/translate.c");
+
+
+#gcc "-Itcg" "-Itcg/tci" "-I." "-I." "-Iinclude" "-Itarget-arm" "-Itarget-arm" "-DOS_OBJECT_USE_OBJC=0"  "-D_GNU_SOURCE" "-D_FILE_OFFSET_BITS=64" "-D_LARGEFILE_SOURCE"  "-fno-strict-aliasing"   "-I/Users/eiselekd/src/qemu-1.7.0/pixman/pixman" "-I/usr/include/pixman-1" "-I/home/eiselekd/Downloads/qemu-1.7.0/dtc/libfdt"  "-Itarget-arm" "-DNEED_CPU_H" "-Iinclude" "-D_REENTRANT" "-I/usr/include/glib-2.0" "-I/usr/lib/i386-linux-gnu/glib-2.0/include" "-I/usr/local/opt/gettext/include"  "-g"  "-c" "-o" "target-arm/translate.o"  "target-arm/translate.c"
+
+
 
 
 
@@ -24,6 +31,8 @@ foreach my $t (@typedefs) {
   
   $idx++;
 }
+
+#exit(0);
 
 my @s = $s0->symbols();
 print ("Number of symbols:".scalar(@s)."\n");
@@ -43,6 +52,7 @@ foreach my $s (@s) {
       print (" c:".$c."\n");
     }
     foreach my $l ($fn->l) {
+	print("$fn:$l\n");
       my @p = $l->p;
       print (' ' x scalar(@p));
       print (" l:".$l."\n");
