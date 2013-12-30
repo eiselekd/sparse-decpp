@@ -61,6 +61,9 @@ package C::sparse::stmt::STMT_SWITCH;
 our @ISA = qw (C::sparse::stmt);
 package C::sparse::stmt::STMT_ITERATOR;
 our @ISA = qw (C::sparse::stmt);
+sub l { my ($s,$p) = @_; my $_p = $s->C::sparse::stmt::l($p); return ($_p, (map { $_->l($_p) } grep { defined($_) } ($s->iterator_pre_statement, $s->iterator_statement, $s->iterator_post_statement))); }
+
+
 package C::sparse::stmt::STMT_LABEL;
 our @ISA = qw (C::sparse::stmt);
 package C::sparse::stmt::STMT_GOTO;
