@@ -22,7 +22,7 @@ our %typ_n = (
  	C::sparse::SYM_BAD             =>"SYM_BAD"
 );           
 
-sub totype { return $_[0]->ctype->totype(); }
+sub totype { my $s = shift; C::sparse::type::totype($s->ctype->base_type,$s->ident,@_); }
 
 package C::sparse::sym::SYM_UNINITIALIZED;
 our @ISA = qw (C::sparse::sym);
@@ -32,7 +32,7 @@ package C::sparse::sym::SYM_BASETYPE;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_NODE;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
-sub totype { my $s = shift; return $s->ctype->totype($s->ident,@_); }
+sub totype { my $s = shift; return C::sparse::type::totype($s->ctype->base_type,$s->ident,@_); }
 package C::sparse::sym::SYM_PTR;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_FN;

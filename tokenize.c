@@ -70,6 +70,11 @@ static struct position stream_pos(SCTX_ stream_t *stream)
 	return pos;
 }
 
+int stream_issys(stream_t *stream)
+{
+	return 0;
+}
+
 const char *show_special(SCTX_ int val)
 {
 	static char buffer[4];
@@ -313,6 +318,7 @@ struct stream *init_stream(SCTX_ const char *name, int fd, const char **next_pat
 	current->name = name;
 	current->fd = fd;
 	current->next_path = next_path;
+	current->issys = ppre_issys(sctx_ next_path);
 	current->path = NULL;
 	current->constant = CONSTANT_FILE_MAYBE;
 	sctxp input_stream_nr = stream+1;

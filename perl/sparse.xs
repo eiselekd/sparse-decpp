@@ -27,7 +27,7 @@
 
 #include "const-c.inc"
 
-#define TRACE(x) x
+#define TRACE(x) 
 #define TRACE_ACTIVE()
 #ifdef NDEBUG
 #define assert_support(x)
@@ -87,11 +87,9 @@ typedef struct token     sparse__tok;
   static type type##_hash[SPARSE_HASHSIZE];				\
 									\
   static type								\
-  hash_##type (type##_t e)						\
+  hash_##type (type##_t e, int h)					\
   {									\
-    type p = 0; unsigned int h = (int) (long)e;				\
-    h = ((h >> 4) ^ (h >> 8) ^ (h >> 12) ^ 0x57a45) & (SPARSE_HASHSIZE-1); \
-    p  =type##_hash[h];							\
+    type p = 0; p  =type##_hash[h];					\
     while (p) {								\
       if (p->m == e)							\
 	return p;							\
@@ -103,8 +101,10 @@ typedef struct token     sparse__tok;
   static type								\
   new_##type (type##_t e)						\
   {									\
-    type p = hash_##type(e);						\
-    /*TRACE (printf ("new %s(%p)\n", type##_class, e));*/		\
+    unsigned int h = (int) (long)e;					\
+    h = ((h >> 4) ^ (h >> 8) ^ (h >> 12) ^ 0x57a45) & (SPARSE_HASHSIZE-1); \
+    type p = hash_##type(e,h);						\
+    TRACE (printf ("new %s(%p=>%p)\n", type##_class, e, p));		\
     if (!p) {								\
       if (type##_freelist != NULL)					\
 	{								\
@@ -115,9 +115,12 @@ typedef struct token     sparse__tok;
 	{								\
 	  New (SPARSE_MALLOC_ID, p, 1, struct type##_elem);		\
         }								\
+      p->next = type##_hash[h]; 					\
+      type##_hash[h] = p; 						\
       p->m = e;/*TRACE (printf ("  p=%p\n", p));*/			\
       assert_support (type##_count++);					\
     }									\
+    TRACE (printf (" =>%p\n", p));					\
     TRACE_ACTIVE ();							\
     return p;								\
   }									\

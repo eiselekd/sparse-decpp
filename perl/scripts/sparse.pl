@@ -66,6 +66,10 @@ while ($m =~ /($idre)$RE_balanced_smothbrackets:\s*\n/m) {
 	  $gnewpre = "->m";
 	  $gnewpost = "";
       }
+      if (defined($$a{'convctx'})) {
+	$newpre .= $$a{'convctx'}."(p->m->ctx, ";
+        $newpost .= ')';
+      }
       if (defined($$a{'deref'})) {
 	  $derefget = "&"; 
 	  $derefset = "*";
@@ -164,7 +168,7 @@ set_${name}(p,v)
     CODE:
         p->m->$n = ${derefset}$cast v${gnewpre};
 ";
-      print $s;
+      print $s if (!$$a{'noset'});
 
 
       }

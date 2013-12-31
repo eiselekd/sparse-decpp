@@ -53,6 +53,8 @@ extern struct ident *create_hashed_ident(SCTX_ const char *name, int len, unsign
 extern void cstr_ccat(SCTX_ CString *cstr, int ch);
 extern void cstr_new(SCTX_ CString *cstr);
 extern void cstr_cstring(SCTX_ CString *cstr);
+extern int stream_issys(stream_t *stream);
+extern int ppre_issys(SCTX_ const char **p);
 
 extern void show_identifier_stats(SCTX);
 extern struct token *preprocess(SCTX_ struct expansion *);

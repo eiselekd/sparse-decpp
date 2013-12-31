@@ -4,6 +4,7 @@ C::sparse::stream(sparsestream):
     int            : dirty
     int            : next_stream
     int            : once
+    int            : issys
     const char *   : name
     const char *   : path
     sparseident    : protect    { new=>1 }
@@ -13,7 +14,7 @@ C::sparse::stream(sparsestream):
 
 C::sparse::pos(sparsepos):
     int            : type       {}
-    int            : stream     {}
+    int            : stream     { n=>streamid }
     int            : newline    {}
     int            : whitespace {}
     int            : pos        {}
@@ -23,7 +24,8 @@ C::sparse::pos(sparsepos):
 C::sparse::stmt::STMT_NONE(sparsestmt):
 
 C::sparse::tok(sparsetok):
-    sparsepos    : pos              { new=>1, deref=>1 }
+    sparsepos    : pos              { new=>1, deref=>1, n=>position }
+    sparsestream : pos.stream       { new=>1, convctx=>stream_get, noset=>1 }
     sparsetok    : next             { new=>1 }
     sparsetok    : copy             { new=>1 }
     sparseexpand : e                { new=>1 }
@@ -238,7 +240,7 @@ C::sparse::sym(sparsesym):
     unsigned char : enum_member
     unsigned char : bound
     sparsetok   : tok                 { new=>1 }
-    sparsetok   : pos                 { new=>1 }
+    sparsetok   : pos                 { new=>1, n=>position }
     sparsetok   : endpos              { new=>1 }
     sparseident : ident               { new=>1 }
     sparsesym   : next_id             { new=>1 }		

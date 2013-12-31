@@ -37,7 +37,7 @@ our %typ_n = (
 );
 
 our %m = (
-    'C::sparse::expr::EXPR_NONE'        => { 'n' => 'C::sparse::expr::none',      'c'=>[] },
+    'C::sparse::expr::EXPR_NONE'        => { 'n' => 'C::sparse::expr::none',      'c' => [] },
     'C::sparse::expr::EXPR_VALUE'       => { 'n' => 'C::sparse::expr::value',     'c' => [] },
     'C::sparse::expr::EXPR_STRING'      => { 'n' => 'C::sparse::expr::string',    'c' => [] },
     'C::sparse::expr::EXPR_SYMBOL'      => { 'n' => 'C::sparse::expr::symbol',    'c' => [] },

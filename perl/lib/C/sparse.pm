@@ -267,7 +267,8 @@ use C::sparse::ctx;
 use C::sparse::stream;
 use C::sparse::type;
 
-sub p { return ($_[0],defined($_[0]->{'_p'}) ? $_[0]->{'_p'}->p : ()); } 
+sub p  { return ($_[0],defined($_[0]->{'_p'}) ? $_[0]->{'_p'}->p : ()); } 
+sub id { return defined($_[0]->{'_o'}) ? ${$_[0]->{'_o'}} : 0; }
 
 1;
 

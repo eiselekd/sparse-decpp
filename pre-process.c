@@ -1735,6 +1735,12 @@ static inline void update_inc_ptrs(SCTX_ const char ***where)
 	}
 }
 
+int ppre_issys(SCTX_ const char **p) {
+  if (p >= sctxp isys_includepath)
+    return 1;
+  return 0;
+}
+
 /* Add a path before 'where' and update the pointers associated with the
  * includepath array */
 static void add_path_entry(SCTX_ struct token *token, const char *path,
