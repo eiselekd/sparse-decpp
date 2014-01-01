@@ -572,16 +572,16 @@ name(s)
     OUTPUT:
 	RETVAL
 
-MODULE = C::sparse   PACKAGE = C::sparse::ctype
+MODULE = C::sparse   PACKAGE = C::sparse::sym
 PROTOTYPES: ENABLE
 
 SV *
-name(s)
-	sparsectype s
+id(s)
+	sparsesym s
     PREINIT:
         int len = 0; const char *n; struct symbol *sym;
     CODE:
-	if (!s->m || ! (sym = s->m->base_type))
+	if (!s->m || ! (sym = s->m))
 	   XSRETURN_UNDEF;
 	n = builtin_typename(sym->ctx,sym) ?: show_ident(sym->ctx,sym->ident);
         RETVAL = newSVpv(n,0);
@@ -590,11 +590,11 @@ name(s)
 
 SV *
 typename(s)
-	sparsectype s
+	sparsesym s
     PREINIT:
         int len = 0; const char *n; struct symbol *sym;
     CODE:
-	if (!s->m || ! (sym = s->m->base_type))
+	if (!s->m || ! (sym = s->m))
 	   XSRETURN_UNDEF;
 	n = show_typename_fn(sym->ctx,sym);
         RETVAL = newSVpv(n,0);

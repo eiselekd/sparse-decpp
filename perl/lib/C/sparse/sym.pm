@@ -72,5 +72,6 @@ package C::sparse::sym::SYM_KEYWORD;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
 package C::sparse::sym::SYM_BAD;
 our @ISA = qw (C::sparse::sym C::sparse::sym::NS_SYMBOL);
+
 1;
 

@@ -4,7 +4,7 @@ use Carp;
 use strict; 
 use warnings;
 
-foreach my $f ('position') {
+foreach my $f ('position','typename') {
   eval("sub C::sparse::ctype::${f} { return \$_[0]->{_o}->$f };");
 }
 
@@ -64,7 +64,6 @@ our @ISA = qw (C::sparse::ctype); use Carp;
 
 package C::sparse::type::ptr; 
 our @ISA = qw (C::sparse::ctype); use Carp;
-
 sub base { return $_[0]->{'_o'}->totype($_[0]);  }
 
 package C::sparse::type::ar; 
