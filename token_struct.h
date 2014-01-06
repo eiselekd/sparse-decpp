@@ -102,6 +102,7 @@ enum token_type {
 	TOKEN_IF,
 	TOKEN_SKIP_GROUPS,
 	TOKEN_ELSE,
+	TOKEN_CONS
 };
 
 /* Combination tokens */
@@ -203,15 +204,22 @@ struct token {
 	};
 };
 
+struct token_stack {
+	struct token_stack *n;
+	struct token *h, **p;
+};
+
 enum expansion_typ {
 	EXPANSION_CMDLINE,
 	EXPANSION_STREAM,
 	EXPANSION_MACRO,
 	EXPANSION_MACROARG,
 	EXPANSION_CONCAT,
-	EXPANSION_PREPRO
+	EXPANSION_PREPRO,
+	EXPANSION_SUBST
 };
 
+/* pushdown automata transition: p(.,.,s)=>(.,d) */
 struct expansion {
 #ifdef DO_CTX
 	struct sparse_ctx *ctx;
@@ -228,6 +236,5 @@ struct expansion {
 		};
 	};
 };
-
 
 #endif

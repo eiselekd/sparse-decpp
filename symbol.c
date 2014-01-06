@@ -900,6 +900,9 @@ void init_ctype(SCTX)
 			alignment = maxalign;
 		sym->type = ctype->type;
 		sym->bit_size = bit_size;
+#ifdef DO_CTX
+		sym->ctx = sctx;
+#endif
 		sym->ctype.alignment = alignment;
 		sym->ctype.base_type = ctype->base_type;
 		sym->ctype.modifiers = ctype->modifiers;

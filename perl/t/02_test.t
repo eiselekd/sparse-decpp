@@ -9,8 +9,12 @@ my $idx = 0;
 print("typ: $typ\n");
 foreach my $t (@typedefs) {
   my $struct = $t->totype;
-  print ($idx.":".$struct->n.":".$struct."\n");
+  my $p0 = $t->position;
+  my $p1 = $t->endpos;
   
+  print ($idx.":".$struct->n.":".$struct."\n");
+  print ("unfolded:".join(",",$p0->list($p1))."\n");
+  print ("unfolded:".join(",",$p0->fold($p1))."\n");
   
   foreach my $l ($struct->l) {
       my @p = $l->p;

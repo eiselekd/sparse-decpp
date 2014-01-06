@@ -7,6 +7,7 @@ struct s0 {
     struct s1 *p1;
 };
 
+int g=1;
 
 /*
   Local Variables:

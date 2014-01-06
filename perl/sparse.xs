@@ -180,6 +180,7 @@ static char *token_types_class[] =  {
 	"C::sparse::tok::TOKEN_IF",
 	"C::sparse::tok::TOKEN_SKIP_GROUPS",
 	"C::sparse::tok::TOKEN_ELSE",
+	"C::sparse::tok::TOKEN_CONS",
 	0
 };
 static SV *bless_tok(sparsetok_t e) {
@@ -297,7 +298,7 @@ static char *expand_types_class[] =  {
 	"C::sparse::expand::EXPANSION_MACRO",
 	"C::sparse::expand::EXPANSION_MACROARG",
 	"C::sparse::expand::EXPANSION_CONCAT",
-	"C::sparse::expand::EXPANSION_PREPRO",
+	"C::sparse::expand::EXPANSION_SUBST",
 };
 static SV *bless_expand(sparseexpand_t e) {
     if (!e) return &PL_sv_undef;
@@ -508,11 +509,14 @@ void
 list(p,...)
 	sparsetok p
     PREINIT:
-    struct token *t; int cnt = 0; SPARSE_CTX_GEN(0);
+    struct token *t, *e = 0; int cnt = 0; SPARSE_CTX_GEN(0); sparsetok _e;
     PPCODE:
 	t = p->m;
         SPARSE_CTX_SET(t->ctx);
-        while(!eof_token(t)) {
+	if (items >= 2 && sv_derived_from (ST(1), sparsetok_class)) {
+	        _e = SvSPARSE_TOK(ST(1)); e = _e->m;
+	}
+        while(t != e && !eof_token(t)) {
 	        cnt++;
  	    	if (GIMME_V == G_ARRAY) {
 		   EXTEND(SP, 1);
@@ -523,6 +527,22 @@ list(p,...)
  	if (GIMME_V == G_SCALAR) {
  	    EXTEND(SP, 1);
             PUSHs(sv_2mortal(newSViv(cnt)));
+	}
+
+void
+fold(p,...)
+	sparsetok p
+    PREINIT:
+    struct token *t, *e = 0; int cnt = 0; SPARSE_CTX_GEN(0); sparsetok _e;
+    PPCODE:
+	t = p->m;
+        SPARSE_CTX_SET(t->ctx);
+	if (items >= 2 && sv_derived_from (ST(1), sparsetok_class)) {
+	        _e = SvSPARSE_TOK(ST(1)); e = _e->m;
+	}
+        while(t != e && !eof_token(t)) {
+	        cnt++;
+ 		t = t->next;
 	}
 
 void

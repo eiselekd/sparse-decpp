@@ -230,6 +230,10 @@ const char *show_token(SCTX_ const struct token *token)
 		sprintf(buffer, "<argcnt>");
 		return buffer;
 
+	case TOKEN_CONS:
+		sprintf(buffer, "<cons>");
+		return buffer;
+
 	default:
 		sprintf(buffer, "unhandled token type '%d' ", token_type(token));
 		return buffer;

@@ -9,6 +9,17 @@
  *
  *  Licensed under the Open Software License version 1.1
  */
+
+/*
+  stream [ t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 ]
+              |
+              expand
+              
+              
+         [ t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 ]
+	 
+	 
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -178,23 +189,80 @@ static int expand_one_symbol(SCTX_ struct token **list)
 	return 1;
 }
 
-static inline struct token *scan_next(struct token **where)
+#ifndef DO_CTX
+struct token_stack *tok_stk = 0;
+#endif
+
+static inline struct token_stack *token_push_rec(SCTX)
+{
+	struct token_stack *t = malloc(sizeof(struct token_stack));
+	memset(t, 0, sizeof(struct token_stack));
+	t->p = &t->h;
+	t->n = sctxp tok_stk;
+	sctxp tok_stk = t;
+	return t;
+}
+
+static inline struct token *token_pop_rec(SCTX)
+{
+	struct token_stack *t = sctxp tok_stk;
+	struct token *h = t->h;
+	sctxp tok_stk = t->n;
+	free(t);
+	return h;
+}
+
+static inline void token_push_torec(SCTX_ struct token_stack *t, struct token *tok) {
+	struct token *n;
+	if (t->p) {
+		n = cons_list(sctx_ tok, tok->next);
+		*t->p = tok;
+		t->p = &n->next;
+	}
+}
+
+static inline void token_unshift_torec(SCTX_ struct token_stack *t, struct token *tok) {
+	struct token *n;
+	if (t->p) {
+		n = cons_list(sctx_ tok, tok->next);
+		if (t->p == &t->h) {
+			t->h = n;
+			n->next =  &sctxp eof_token_entry;
+			t->p = &n->next;
+		} else {
+			n->next = t->h;
+			t->h = n;
+		}
+	}
+}
+
+static inline struct token *token_push(SCTX_ struct token *tok)
+{
+       	struct token_stack *t = sctxp tok_stk; 
+	while (t) {
+		token_push_torec(sctx_ t, tok);
+		t = t->n;
+	}
+	return tok;
+}
+
+static inline struct token *scan_next(SCTX_ struct token **where)
 {
 	struct token *token = *where;
 	if (token_type(token) != TOKEN_UNTAINT)
-		return token;
+		return token_push(sctx_ token),token;
 	do {
 		token->ident->tainted = 0;
 		token = token->next;
 	} while (token_type(token) == TOKEN_UNTAINT);
 	*where = token;
-	return token;
+	return token_push(sctx_ token), token;
 }
 
 static void expand_list(SCTX_ struct token **list )
 {
 	struct token *next;
-	while (!eof_token(next = scan_next(list))) {
+	while (!eof_token(next = scan_next(sctx_ list))) {
 		if (token_type(next) != TOKEN_IDENT || expand_one_symbol(sctx_ list))
 			list = &next->next;
 	}
@@ -209,7 +277,7 @@ static struct token *collect_arg(SCTX_ struct token *prev, int vararg, struct po
 	struct token *next;
 	int nesting = 0;
 
-	while (!eof_token(next = scan_next(p))) {
+	while (!eof_token(next = scan_next(sctx_ p))) {
 		if (next->pos.newline && match_op(next, '#')) {
 			if (!next->pos.noexpand) {
 				sparse_error(sctx_ next->pos,
@@ -254,7 +322,7 @@ static struct token *collect_arg(SCTX_ struct token *prev, int vararg, struct po
 struct arg {
 	struct token *arg;
 	struct token *expanded;
-	struct token *str;
+	struct token *str, *from, *to;
 	int n_normal;
 	int n_quoted;
 	int n_str;
@@ -343,12 +411,12 @@ static struct token *dup_one(SCTX_ struct token *tok)
 	return newtok;
 }
 
-static struct token *dup_list(SCTX_ struct token *list)
+static struct token *dup_list(SCTX_ struct token *list, struct token *end)
 {
 	struct token *res = NULL;
 	struct token **p = &res;
 
-	while (!eof_token(list)) {
+	while ((list != end) && !eof_token(list)) {
 		struct token *newtok = __alloc_token(sctx_ 0);
 		*newtok = *list;
 		newtok->copy = list;
@@ -359,12 +427,21 @@ static struct token *dup_list(SCTX_ struct token *list)
 		p = &newtok->next;
 		list = list->next;
 	}
+	*p = &sctxp eof_token_entry;
 	return res;
 }
 
-static struct token *dup_list_e(SCTX_ struct token *list, struct expansion *e)
+struct token *cons_list(SCTX_ struct token *list, struct token *end)
 {
-	return list_e(sctx_ dup_list(sctx_ list), e);
+	struct token *c;
+	c = dup_list(sctx_ list, end);
+	list_set_type(sctx_ c, TOKEN_CONS);
+	return c;
+}
+
+static struct token *dup_list_e(SCTX_ struct token *list, struct token *end, struct expansion *e)
+{
+	return list_e(sctx_ dup_list(sctx_ list, end), e);
 }
 
 static const char *show_token_sequence(SCTX_ struct token *token, int quote)
@@ -416,6 +493,10 @@ static struct token *stringify(SCTX_ struct token *arg)
 	return token;
 }
 
+int mark_expand_arguments(SCTX_ struct token *from, struct token *to, struct expansion *e) {
+	return 0;
+}
+
 static void expand_arguments_pp(SCTX_ int count, struct arg *args, struct expansion *m)
 {
 	int i; struct expansion *e;
@@ -432,7 +513,7 @@ static void expand_arguments_pp(SCTX_ int count, struct arg *args, struct expans
 			} else if (eof_token(arg)) {
 				args[i].expanded = arg;
 			} else {
-				args[i].expanded = dup_list(sctx_ arg);
+				args[i].expanded = dup_list(sctx_ arg, 0);
 			}
 			
 			e = __alloc_expansion(sctx_ 0);
@@ -695,6 +776,8 @@ static struct token **substitute(SCTX_ struct token **list, struct token *body, 
 				continue;
 			}
 		copy_arg:
+			/* todo: mark the argument replacemnt as expansion */
+
 			tail = copy(sctx_ &added, arg, count);
 			added->pos.newline = body->pos.newline;
 			added->pos.whitespace = body->pos.whitespace;
@@ -738,6 +821,10 @@ static struct token **substitute(SCTX_ struct token **list, struct token *body, 
 	return list;
 }
 
+int mark_expand(SCTX_ struct token *from, struct token *to, struct expansion *e) {
+	return 0;
+}
+
 static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *mtok)
 {
 	struct expansion *e;
@@ -747,7 +834,8 @@ static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *m
 	struct token **tail;
 	int nargs = sym->arglist ? sym->arglist->count.normal : 0;
 	struct arg *args = NULL; /*[nargs];*/
-	
+	struct token_stack *t = 0; int ret = 0;
+
 	if (nargs)
 		args = malloc(nargs * sizeof(struct arg));
 	
@@ -756,31 +844,38 @@ static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *m
 		goto ret1;
 	}
 
+	t = token_push_rec(sctx); /* register args_colllect */
+
 	e = __alloc_expansion(sctx_ 0);
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_MACRO;
 #ifdef DO_CTX
 	e->ctx = sctx;
 #endif
-	e->s = sym->expansion;
-	e->d = dup_list_e(sctx_ sym->expansion, e);
+	e->s = 0 /*sym->expansion;*/;
+	e->d = 0 /*dup_list_e(sctx_ sym->expansion, 0, e)*/;
 	e->tok = mtok;
 	e->msym = sym;
 	if (mtok->copy)
 		mtok->copy->e = e;
 	
 	if (sym->arglist) {
-		if (!match_op(scan_next(&token->next), '('))
+		if (!match_op(scan_next(sctx_ &token->next), '('))
 			goto ret1;
 		if (!collect_arguments(sctx_ token->next, sym->arglist, args, token))
 			goto ret1;
 		expand_arguments_pp(sctx_ nargs, args, e);
 	}
+	e->s = token_pop_rec(sctx); t = 0;
 
 	expanding->tainted = 1;
 
+	/* todo: mark token->last with macro expansion, it will
+	   become the source for the substitution */
+
 	last = token->next;
-	tail = substitute(sctx_ list, sym->expansion, args);
+	tail = substitute(sctx_ list, sym->expansion, args);	
+	
 	/*
 	 * Note that it won't be eof - at least TOKEN_UNTAINT will be there.
 	 * We still can lose the newline flag if the sucker expands to nothing,
@@ -791,13 +886,16 @@ static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *m
 	(*list)->pos.whitespace = token->pos.whitespace;
 	*tail = last;
 	
+	e->d = cons_list(sctx_ *list, last);
+	
+ret2:
+	if (t) (token_pop_rec(sctx), t = 0);
 	if (args)
 		free(args);
-	return 0;
+	return ret;
 ret1:
-	if (args)
-		free(args);
-	return 1;
+	ret = 1;
+	goto ret2;
 }
 
 static const char *token_name_sequence(SCTX_ struct token *token, int endop, struct token *start)
@@ -1548,7 +1646,7 @@ static int expression_value(SCTX_ struct token **where)
 	long long value;
 	int state = 0;
 
-	while (!eof_token(p = scan_next(list))) {
+	while (!eof_token(p = scan_next(sctx_ list))) {
 		switch (state) {
 		case 0:
 			if (token_type(p) != TOKEN_IDENT)
@@ -1989,7 +2087,7 @@ static void handle_preprocessor_line(SCTX_ struct stream *stream, struct token *
 #endif
 	e->typ = EXPANSION_PREPRO;
 	e->s = start;
-	e->d = dup_list_e(sctx_ token,e);
+	e->d = dup_list_e(sctx_ token, 0, e);
 
 	if (token_type(token) == TOKEN_IDENT) {
 		struct symbol *sym = lookup_symbol(sctx_ token->ident, NS_PREPROCESSOR);
@@ -2037,7 +2135,7 @@ static struct token *do_preprocess(SCTX_ struct token **list)
 {
 	struct token *next; struct token *l = NULL; /*, **c = &l;*/
 
-	while (!eof_token(next = scan_next(list))) {
+	while (!eof_token(next = scan_next(sctx_ list))) {
 		struct stream *stream = sctxp input_streams + next->pos.stream;
 
 		if (next->pos.newline && match_op(next, '#')) {
@@ -2085,7 +2183,7 @@ struct token * preprocess(SCTX_ struct expansion *e)
 	sctxp preprocessing = 1;
 	init_preprocessor(sctx );
 
-	e->d = dup_list_e(sctx_ e->s, e);
+	e->d = dup_list_e(sctx_ e->s, 0, e);
 	do_preprocess(sctx_ &e->d);
 
 	// Drop all expressions from preprocessing, they're not used any more.

@@ -88,6 +88,9 @@ our @ISA = qw (C::sparse::tok);
 package C::sparse::tok::TOKEN_ELSE;
 our @ISA = qw (C::sparse::tok);
 
+package C::sparse::tok::TOKEN_CONS;
+our @ISA = qw (C::sparse::tok);
+
 package C::sparse::tok;
 our @ISA = qw (C::sparse);
 

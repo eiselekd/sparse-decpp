@@ -86,6 +86,7 @@ struct sparse_ctx {
 
 	/* pre-process.c */
 	/*static */int false_nesting /*= 0*/;
+	struct token_stack *tok_stk;
 	const char *includepath[INCLUDEPATHS+1]/* = {
 	"",
 	"/usr/include",

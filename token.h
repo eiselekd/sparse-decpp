@@ -34,6 +34,16 @@ static inline struct token *list_e(SCTX_ struct token *l, struct expansion *e)
 	return r;
 }
 
+static inline struct token *list_set_type(SCTX_ struct token *l, enum token_type typ)
+{
+	struct token *r = l;
+	while (!eof_token(l)) {
+		l->pos.type = typ;
+		l = l->next;
+	}
+	return r;
+}
+
 extern struct stream *init_stream(SCTX_ const char *, int fd, const char **next_path);
 extern const char *stream_name(SCTX_ int stream);
 extern struct stream *stream_get(SCTX_ int stream);
@@ -55,6 +65,7 @@ extern void cstr_new(SCTX_ CString *cstr);
 extern void cstr_cstring(SCTX_ CString *cstr);
 extern int stream_issys(stream_t *stream);
 extern int ppre_issys(SCTX_ const char **p);
+extern struct token *cons_list(SCTX_ struct token *list, struct token *end);
 
 extern void show_identifier_stats(SCTX);
 extern struct token *preprocess(SCTX_ struct expansion *);
