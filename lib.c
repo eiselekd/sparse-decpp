@@ -979,7 +979,7 @@ static struct symbol_list *sparse_initial(SCTX)
 	memset(e, 0, sizeof(struct expansion));
 	e->typ = EXPANSION_CMDLINE;
 	e->s = sctxp pre_buffer_begin;
-	list_e(sctx_ e->s, e);
+	list_e(sctx_ e->s, 0, e);
 
 	return sparse_tokenstream(sctx_ e);
 }

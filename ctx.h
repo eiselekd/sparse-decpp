@@ -286,6 +286,7 @@ struct sparse_ctx {
 	/* allocate.c */
 	ALLOCATOR_DEF(ident, "identifiers",0);
 	ALLOCATOR_DEF(token, "tokens",1);
+	ALLOCATOR_DEF(cons, "cons",1);
 	ALLOCATOR_DEF(expansion, "expansions",1);
 	ALLOCATOR_DEF(sym_context, "sym_contexts",0);
 	ALLOCATOR_DEF(symbol, "symbols",0);

@@ -193,6 +193,26 @@ static int expand_one_symbol(SCTX_ struct token **list)
 struct token_stack *tok_stk = 0;
 #endif
 
+static inline int expansion_depth(SCTX_ struct expansion *e)
+{
+	int max = -1, c; struct token *tok;
+	switch(e->typ) {
+	case EXPANSION_MACRO:
+		tok = e->s;
+		while (!eof_token(tok)) {
+			if (tok->pos.type != TOKEN_CONS)
+				error_die(sctx_ tok->pos, "Expecting TOKEN_CONS\n");
+			if (tok->e) {
+				c = expansion_depth(sctx_ tok->e);
+				max = max > c ? max : c;
+			}
+			tok = tok->next;
+		}
+		break;
+	}
+	return max;
+}
+
 static inline struct token_stack *token_push_rec(SCTX)
 {
 	struct token_stack *t = malloc(sizeof(struct token_stack));
@@ -203,31 +223,32 @@ static inline struct token_stack *token_push_rec(SCTX)
 	return t;
 }
 
-static inline struct token *token_pop_rec(SCTX)
+static inline struct cons *token_pop_rec(SCTX)
 {
 	struct token_stack *t = sctxp tok_stk;
-	struct token *h = t->h;
+	struct cons *h = t->h;
 	sctxp tok_stk = t->n;
 	free(t);
 	return h;
 }
 
 static inline void token_push_torec(SCTX_ struct token_stack *t, struct token *tok) {
-	struct token *n;
+	struct cons *n;
 	if (t->p) {
 		n = cons_list(sctx_ tok, tok->next);
-		*t->p = tok;
+		*t->p = n;
 		t->p = &n->next;
 	}
 }
 
 static inline void token_unshift_torec(SCTX_ struct token_stack *t, struct token *tok) {
-	struct token *n;
+	struct cons *n;
 	if (t->p) {
 		n = cons_list(sctx_ tok, tok->next);
 		if (t->p == &t->h) {
 			t->h = n;
-			n->next =  &sctxp eof_token_entry;
+			n->next =  0
+;
 			t->p = &n->next;
 		} else {
 			n->next = t->h;
@@ -431,17 +452,24 @@ static struct token *dup_list(SCTX_ struct token *list, struct token *end)
 	return res;
 }
 
-struct token *cons_list(SCTX_ struct token *list, struct token *end)
-{
-	struct token *c;
-	c = dup_list(sctx_ list, end);
-	list_set_type(sctx_ c, TOKEN_CONS);
+struct cons *cons_list(SCTX_ struct token *list, struct token *end)
+{	
+	struct cons *c = 0, **p;
+	p = &c;
+	while ((list != end) && !eof_token(list)) {
+		struct cons *n = __alloc_cons(sctx_ 0);
+		memset(n,0,sizeof(*n));
+		n->t = list;
+		*p = n;
+		p = &n->next;
+		list = list->next;
+	}
 	return c;
 }
 
 static struct token *dup_list_e(SCTX_ struct token *list, struct token *end, struct expansion *e)
 {
-	return list_e(sctx_ dup_list(sctx_ list, end), e);
+	return list_e(sctx_ dup_list(sctx_ list, end), 0, e);
 }
 
 static const char *show_token_sequence(SCTX_ struct token *token, int quote)
@@ -831,7 +859,7 @@ static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *m
 	struct token *last;
 	struct token *token = *list;
 	struct ident *expanding = token->ident;
-	struct token **tail;
+	struct token **tail; struct cons *l;
 	int nargs = sym->arglist ? sym->arglist->count.normal : 0;
 	struct arg *args = NULL; /*[nargs];*/
 	struct token_stack *t = 0; int ret = 0;
@@ -866,15 +894,25 @@ static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *m
 			goto ret1;
 		expand_arguments_pp(sctx_ nargs, args, e);
 	}
-	e->s = token_pop_rec(sctx); t = 0;
-
+	e->up = l = token_pop_rec(sctx); t = 0;
+	while (l) {
+		struct cons *c;
+		l->e = e;
+		if ((c = l->t->c)) {
+			l->t->c = 0;
+			c->down = l;
+			l->up = c;
+		}
+		l = l->next;
+	}
+	
 	expanding->tainted = 1;
 
 	/* todo: mark token->last with macro expansion, it will
 	   become the source for the substitution */
 
 	last = token->next;
-	tail = substitute(sctx_ list, sym->expansion, args);	
+	tail = substitute(sctx_ list, sym->expansion, args);
 	
 	/*
 	 * Note that it won't be eof - at least TOKEN_UNTAINT will be there.
@@ -885,8 +923,13 @@ static int expand(SCTX_ struct token **list, struct symbol *sym, struct token *m
 	(*list)->pos.newline = token->pos.newline;
 	(*list)->pos.whitespace = token->pos.whitespace;
 	*tail = last;
-	
-	e->d = cons_list(sctx_ *list, last);
+
+	e->down = l = cons_list(sctx_ *list, last);
+	while (l) {
+		l->e = e;
+		l->t->c = l;
+		l = l->next;
+	}
 	
 ret2:
 	if (t) (token_pop_rec(sctx), t = 0);
@@ -1456,6 +1499,7 @@ static int do_handle_define(SCTX_ struct stream *stream, struct token **line, st
 	struct token *left = token->next;
 	struct symbol *sym;
 	struct ident *name;
+	struct expansion *e;
 	int ret;
 
 	if (token_type(left) != TOKEN_IDENT) {
@@ -1521,6 +1565,17 @@ static int do_handle_define(SCTX_ struct stream *stream, struct token **line, st
 	sym->namespace = NS_MACRO;
 	sym->used_in = NULL;
 	sym->attr = attr;
+	
+	e = __alloc_expansion(sctx_ 0);
+	memset(e, 0, sizeof(struct expansion));
+#ifdef DO_CTX
+	e->ctx = sctx;
+#endif
+	e->typ = EXPANSION_MACRODEF;
+	e->mdefsym = sym;
+	if (sym->expansion)
+		list_e(sctx_ sym->expansion, 0, e);
+
 out:
 	return ret;
 }

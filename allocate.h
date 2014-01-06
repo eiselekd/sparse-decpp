@@ -61,6 +61,7 @@ extern void show_allocations(SCTX_ struct allocator_struct *);
 
 DECLARE_ALLOCATOR(ident);
 DECLARE_ALLOCATOR(token);
+DECLARE_ALLOCATOR(cons);
 DECLARE_ALLOCATOR(expansion);
 DECLARE_ALLOCATOR(sym_context);
 DECLARE_ALLOCATOR(symbol);

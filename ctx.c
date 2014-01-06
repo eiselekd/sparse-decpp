@@ -137,6 +137,7 @@ struct sparse_ctx *sparse_ctx_init(struct sparse_ctx *ctx) {
 	/* allocate.c */
 	ALLOCATOR_INIT(ident, "identifiers",0);
 	ALLOCATOR_INIT(token, "tokens",1);
+	ALLOCATOR_INIT(cons, "cons",1);
 	ALLOCATOR_INIT(expansion, "expansions",1);
 	ALLOCATOR_INIT(sym_context, "sym_contexts",0);
 	ALLOCATOR_INIT(symbol, "symbols",0);

@@ -24,20 +24,34 @@ extern struct token eof_token_entry;
 #endif
 #define eof_token(x) ((x) == &sctxp eof_token_entry)
 
-static inline struct token *list_e(SCTX_ struct token *l, struct expansion *e)
+static inline struct token *list_e(SCTX_ struct token *l, struct token *end, struct expansion *e)
 {
 	struct token *r = l;
-	while (!eof_token(l)) {
+	while (l != end && !eof_token(l)) {
 		l->e = e;
 		l = l->next;
 	}
 	return r;
 }
 
-static inline struct token *list_set_type(SCTX_ struct token *l, enum token_type typ)
+/*
+static inline struct token *list_cons_c(SCTX_ struct token *l, struct token *end, struct expansion *e)
+{
+	struct token *r = l, *c;
+	while (l != end && !eof_token(l)) {
+		c = l->copy;
+		if (c)
+			c->c = e;
+		l = l->next;
+	}
+	return r;
+}
+*/
+
+static inline struct token *list_set_type(SCTX_ struct token *l, struct token *end, enum token_type typ)
 {
 	struct token *r = l;
-	while (!eof_token(l)) {
+	while (l != end && !eof_token(l)) {
 		l->pos.type = typ;
 		l = l->next;
 	}
@@ -65,7 +79,7 @@ extern void cstr_new(SCTX_ CString *cstr);
 extern void cstr_cstring(SCTX_ CString *cstr);
 extern int stream_issys(stream_t *stream);
 extern int ppre_issys(SCTX_ const char **p);
-extern struct token *cons_list(SCTX_ struct token *list, struct token *end);
+extern struct cons *cons_list(SCTX_ struct token *list, struct token *end);
 
 extern void show_identifier_stats(SCTX);
 extern struct token *preprocess(SCTX_ struct expansion *);

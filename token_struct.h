@@ -192,7 +192,8 @@ struct token {
 	struct position pos;
 	struct token *next;
 	struct token *copy;
-	struct expansion *e; /* source or dest expansion */
+	struct expansion *e; /* src expansion */
+	struct cons *c; /* current expansion */
 	union {
 		const char *number;
 		struct ident *ident;
@@ -204,14 +205,23 @@ struct token {
 	};
 };
 
+struct cons {
+	struct cons *next;
+	struct token *t;
+	struct expansion *e;
+	struct cons *up, *down;
+};
+
 struct token_stack {
 	struct token_stack *n;
-	struct token *h, **p;
+	struct cons *h, **p;
 };
 
 enum expansion_typ {
 	EXPANSION_CMDLINE,
 	EXPANSION_STREAM,
+	EXPANSION_MACRODEF,
+
 	EXPANSION_MACRO,
 	EXPANSION_MACROARG,
 	EXPANSION_CONCAT,
@@ -225,7 +235,9 @@ struct expansion {
 	struct sparse_ctx *ctx;
 #endif
 	int typ;
-	struct token *s, *d, **e;
+	struct token *s, *d;
+	struct token **e;
+	struct cons *up, *down;
 	union {
 		struct { /* marg */
 			struct expansion *mac;
@@ -233,6 +245,9 @@ struct expansion {
 		struct { /* macro */
 			struct symbol *msym;
 			struct token *tok;
+		};
+		struct { /* macrodef */
+			struct symbol *mdefsym;
 		};
 	};
 };

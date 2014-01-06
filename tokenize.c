@@ -1098,7 +1098,7 @@ struct expansion * tokenize_buffer(SCTX_ void *buffer, unsigned idx, unsigned lo
 	e = setup_stream(sctx_ &stream, idx, -1, buffer, size);
 	*endtoken = tokenize_stream(sctx_ &stream);
 	
-	list_e(sctx_ e->s, e);
+	list_e(sctx_ e->s, 0, e);
 	return e;
 }
 
@@ -1128,7 +1128,7 @@ struct expansion * tokenize(SCTX_ const char *name, int fd, struct token *endtok
 	if (endtoken)
 		end->next = endtoken;
 	
-	list_e(sctx_ e->s, e);
+	list_e(sctx_ e->s, 0, e);
 
 	return e;
 }

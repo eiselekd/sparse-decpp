@@ -2,6 +2,8 @@ package C::sparse::expand::EXPANSION_CMDLINE;
 our @ISA = qw (C::sparse::expand);
 package C::sparse::expand::EXPANSION_STREAM;
 our @ISA = qw (C::sparse::expand);
+package C::sparse::expand::EXPANSION_MACRODEF;
+our @ISA = qw (C::sparse::expand);
 package C::sparse::expand::EXPANSION_MACRO;
 our @ISA = qw (C::sparse::expand);
 package C::sparse::expand::EXPANSION_MACROARG;
