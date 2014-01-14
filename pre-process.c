@@ -1577,7 +1577,7 @@ static int do_handle_define(SCTX_ struct stream *stream, struct token **line, st
 		int clean;
 
 		if (attr < sym->attr)
-			goto out;
+			goto out; 
 
 		clean = (attr == sym->attr && sym->namespace == NS_MACRO);
 
