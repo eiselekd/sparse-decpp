@@ -975,9 +975,8 @@ static struct symbol_list *sparse_initial(SCTX)
 	for (i = 0; i < sctxp cmdline_include_nr; i++)
 		add_pre_buffer(sctx_ sctxp stream_sc->id, "#argv_include \"%s\"\n", sctxp cmdline_include[i]);
 	
-	e = __alloc_expansion(sctx_ 0);
-	memset(e, 0, sizeof(struct expansion));
-	e->typ = EXPANSION_CMDLINE;
+	e = expansion_new(sctx_ EXPANSION_CMDLINE);
+
 	e->s = sctxp pre_buffer_begin;
 	list_e(sctx_ e->s, 0, e);
 

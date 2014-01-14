@@ -1052,12 +1052,7 @@ static struct expansion *setup_stream(SCTX_ stream_t *stream, int idx, int fd,
 		e = sctxp input_streams[idx].e;
 
 	/*if (!e)*/ {
-		e = __alloc_expansion(sctx_ 0);
-		memset(e, 0, sizeof(struct expansion));
-#ifdef DO_CTX
-		e->ctx = sctx;
-#endif
-		e->typ = EXPANSION_STREAM;
+		e = expansion_new(sctx_ EXPANSION_STREAM);
 		e->s = begin;
 		e->e = &begin->next;
 	}
@@ -1112,12 +1107,8 @@ struct expansion * tokenize(SCTX_ const char *name, int fd, struct token *endtok
 	s = init_stream(sctx_ name, fd, next_path);
 	idx = s->id;
 	if (idx < 0) {
-		e = __alloc_expansion(sctx_ 0);
-		memset(e, 0, sizeof(struct expansion));
-#ifdef DO_CTX
-		e->ctx = sctx;
-#endif
-		e->typ = EXPANSION_STREAM;
+		e = expansion_new(sctx_ EXPANSION_STREAM);
+
 		e->s = endtoken;
 		// info(endtoken->pos, "File %s is const", name);
 		return e;

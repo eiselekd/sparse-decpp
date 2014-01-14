@@ -193,7 +193,7 @@ struct token {
 	struct token *next;
 	struct token *copy;
 	struct expansion *e; /* src expansion */
-	struct cons *c; /* current expansion */
+	struct cons *c; /* use to weave cons->up,down list */
 	union {
 		const char *number;
 		struct ident *ident;
@@ -206,10 +206,10 @@ struct token {
 };
 
 struct cons {
-	struct cons *next;
+	struct cons *next; /* save volatile tokenlist */
 	struct token *t;
 	struct expansion *e;
-	struct cons *up, *down;
+	struct cons *up, *down; /* chain transitions */
 };
 
 struct token_stack {

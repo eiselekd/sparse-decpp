@@ -80,6 +80,7 @@ extern void cstr_cstring(SCTX_ CString *cstr);
 extern int stream_issys(stream_t *stream);
 extern int ppre_issys(SCTX_ const char **p);
 extern struct cons *cons_list(SCTX_ struct token *list, struct token *end);
+extern struct expansion *expansion_new(SCTX_ int typ);
 
 extern void show_identifier_stats(SCTX);
 extern struct token *preprocess(SCTX_ struct expansion *);
