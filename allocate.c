@@ -113,6 +113,7 @@ void show_allocations(SCTX_ struct allocator_struct *x)
 
 ALLOCATOR(ident, "identifiers",0);
 ALLOCATOR(token, "tokens",1);
+ALLOCATOR(pushdown_stack_op, "pushdown_stack_op",1);
 ALLOCATOR(cons, "cons",1);
 ALLOCATOR(expansion, "expansions",1);
 ALLOCATOR(sym_context, "sym_contexts",0);

@@ -277,7 +277,7 @@ sub id { return defined($_[0]->{'_o'}) ? ${$_[0]->{'_o'}} : 0; }
 
 __END__
 
-=head1 C::sparse
+=head1 NAME
 
 C::sparse - Perl binding to Linux's Sparse
 

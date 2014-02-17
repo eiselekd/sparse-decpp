@@ -45,6 +45,7 @@
 #ifndef DO_CTX
 
 static int false_nesting = 0;
+static struct pushdown_stack_op *cur_stack_op = 0;
 
 #define INCLUDEPATHS 300
 const char *includepath[INCLUDEPATHS+1] = { /* insync with ctx.c */

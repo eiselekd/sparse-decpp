@@ -179,6 +179,16 @@ struct argcount {
 	unsigned vararg:1;
 };
 
+enum {
+	PUSHDOWN_STACK_PUSH = 0,
+	PUSHDOWN_STACK_PULL = 1,
+};
+
+struct pushdown_stack_op {
+	int type;
+	
+};
+
 /*
  * This is a very common data structure, it should be kept
  * as small as humanly possible. Big (rare) types go as
@@ -194,6 +204,9 @@ struct token {
 	struct token *copy;
 	struct expansion *e; /* src expansion */
 	struct cons *c; /* use to weave cons->up,down list */
+	
+	struct pushdown_stack_op *push, *pop;
+	
 	union {
 		const char *number;
 		struct ident *ident;

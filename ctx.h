@@ -86,6 +86,8 @@ struct sparse_ctx {
 
 	/* pre-process.c */
 	/*static */int false_nesting /*= 0*/;
+	/*static */ struct pushdown_stack_op *cur_stack_op /* = 0 */;
+
 	struct token_stack *tok_stk;
 	const char *includepath[INCLUDEPATHS+1]/* = {
 	"",
@@ -286,6 +288,7 @@ struct sparse_ctx {
 	/* allocate.c */
 	ALLOCATOR_DEF(ident, "identifiers",0);
 	ALLOCATOR_DEF(token, "tokens",1);
+	ALLOCATOR_DEF(pushdown_stack_op, "pushdown_stack_op",1);
 	ALLOCATOR_DEF(cons, "cons",1);
 	ALLOCATOR_DEF(expansion, "expansions",1);
 	ALLOCATOR_DEF(sym_context, "sym_contexts",0);
