@@ -14,7 +14,7 @@ use warnings;
 
 our $AUTOLOAD;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 #bootstrap C::sparse $VERSION;
 
 require XSLoader;

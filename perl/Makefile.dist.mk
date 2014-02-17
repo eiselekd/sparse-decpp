@@ -31,7 +31,7 @@ dist:
 	perl -pi -e "s/-I\.\./-Isrc\/sparse-$(VERSION)/g"                       ../perl_dist/Makefile.PL
 	perl -pi -e "s/-L\.\/\.\./-L\.\/src\/sparse-$(VERSION)/g"               ../perl_dist/Makefile.PL
 	perl -pi -e "s/-DD_USE_LIB//g"                                          ../perl_dist/Makefile.PL
-	rm ../perl_dist/C-sparse-$(PERL_VERSION).tar.gz
+	-rm ../perl_dist/C-sparse-$(PERL_VERSION).tar.gz
 	cd ../perl_dist; perl Makefile.PL; make dist
 	cp ../perl_dist/C-sparse-$(PERL_VERSION).tar.gz .
 
