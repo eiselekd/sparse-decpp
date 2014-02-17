@@ -12,6 +12,7 @@ dist:
 	mkdir -p src/
 	make -C .. dist; #cp ../sparse-decpp-$(VERSION).tar.gz src/
 	cd src/; tar  xvf  ../../sparse-decpp-$(VERSION).tar.gz
+	rm -rf ../perl_dist/*
 	cp -r . ../perl_dist
 	echo "src/sparse-decpp-$(VERSION).tar.gz" > ../perl_dist/MANIFEST
 	find lib/                                 >>../perl_dist/MANIFEST
@@ -30,7 +31,8 @@ dist:
 	perl -pi -e "s/-I\.\./-Isrc\/sparse-$(VERSION)/g"                       ../perl_dist/Makefile.PL
 	perl -pi -e "s/-L\.\/\.\./-L\.\/src\/sparse-$(VERSION)/g"               ../perl_dist/Makefile.PL
 	perl -pi -e "s/-DD_USE_LIB//g"                                          ../perl_dist/Makefile.PL
-	cd ../perl_dist; make dist
+	rm ../perl_dist/C-sparse-$(PERL_VERSION).tar.gz
+	cd ../perl_dist; perl Makefile.PL; make dist
 	cp ../perl_dist/C-sparse-$(PERL_VERSION).tar.gz .
 
 upload: dist
