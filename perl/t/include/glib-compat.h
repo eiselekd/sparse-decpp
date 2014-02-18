@@ -14,6 +14,7 @@
 #ifndef QEMU_GLIB_COMPAT_H
 #define QEMU_GLIB_COMPAT_H
 
+/*
 #include <glib.h>
 
 #if !GLIB_CHECK_VERSION(2, 14, 0)
@@ -23,5 +24,11 @@ static inline guint g_timeout_add_seconds(guint interval, GSourceFunc function,
     return g_timeout_add(interval * 1000, function, data);
 }
 #endif
+*/
 
+typedef char gchar;
+typedef void *GSList;
+typedef void *GHashTable;
+typedef int GPollFD;
+typedef unsigned int guint;
 #endif

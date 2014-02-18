@@ -14,7 +14,8 @@
 #ifndef QEMU_OBJECT_H
 #define QEMU_OBJECT_H
 
-#include <glib.h>
+#include <glib-compat.h>
+/*#include <glib.h>*/
 #include <stdint.h>
 #include <stdbool.h>
 #include "qemu/queue.h"

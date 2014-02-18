@@ -5084,9 +5084,9 @@ static int disas_neon_data_insn(CPUARMState * env, DisasContext *s, uint32_t ins
                             neon_load_reg64(cpu_V1, rd + pass);
                             tcg_gen_add_i64(cpu_V0, cpu_V0, cpu_V1);
                         } else if (op == 4 || (op == 5 && u)) {
+			    uint64_t mask;
                             /* Insert */
                             neon_load_reg64(cpu_V1, rd + pass);
-                            uint64_t mask;
                             if (shift < -63 || shift > 63) {
                                 mask = 0;
                             } else {
