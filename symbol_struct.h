@@ -146,7 +146,7 @@ struct symbol {
 			struct scope *used_in;
 		};
 		struct /* NS_PREPROCESSOR */ {
-			int (*handler)(SCTX_ struct stream *, struct token **, struct token *);
+			int (*handler)(SCTX_ struct expansion *e, struct stream *, struct token **, struct token *);
 			int normal;
 		};
 		struct /* NS_SYMBOL */ {

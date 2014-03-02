@@ -235,11 +235,13 @@ enum expansion_typ {
 	EXPANSION_STREAM,
 	EXPANSION_MACRODEF,
 
-	EXPANSION_MACRO,
+	EXPANSION_MACRO, /* push */
 	EXPANSION_MACROARG,
 	EXPANSION_CONCAT,
 	EXPANSION_PREPRO,
-	EXPANSION_SUBST
+	EXPANSION_SUBST,
+	
+	EXPANSION_RESULT
 };
 
 /* pushdown automata transition: p(.,.,s)=>(.,d) */
@@ -248,9 +250,11 @@ struct expansion {
 	struct sparse_ctx *ctx;
 #endif
 	int typ;
+	struct expansion *n;
 	struct token *s, *d;
+	struct expansion *pdstk;
+	struct cons *pdstk_push, *pdstk_pop;
 	struct token **e;
-	struct cons *up, *down;
 	union {
 		struct { /* marg */
 			struct expansion *mac;
