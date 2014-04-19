@@ -1,3 +1,7 @@
+package C::sparse::cons;
+our @ISA = qw (C::sparse);
+
+
 package C::sparse::tok::TOKEN_EOF;
 our @ISA = qw (C::sparse::tok);
 

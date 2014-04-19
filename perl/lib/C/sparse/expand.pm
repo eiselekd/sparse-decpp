@@ -14,5 +14,7 @@ package C::sparse::expand::EXPANSION_PREPRO;
 our @ISA = qw (C::sparse::expand);
 package C::sparse::expand::EXPANSION_SUBST;
 our @ISA = qw (C::sparse::expand);
+package C::sparse::expand::EXPANSION_RESULT;
+our @ISA = qw (C::sparse::expand);
 
 1;

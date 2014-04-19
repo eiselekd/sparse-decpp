@@ -4,6 +4,7 @@ const_string_assume	CONST_STRING_ASSUME
 sparsectx		SPARSE_CTX
 sparsepos		SPARSE_POS
 sparsetok		SPARSE_TOK
+sparsecons		SPARSE_CONS
 sparsestmt		SPARSE_STMT
 sparseexpr		SPARSE_EXPR
 sparsesym		SPARSE_SYM
@@ -35,6 +36,8 @@ SPARSE_POS
 	class_or_croak ($arg, sparsepos_class); $var = SvSPARSE_POS($arg);
 SPARSE_TOK
 	class_or_croak ($arg, sparsetok_class); $var = SvSPARSE_TOK($arg);
+SPARSE_CONS
+	class_or_croak ($arg, sparsecons_class); $var = SvSPARSE_CONS($arg);
 SPARSE_STMT
 	class_or_croak ($arg, sparsestmt_class); $var = SvSPARSE_STMT($arg);
 SPARSE_EXPR
@@ -89,6 +92,8 @@ SPARSE_POS
     if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsepos_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_TOK
     if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), gv_stashpv (token_types_class[token_type($var->m)],1)); } else { $arg = &PL_sv_undef; }
+SPARSE_CONS
+    if ($var) { sv_bless (sv_setref_pv ($arg, NULL, $var), sparsecons_class_hv); } else { $arg = &PL_sv_undef; }
 SPARSE_STMT
     if ($var && $var->m) { sv_bless (sv_setref_pv ($arg, NULL, $var), gv_stashpv (stmt_types_class[$var->m->type],1)); } else { $arg = &PL_sv_undef; }
 SPARSE_EXPR

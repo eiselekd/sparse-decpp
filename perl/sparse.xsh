@@ -30,10 +30,19 @@ C::sparse::tok(sparsetok):
     sparsetok    : copy             { new=>1 }
     sparseexpand : e                { new=>1 }
 
+C::sparse::cons(sparsecons):
+    sparseexpand : e                { new=>1 }
+    sparsecons   : next             { new=>1 }
+    sparsetok    : t                { new=>1 }
+
 C::sparse::expand(sparseexpand):
     int   : typ 
     sparsetok :  s                  { new=>1, array=>['next','eof_token','SPARSE_CTX_SET(p->m->ctx)'] }
     sparsetok :  d                  { new=>1, array=>['next','eof_token','SPARSE_CTX_SET(p->m->ctx)'] }
+    sparseexpand : n                { new=>1 }
+    sparseexpand : pdstk            { new=>1 }
+    sparsecons   : pdstk_push       { new=>1 }
+    sparsecons   : pdstk_pop        { new=>1 }
 
 C::sparse::expand::EXPANSION_MACROARG(sparseexpand):
     sparseexpand :  mac             { new=>1 }
@@ -41,6 +50,9 @@ C::sparse::expand::EXPANSION_MACROARG(sparseexpand):
 C::sparse::expand::EXPANSION_MACRO(sparseexpand):
     sparsesym :  msym               { new=>1 }
     sparsetok :  tok                { new=>1 }
+
+C::sparse::expand::EXPANSION_MACRODEF(sparseexpand):
+    sparsesym :  mdefsym            { new=>1 }
 
 C::sparse::ident(sparseident):
     sparseident : next              { new=>1 }

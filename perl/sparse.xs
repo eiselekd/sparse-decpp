@@ -46,6 +46,7 @@ typedef struct token     sparse__tok;
 #define SvSPARSE_CTX(s)       SvSPARSE(s,sparsectx)
 #define SvSPARSE_POS(s)       SvSPARSE(s,sparsepos)
 #define SvSPARSE_TOK(s)       SvSPARSE(s,sparsetok)
+#define SvSPARSE_CONS(s)      SvSPARSE(s,sparsecons)
 #define SvSPARSE_STMT(s)      SvSPARSE(s,sparsestmt)
 #define SvSPARSE_EXPR(s)      SvSPARSE(s,sparseexpr)
 #define SvSPARSE_SYM(s)       SvSPARSE(s,sparsesym)
@@ -138,6 +139,7 @@ typedef struct token     sparse__tok;
 
 CREATE_SPARSE(sparsepos,   C::sparse::pos   , position);
 CREATE_SPARSE(sparsetok,   C::sparse::tok   , token);
+CREATE_SPARSE(sparsecons,  C::sparse::cons  , cons);
 CREATE_SPARSE(sparsestmt,  C::sparse::stmt  , statement);
 CREATE_SPARSE(sparseexpr,  C::sparse::expr  , expression);
 CREATE_SPARSE(sparsesym,   C::sparse::sym   , symbol);
@@ -295,10 +297,14 @@ static SV *bless_sparsescope(sparsesymctx_t e) { return bless_symctx(e); }
 static char *expand_types_class[] =  {
 	"C::sparse::expand::EXPANSION_CMDLINE",
 	"C::sparse::expand::EXPANSION_STREAM",
+	"C::sparse::expand::EXPANSION_MACRODEF",
+	
 	"C::sparse::expand::EXPANSION_MACRO",
 	"C::sparse::expand::EXPANSION_MACROARG",
 	"C::sparse::expand::EXPANSION_CONCAT",
 	"C::sparse::expand::EXPANSION_SUBST",
+
+	"C::sparse::expand::EXPANSION_RESULT",
 };
 static SV *bless_expand(sparseexpand_t e) {
     if (!e) return &PL_sv_undef;
@@ -357,6 +363,7 @@ BOOT:
     sparsectx_class_hv = gv_stashpv (sparsectx_class, 1);
     sparsepos_class_hv  = gv_stashpv (sparsepos_class, 1);
     sparsetok_class_hv  = gv_stashpv (sparsetok_class, 1);
+    sparsecons_class_hv  = gv_stashpv (sparsecons_class, 1);
     sparsestmt_class_hv = gv_stashpv (sparsestmt_class, 1);
     sparsesym_class_hv = gv_stashpv (sparsesym_class, 1);
     sparseexpr_class_hv = gv_stashpv (sparseexpr_class, 1);
