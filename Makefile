@@ -204,8 +204,10 @@ compat-solaris.o: compat/mmap-blob.c $(LIB_H)
 compat-mingw.o: $(LIB_H)
 compat-cygwin.o: $(LIB_H)
 
+char.c_CFLAGS=$(if $(findstring Darwin,$(shell uname)),-Wno-bitfield-constant-conversion,)
+
 %.o: %.c
-	$(QUIET_CC)$(CC) -o $@ -c $(ALL_CFLAGS) $<
+	$(QUIET_CC)$(CC) -o $@ -c $(ALL_CFLAGS) $($(<)_CFLAGS) $<
 
 clean: clean-check
 	rm -f *.[oa] .*.d *.so $(PROGRAMS) $(SLIB_FILE) pre-process.h sparse.pc
