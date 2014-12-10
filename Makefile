@@ -24,7 +24,7 @@ show-parse.c char.c  sort.c compat-linux.c parse.c  lib.c
 CC = gcc
 CFLAGS = -g $(EXTRA_CFLAGS)
  #-O2 -finline-functions -fno-strict-aliasing -g
-CFLAGS += $(if $(findstring Darwin,$(shell uname)),-Wno-gnu -Wno-bitfield-constant-conversion,-Wall) -Wwrite-strings
+CFLAGS += $(if $(findstring Darwin,$(shell uname)),-Wno-gnu ,-Wall) -Wwrite-strings
 LDFLAGS += -g
 LD = gcc
 AR = ar
