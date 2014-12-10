@@ -24,7 +24,7 @@ show-parse.c char.c  sort.c compat-linux.c parse.c  lib.c
 CC = gcc
 CFLAGS = -g $(EXTRA_CFLAGS)
  #-O2 -finline-functions -fno-strict-aliasing -g
-CFLAGS += -Wall -Wwrite-strings
+CFLAGS += $(if $(findstring Darwin,$(shell uname)),-Wno-gnu -Wno-bitfield-constant-conversion,-Wall) -Wwrite-strings
 LDFLAGS += -g
 LD = gcc
 AR = ar
@@ -41,7 +41,7 @@ HAVE_GCC_DEP:=$(shell touch .gcc-test.c && 				\
 		$(CC) -c -Wp,-MD,.gcc-test.d .gcc-test.c 2>/dev/null && \
 		echo 'yes'; rm -f .gcc-test.d .gcc-test.o .gcc-test.c)
 HAVE_GTK2:=$(shell pkg-config --exists gtk+-2.0 2>/dev/null && echo 'yes')
-HAVE_LLVM:=$(shell llvm-config --version >/dev/null 2>&1 && echo 'yes')
+HAVE_LLVM:=$(if $(findstring Darwin,$(shell uname)),,$(shell llvm-config --version >/dev/null 2>&1 && echo 'yes'))
 HAVE_LLVM_VERSION:=$(shell llvm-config --version | grep "^[3-9].*" >/dev/null 2>&1 && echo yes)
 LLVM_VERSION=$(shell llvm-config --version)
 
@@ -62,7 +62,7 @@ INCLUDEDIR=$(PREFIX)/include
 PKGCONFIGDIR=$(LIBDIR)/pkgconfig
 
 PROGRAMS=test-lexing test-parsing obfuscate compile graph sparse \
-	 test-linearize example test-unssa test-dissect ctags test-globals
+	 test-linearize example test-unssa $(if $(findstring Darwin,$(shell uname)),,test-dissect) ctags test-globals
 INST_PROGRAMS=sparse cgcc
 INST_MAN1=sparse.1 cgcc.1
 

@@ -199,6 +199,8 @@ static void examine_symbol(SCTX_ struct symbol *sym, xmlNodePtr node)
 	case SYM_UNINITIALIZED:
 		newProp(sctx_ child, "base-type-builtin", builtin_typename(sctx_ sym));
 		break;
+	default:
+	  break;
 	}
 	return;
 }

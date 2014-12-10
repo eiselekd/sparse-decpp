@@ -20,7 +20,7 @@ static void cstr_realloc(SCTX_ CString *cstr, int new_size)
 	data = realloc(cstr->data_allocated, size);
 	if (!data) {
 		struct position pos;
-		pos.stream = -1;
+		pos.stream = (unsigned int)-1;
 		sparse_error(sctx_ pos, "memory full");
 	}
 	cstr->data_allocated = data;
