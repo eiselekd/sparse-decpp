@@ -1,0 +1,11 @@
+Release history for Perl module C::sparse
+
+0.04 2013-10-09
+
+0.03 2013-10-09
+
+0.02 2013-10-08
+ - renamed distribution from sparse to C::sparse
+
+0.01 2013-10-05
+ - initial CPAN release
